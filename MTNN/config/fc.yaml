@@ -1,0 +1,23 @@
+# Specifies the layers of a fully connected neural network model
+# Using MNIST data
+
+model-type: fully-connected
+input-size: 784  # 28 * 28
+number-of-layers: 3
+layers:
+  - layer:
+      type: linear
+      input: 500
+      activation: relu
+      dropout: none
+  - layer:
+      type: linear
+      input: 256
+      activation: sigmoid
+      dropout: none
+  - layer:
+      type: linear
+      input: 10
+      activation: relu
+      dropout: none
+output-activation-function: softmax

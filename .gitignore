@@ -1,0 +1,45 @@
+# Building in source tree garbage
+.cproject
+.project
+*.o
+*.a
+Makefile
+makefile
+
+# Building semi-out-of-source garbage
+build/
+
+# GNU Global
+GPATH
+GRTAGS
+GTAGS
+
+# Emacs backup garbage
+.backup/
+*~
+
+# Other standard ignores
+*~
+*.pyc
+\#*#
+.#*
+.*.swp
+.DS_Store
+
+# Python garbage
+__pycache__/
+
+# LaTex rubbish
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.pdf
+*.toc
+*.nav
+*.snm
+*.vrb
+
+# Other stuff
+*.html
