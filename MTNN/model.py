@@ -6,8 +6,11 @@ import os
 import sys
 import datetime
 import torch.nn as nn
+import torch.nn.functional as F
 import torch
 from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+
 
 # Public API.
 __all__ = ["Model"]
@@ -26,13 +29,15 @@ class Model(nn.Module):
         "relu": nn.ReLU(),
         "tanh": nn.Tanh(),
         "sigmoid": nn.Sigmoid(),
+        "softmax": nn.Softmax()
     }
 
-    def __init__(self, tensorboard=None):
+    def __init__(self, tensorboard=None, debug=False):
         super(Model, self).__init__()
-        self.tensorboard = tensorboard
         self._train_count = 0
         self._test_count = 0
+        self.tensorboard = tensorboard
+        self.debug = debug
 
     # noinspection PyAttributeOutsideInit
     def set_config(self, config_file):
@@ -41,7 +46,6 @@ class Model(nn.Module):
         self.input_size = self._config["input-size"]
         self.layer_num = self._config["number-of-layers"]
         self.layer_config = self._config["layers"]
-        self.output_activation_fn = self._config["output-activation-function"]
 
         # Process and set Layers.
         layer_list = []
@@ -67,21 +71,35 @@ class Model(nn.Module):
             except KeyError:
                 print(str(activation_type) + " is not a valid activation function.")
                 sys.exit(1)
+            # TODO: Add Final softmax
             # TODO: Add dropout layers
             # TODO: Convolutional network
             
             layer_dict[str(n_layer)] = layerlist
             self.layers = layer_dict
 
-    def forward(self, x):
-        for i, (layer, activation) in enumerate(self.layers.values()):
 
+
+    def forward(self, x):
+
+        for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
             x = x.view(x.size(0), -1)
 
             x = layer(x)
             x = activation(x)
+
+        if self.debug:
+
+            log_file_dir = os.getcwd() + '/debug/'
+            if not os.path.exists(log_file_dir):
+                os.mkdir(log_file_dir)
+            log_file = open(log_file_dir + 'debug.txt', 'w')
+            log_file.write(str(layer))
+            np.savetxt(log_file, layer.weight.detach())
+            log_file.close()
         self._train_count += 1
+
         return x
 
     def visualize(self, input, loss, epoch):
@@ -93,7 +111,7 @@ class Model(nn.Module):
         writer.add_graph(self, input)
         writer.flush()
 
-    def run_train(self, loss_fn, dataloader, opt, num_epochs=None, log_interval=None, checkpoint=False):
+    def fit(self, loss_fn, dataloader, opt, num_epochs=None, log_interval=None, checkpoint=False):
         train_losses = []
         train_counter = []
 
@@ -133,12 +151,25 @@ class Model(nn.Module):
         with open(checkpoint_dir, 'wb') as f:
             torch.save(self.state_dict, f)
 
-    def validate(self):
-        # TODO: set train mode to false; model.eval()
-        # TODO: Integrate with SGD_training?
-        pass
+    def test(self, model, device, test_loader):
+        # TODO: Integrate with SGD_training
+            model.eval()
+            test_loss = 0
+            correct = 0
+            with torch.no_grad():
+                for data, target in test_loader:
+                    data, target = data.to(device), target.to(device)
+                    output = model(data)
+                    test_loss += F.nll_loss(output, target, reduction = 'sum').item()  # sum up batch loss
+                    pred = output.argmax(dim = 1, keepdim = True)  # get the index of the max log-probability
+                    correct += pred.eq(target.view_as(pred)).sum().item()
 
-    @property
+            test_loss /= len(test_loader.dataset)
+
+            print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+                test_loss, correct, len(test_loader.dataset),
+                100. * correct / len(test_loader.dataset)))
+
     def get_properties(self) -> list:
         model_properties = (self.model_type,
                             self.input_size,

@@ -26,9 +26,9 @@ import MTNN
 from MTNN import model as mf
 
 
-# Set hyper-parameters
+# Set training hyper-parameters
 N_EPOCHS = 2  # Set for testing
-BATCH_SIZE_TRAIN = 500 # Set for testing
+BATCH_SIZE_TRAIN = 100  # Set for testing
 BATCH_SIZE_TEST = 500  # Set for testing
 LEARNING_RATE = 0.01
 MOMENTUM = 0.5
@@ -141,7 +141,7 @@ if __name__ == "__main__":
             print("Setting up the network.")
 
             model_config = yaml.load(file_stream, Loader = yaml.SafeLoader)
-            model = mf.Model(tensorboard=True)
+            model = mf.Model(tensorboard=True, debug=True)
             model.set_config(model_config)
             print(model)
             optimizer = optim.SGD(model.parameters(), lr = LEARNING_RATE, momentum = MOMENTUM)
@@ -179,16 +179,15 @@ if __name__ == "__main__":
         print('Starting Training')
 
         START = time.perf_counter()
-        model = TRAINING_ALG.train(model, TRAINLOADER, OBJECTIVE_FN, STOPPING) # Cascadic_alg
+        #model = TRAINING_ALG.train(model, TRAINLOADER, OBJECTIVE_FN, STOPPING) # Cascadic_alg
 
-        """
-        model.run_train(loss_fn=OBJECTIVE_FN,
+        model.fit(loss_fn=OBJECTIVE_FN,
                     dataloader=TRAINLOADER,
                     opt=optimizer,
                     num_epochs=N_EPOCHS,
                     log_interval=LOG_INTERVAL,
                     checkpoint=False)
-        """
+
         STOP = time.perf_counter()
         print('Finished Training (%.3fs)' % (STOP - START))
 

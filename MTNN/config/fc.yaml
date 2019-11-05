@@ -2,7 +2,7 @@
 # Using MNIST data
 
 model-type: fully-connected
-input-size: 784  # 28 * 28
+input-size: 784  # 28 * 28 pixels
 number-of-layers: 3
 layers:
   - layer:
@@ -20,4 +20,9 @@ layers:
       input: 10
       activation: relu
       dropout: none
-output-activation-function: softmax
+  # output layer
+  #- layer:
+  #    type: output
+  #    input: 10
+  #    activation: softmax
+  #    dropout: none
