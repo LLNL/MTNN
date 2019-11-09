@@ -2,10 +2,10 @@
 Prolongation Operators
 """
 # Public API
-__all__ = ["Prolongation"]
+__all__ = ["RandomPerturbation"]
 
 
-class Prolongation:
+class RandomPerturbation:
     def __init__(self, prolongation=None):
         self.prolongation = prolongation
 

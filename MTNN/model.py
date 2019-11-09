@@ -34,6 +34,8 @@ class Model(nn.Module):
 
     def __init__(self, tensorboard=None, debug=False):
         super(Model, self).__init__()
+        self._objective_fn = None
+        self._optimizer = None
         self._train_count = 0
         self._test_count = 0
         self.tensorboard = tensorboard
@@ -79,18 +81,20 @@ class Model(nn.Module):
             self.layers = layer_dict
 
 
+    def set_training_parameters(self, obj_fn, opt):
+        self._objective_fn = obj_fn
+        self._optimizer = opt
+
+
 
     def forward(self, x):
-
         for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
             x = x.view(x.size(0), -1)
 
             x = layer(x)
             x = activation(x)
-
         if self.debug:
-
             log_file_dir = os.getcwd() + '/debug/'
             if not os.path.exists(log_file_dir):
                 os.mkdir(log_file_dir)
@@ -108,10 +112,11 @@ class Model(nn.Module):
 
         # Record training loss from each epoch into the writer
         writer.add_scalar('Train/Loss', loss.item(), epoch)
+       # Write to computation graph
         writer.add_graph(self, input)
         writer.flush()
 
-    def fit(self, loss_fn, dataloader, opt, num_epochs=None, log_interval=None, checkpoint=False):
+    def fit(self, dataloader, num_epochs, log_interval=None, checkpoint=False):
         train_losses = []
         train_counter = []
 
@@ -120,13 +125,13 @@ class Model(nn.Module):
         for epoch in range(1, num_epochs + 1):
             for batch_idx, (data, target) in enumerate(dataloader):
                 # Zero out parameter gradients
-                opt.zero_grad()
+                self._optimizer.zero_grad()
 
                 # Forward + backward + optimize pass
                 output = self.forward(data)
-                loss = loss_fn(output, target)
+                loss = self._objective_fn(output, target)
                 loss.backward()
-                opt.step()
+                self._optimizer.step()
 
                 # Print statistics
                 if batch_idx % log_interval == 0:
@@ -151,7 +156,7 @@ class Model(nn.Module):
         with open(checkpoint_dir, 'wb') as f:
             torch.save(self.state_dict, f)
 
-    def test(self, model, device, test_loader):
+    def validate(self, model, device, test_loader):
         # TODO: Integrate with SGD_training
             model.eval()
             test_loss = 0
