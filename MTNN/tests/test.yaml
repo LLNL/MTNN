@@ -1,0 +1,12 @@
+model-type: fully-connected
+input-size: 2
+number-of-layers: 2
+layers:
+  - layer:
+      type: linear
+      neurons: 1
+      activation: relu
+      dropout: none
+      output: False
+# output is implicit; set from inputs of next layer
+
