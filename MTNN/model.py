@@ -10,6 +10,8 @@ import torch.nn.functional as F
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
+import logging
+
 
 
 # Public API.
@@ -42,8 +44,8 @@ class Model(nn.Module):
         self.debug = debug
 
     # noinspection PyAttributeOutsideInit
-    def set_config(self, config_file):
-        self._config = config_file
+    def set_config(self, yaml_filestream):
+        self._config = yaml_filestream
         self.model_type = self._config["model-type"]
         self.input_size = self._config["input-size"]
         self.layer_num = self._config["number-of-layers"]
@@ -56,7 +58,7 @@ class Model(nn.Module):
             layerlist = nn.ModuleList()
             this_layer = self.layer_config[n_layer]["layer"]
             prev_layer = self.layer_config[n_layer-1]["layer"]
-            layer_input = this_layer["input"]
+            layer_input = this_layer["neurons"]
             activation_type = this_layer["activation"]
             dropout = this_layer["dropout"]
 
@@ -65,7 +67,7 @@ class Model(nn.Module):
                 if this_layer["type"] == "linear":
                     layerlist.append(nn.Linear(self.input_size, layer_input))
             else:
-                layerlist.append(nn.Linear(prev_layer["input"], layer_input))
+                layerlist.append(nn.Linear(prev_layer["neurons"], layer_input))
 
             # Add hidden activation layer
             try:
@@ -82,29 +84,32 @@ class Model(nn.Module):
 
 
     def set_training_parameters(self, obj_fn, opt):
-        self._objective_fn = obj_fn
+        self._objective_fn = obj_fn  # Expects torch.nn loss module
         self._optimizer = opt
 
 
+    def forward(self, input):
+        """
+        Forward pass on the model to compute gradients.
+        Args:
+            input: 
 
-    def forward(self, x):
+        Returns:
+
+        """
         for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
-            x = x.view(x.size(0), -1)
+            input = input.view(input.size(0), -1)
 
-            x = layer(x)
-            x = activation(x)
-        if self.debug:
-            log_file_dir = os.getcwd() + '/debug/'
-            if not os.path.exists(log_file_dir):
-                os.mkdir(log_file_dir)
-            log_file = open(log_file_dir + 'debug.txt', 'w')
-            log_file.write(str(layer))
-            np.savetxt(log_file, layer.weight.detach())
-            log_file.close()
+            input = layer(input)
+            input = activation(input)
+            if self.debug:
+                logging.basicConfig(level = logging.DEBUG)
+                logging.info("Weights: %s", layer.weight.detach())
+                logging.info("Gradients: %s", layer.weight.grad)
         self._train_count += 1
 
-        return x
+        return input
 
     def visualize(self, input, loss, epoch):
         # Writer will output to ./runs/ directory by default
@@ -116,7 +121,18 @@ class Model(nn.Module):
         writer.add_graph(self, input)
         writer.flush()
 
-    def fit(self, dataloader, num_epochs, log_interval=None, checkpoint=False):
+    def fit(self, dataloader, num_epochs, log_interval=1, checkpoint=False):
+        """
+        Train model.
+        Args:
+            dataloader <torch.utils.data.DataLoader>
+            num_epochs <int>
+            log_interval <int>
+            checkpoint <bool>
+
+        Returns:
+
+        """
         train_losses = []
         train_counter = []
 
@@ -126,12 +142,22 @@ class Model(nn.Module):
             for batch_idx, (data, target) in enumerate(dataloader):
                 # Zero out parameter gradients
                 self._optimizer.zero_grad()
+                if not self.debug:
+                    # Forward + backward + optimize pass
+                    prediction = self.forward(data)
+                    loss = self._objective_fn(prediction, target)
+                    loss.backward()
+                    self._optimizer.step()
+                else:
+                    logging.basicConfig(level = logging.DEBUG)
+                    prediction = self.forward(data)
+                    loss = self._objective_fn(prediction, target)
+                    logging.info("Target: %f Prediction %f", target, prediction)
+                    logging.info("Loss: %i", loss)
+                    loss.backward()
 
-                # Forward + backward + optimize pass
-                output = self.forward(data)
-                loss = self._objective_fn(output, target)
-                loss.backward()
-                self._optimizer.step()
+                    # Update weights with gradients
+                    self._optimizer.step()
 
                 # Print statistics
                 if batch_idx % log_interval == 0:
@@ -174,6 +200,13 @@ class Model(nn.Module):
             print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
                 test_loss, correct, len(test_loader.dataset),
                 100. * correct / len(test_loader.dataset)))
+
+    def view_parameters(self): #
+        print("Model Parameters are:")
+        for i in self.layers:
+            print("Weight: ",  self.layers[i][0].weight,
+                  "\nBias: ",  self.layers[i][0].bias)
+
 
     def get_properties(self) -> list:
         model_properties = (self.model_type,
