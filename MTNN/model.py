@@ -36,6 +36,11 @@ class Model(nn.Module):
 
     def __init__(self, tensorboard=None, debug=False):
         super(Model, self).__init__()
+        self._config = None
+        self._model_type = None
+        self._input_size = None
+        self._layer_num = 0
+        self._layer_config = None
         self._objective_fn = None
         self._optimizer = None
         self._train_count = 0
@@ -88,28 +93,30 @@ class Model(nn.Module):
         self._optimizer = opt
 
 
-    def forward(self, input):
+    def forward(self, model_input):
         """
         Forward pass on the model to compute gradients.
         Args:
-            input: 
+            model_input <torch.tensor>
 
         Returns:
 
         """
         for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
-            input = input.view(input.size(0), -1)
+            model_input = model_input.view(model_input.size(0), -1)
 
-            input = layer(input)
-            input = activation(input)
+            model_input = layer(model_input)
+            model_input = activation(model_input)
             if self.debug:
                 logging.basicConfig(level = logging.DEBUG)
-                logging.info("Weights: %s", layer.weight.detach())
-                logging.info("Gradients: %s", layer.weight.grad)
+                logging.debug("\n\tWEIGHTS: %s \n\tBIAS: %s \n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s",
+                               layer.weight.detach(), layer.bias.detach(), layer.weight.grad, layer.bias.grad)  # detach gets values only
+                # TODO: Disable asynchronous logging?
+
         self._train_count += 1
 
-        return input
+        return model_input
 
     def visualize(self, input, loss, epoch):
         # Writer will output to ./runs/ directory by default
@@ -147,17 +154,20 @@ class Model(nn.Module):
                     prediction = self.forward(data)
                     loss = self._objective_fn(prediction, target)
                     loss.backward()
-                    self._optimizer.step()
-                else:
-                    logging.basicConfig(level = logging.DEBUG)
-                    prediction = self.forward(data)
-                    loss = self._objective_fn(prediction, target)
-                    logging.info("Target: %f Prediction %f", target, prediction)
-                    logging.info("Loss: %i", loss)
-                    loss.backward()
 
                     # Update weights with gradients
                     self._optimizer.step()
+                else:
+                    prediction = self.forward(data)
+                    loss = self._objective_fn(prediction, target)
+                    print(batch_idx)
+                    logging.basicConfig(level=logging.DEBUG)
+                    logging.debug(" \nEpoch: %i Batch: %i  \n\tTarget: %f \n\tPrediction %f  \n\t Loss: %f \n\tTotal Loss: %f",
+                                  epoch, batch_idx, target, prediction, loss.item(), loss)
+
+                    loss.backward()
+                    self._optimizer.step()
+                    #TODO: Add logging of weights after update?
 
                 # Print statistics
                 if batch_idx % log_interval == 0:

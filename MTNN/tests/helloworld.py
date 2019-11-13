@@ -86,7 +86,7 @@ for epoch in range(20):
         #print("GRADIENTS", net.fc1.weight.grad)
         # Update weights
         optimizer.step()
-        if i % 1 == 0: # Check me please
+        if i % 1 == 0:  # Check me please
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
 #%%
@@ -104,7 +104,7 @@ print(prediction, prediction.size())
 
 # Using the MTNN
 model_config = yaml.load(open("/Users/mao6/proj/mtnnpython/MTNN/tests/test.yaml", "r"), Loader = yaml.SafeLoader)
-model = MTNN.Model()
+model = MTNN.Model(debug=True)
 model.set_config(model_config)
 print(model)
 print(model.view_parameters())
@@ -127,7 +127,7 @@ dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_
 in1, l1 = next(iter(dataloader_z))
 print(in1, l1)
 # Set training parameters
-model.debug = True
+#model.debug = True
 model.set_training_parameters(nn.MSELoss(), optimizer)
 
 model.fit(dataloader=dataloader_z,
