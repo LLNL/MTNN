@@ -22,7 +22,6 @@ class Net(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        #x = self.fc2(x)
         x = F.relu(x)
         return x
 
@@ -56,7 +55,7 @@ print(data_z)
 
 #%%
 # Run the main training loop
-criterion = F.mse_loss()
+#criterion = F.mse_loss()
 
 for epoch in range(20):
     for i, data2 in enumerate(data_z):
@@ -77,17 +76,17 @@ for epoch in range(20):
         # print("OUTPUT", outputs, outputs.size())
         #print("WEIGHTS", net.fc1.weight)
 
-        loss = criterion(outputs, Z)
+        loss = F.mse_loss(outputs, Z)
         #print("LOSS", loss)
 
 
         # Backward should only be called on a scalar
         loss.backward() # loss.backward() equivalent to loss.backward(torch.Tensor([1]))
-        # so only valid if tensor contains a single element
-        print("GRADIENTS", net.fc1.weight.grad)
+        # only valid if tensor contains a single element
+        #print("GRADIENTS", net.fc1.weight.grad)
         # Update weights
         optimizer.step()
-        if i % 100 == 0:
+        if i % 1 == 0: # Check me please
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
 #%%

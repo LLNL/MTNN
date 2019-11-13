@@ -12,4 +12,4 @@ from MTNN.identity_interpolator import *
 from MTNN.sgd_training import *
 from MTNN.training_alg_smoother import *
 from MTNN.model import *
-from MTNN.prolongation import *
+from MTNN.randomperturb import *
