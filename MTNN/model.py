@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 from torch.utils.tensorboard import SummaryWriter
-import numpy as np
+
 import logging
 
 
@@ -26,6 +26,17 @@ class Model(nn.Module):
     Args:
         config_file: a YAML configuration file
     """
+    # Tensorboard Writer
+    WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs
+
+    OPTIMIZATIONS = {
+        # TODO
+    }
+
+    LOSS = {
+        "crossentropy": nn.CrossEntropyLoss(),
+        "mseloss": nn.MSELoss()
+    }
 
     ACTIVATIONS = {
         "relu": nn.ReLU(),
@@ -55,9 +66,10 @@ class Model(nn.Module):
         self.input_size = self._config["input-size"]
         self.layer_num = self._config["number-of-layers"]
         self.layer_config = self._config["layers"]
+        obj = self._config["objective"]
+        opt = self._config["optimization"]
 
         # Process and set Layers.
-        layer_list = []
         layer_dict = nn.ModuleDict()
         for n_layer in range(len(self.layer_config)):
             layerlist = nn.ModuleList()
@@ -78,7 +90,7 @@ class Model(nn.Module):
             try:
                 layerlist.append(self.ACTIVATIONS[activation_type])
             except KeyError:
-                print(str(activation_type) + " is not a valid activation function.")
+                print(str(activation_type) + " is not a valid torch.nn.activation function.")
                 sys.exit(1)
             # TODO: Add Final softmax
             # TODO: Add dropout layers
@@ -87,11 +99,37 @@ class Model(nn.Module):
             layer_dict[str(n_layer)] = layerlist
             self.layers = layer_dict
 
+            # Set hyperparameters.
+            try:
+                self._objective_fn = self.LOSS[obj]
+            except KeyError:
+                print(str(obj) + "is not a valid torch.nn.loss function")
+                sys.exit(1)
 
-    def set_training_parameters(self, obj_fn, opt):
-        self._objective_fn = obj_fn  # Expects torch.nn loss module
-        self._optimizer = opt
+            try:
+                # TODO
+                self._optimizer = self._config["optimization"]
+            except KeyError:
+                print(str(opt))
 
+    def set_training_parameters(self, objective_function=None, optimizer=None):
+        """
+        Args:
+            obj_fn <torch.nn.modules.loss>
+            opt <torch.optim>
+
+        Returns:
+
+        """
+        self._objective_fn = objective_function
+        self._optimizer = optimizer
+
+    def visualize(self, epoch=None, batch_num=None, log_interval=None, model_input=None, loss=None):
+        self.WRITER.add_scalar('Train/Loss', loss, epoch)
+
+        # Write to computation graph
+        self.WRITER.add_graph(self, model_input)
+        self.WRITER.flush()
 
     def forward(self, model_input):
         """
@@ -100,33 +138,30 @@ class Model(nn.Module):
             model_input <torch.tensor>
 
         Returns:
+            model_input<torch.tensor>
 
         """
+
         for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
-            model_input = model_input.view(model_input.size(0), -1)
+            model_input = model_input.view(model_input.size(0), -1) # has to be a leaf variable to maintain gradients
 
             model_input = layer(model_input)
             model_input = activation(model_input)
+
             if self.debug:
                 logging.basicConfig(level = logging.DEBUG)
-                logging.debug("\n\tWEIGHTS: %s \n\tBIAS: %s \n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s",
-                               layer.weight.detach(), layer.bias.detach(), layer.weight.grad, layer.bias.grad)  # detach gets values only
+                logging.debug("\n\tINPUT: %s ",  model_input)
+                logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ", layer.weight , layer.weight.size(),layer.bias)
+                logging.debug("\n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s", layer.weight.grad, layer.bias.grad)
+                # TODO: Clear Logdir fo previous runs
                 # TODO: Disable asynchronous logging?
 
         self._train_count += 1
 
         return model_input
 
-    def visualize(self, input, loss, epoch):
-        # Writer will output to ./runs/ directory by default
-        writer = SummaryWriter()
 
-        # Record training loss from each epoch into the writer
-        writer.add_scalar('Train/Loss', loss.item(), epoch)
-       # Write to computation graph
-        writer.add_graph(self, input)
-        writer.flush()
 
     def fit(self, dataloader, num_epochs, log_interval=1, checkpoint=False):
         """
@@ -147,8 +182,10 @@ class Model(nn.Module):
         self.train()
         for epoch in range(1, num_epochs + 1):
             for batch_idx, (data, target) in enumerate(dataloader):
+
                 # Zero out parameter gradients
                 self._optimizer.zero_grad()
+
                 if not self.debug:
                     # Forward + backward + optimize pass
                     prediction = self.forward(data)
@@ -160,16 +197,15 @@ class Model(nn.Module):
                 else:
                     prediction = self.forward(data)
                     loss = self._objective_fn(prediction, target)
-                    print(batch_idx)
                     logging.basicConfig(level=logging.DEBUG)
-                    logging.debug(" \nEpoch: %i Batch: %i  \n\tTarget: %f \n\tPrediction %f  \n\t Loss: %f \n\tTotal Loss: %f",
-                                  epoch, batch_idx, target, prediction, loss.item(), loss)
+                    logging.debug(" \nEPOCH: %i BATCH: %i TARGET:%s PREDICTION %s  LOSS: %s",
+                                  epoch, batch_idx, target, prediction, loss)
 
-                    loss.backward()
+                    loss.backward(retain_graph=True)
                     self._optimizer.step()
-                    #TODO: Add logging of weights after update?
+                    # TODO: Add logging of weights after update?
 
-                # Print statistics
+                # Print statistics.
                 if batch_idx % log_interval == 0:
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(dataloader.dataset),
@@ -178,13 +214,14 @@ class Model(nn.Module):
                     train_counter.append(
                         (batch_idx * 64) + ((epoch - 1) * len(dataloader.dataset)))
 
-                # Visualize
+                # Visualize.
                 if self.tensorboard:
-                    self.visualize(data, loss, epoch)
+                    self.visualize(epoch=epoch, batch_num=batch_idx, model_input=data, loss=loss)
 
-                # Save parameters
+                # Save parameters.
                 if checkpoint:
                     self.checkpoint()
+        self.WRITER.close()
 
     def checkpoint(self):
         print('Saving model')
@@ -215,7 +252,10 @@ class Model(nn.Module):
         print("Model Parameters are:")
         for i in self.layers:
             print("Weight: ",  self.layers[i][0].weight,
-                  "\nBias: ",  self.layers[i][0].bias)
+                  "\nWeight Gradient", self.layers[i][0].weight.grad,
+                  "\nBias: ",  self.layers[i][0].bias,
+                  "\nBias Gradient:", self.layers[i][0].bias.grad)
+
 
 
     def get_properties(self) -> list:
