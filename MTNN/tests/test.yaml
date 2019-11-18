@@ -1,6 +1,6 @@
 model-type: fully-connected
 input-size: 2
-number-of-layers: 2
+number-of-layers: 1
 layers:
   - layer:
       type: linear
@@ -9,4 +9,5 @@ layers:
       dropout: none
       output: False
 # output is implicit; set from inputs of next layer
-
+objective: mseloss
+optimization: SGD

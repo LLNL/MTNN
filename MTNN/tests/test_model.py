@@ -6,6 +6,7 @@ from itertools import permutations
 
 # Pytorch packages
 import torch
+from torch import nn
 from torch.autograd import Variable
 from torch.autograd.gradcheck import gradcheck
 
@@ -31,6 +32,7 @@ test_data = generate_data(test_fn)
 
 
 @pytest.fixture
+#Rewrite to class Test_model
 def my_model():
     my_model = mf.Model()
     return my_model
@@ -42,26 +44,25 @@ def test_set_config(my_model):
     assert my_model.input_size > 0
     assert my_model.layer_num != 0
     assert len(my_model.layers) == my_model.layer_num
-
+    assert issubclass(type(my_model._objective_fn.__class__), type(nn.Module))
+    # TODO: Better test for loss function is subclass of nn.modules.loss
+    # TODO: Optimizer
 
 @pytest.mark.parametrize("data", test_data)
 def test_input(my_model, data):
-    (input, expected_output) = data
+    (model_input, expected_output) = data
     my_model.set_config(model_config)
-    assert len(input) == my_model.input_size
+    assert len(model_input) == my_model.input_size
 
 
-def test_hyperparameters(my_model):
-    # TODO
-    pass
-
-# Test model weights and biases
+# Test model sizes weights and biases
 def test_parameters(my_model):
     #TODO
     pass
 
 def test_fit (my_model):
     # TODO
+    # assert loss type
     pass
 
 def test_forward(my_model):

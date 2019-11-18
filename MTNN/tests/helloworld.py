@@ -1,6 +1,7 @@
 # !/usr/bin/env/ python
-
+# Code to test Model class
 #%%
+import datetime
 # Pytorch packages
 import yaml
 import torch
@@ -8,6 +9,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 import MTNN
 from MTNN import randomperturb
@@ -34,7 +36,17 @@ def gen_data():
         data.append(input)
     return data
 
+def visualize(model, input, loss, epoch):
+    # Clear previous runs
 
+    writer = SummaryWriter('./runs/net/' + str(datetime.datetime.now()))
+    # Record training loss from each epoch into the writer
+    writer.add_scalar('Train/Loss', loss.item(), epoch)
+
+    writer.flush()
+   # Write to computation graph
+    writer.add_graph(model, input)
+    writer.flush()
 
 #%%
 # Using Simple net
@@ -58,17 +70,18 @@ print(data_z)
 #criterion = F.mse_loss()
 
 for epoch in range(20):
-    for i, data2 in enumerate(data_z):
+    for i, data in enumerate(data_z):
         # unpack
-        XY, Z = iter(data2)
+        XY, Z = iter(data)
        # print(X, Y, Z)
         # Tensorize input and wrap in Variable to apply gradient descent
         # requires_grad is False by default
 
         # Convert list to float tensor
-        input = Variable(torch.FloatTensor(XY), requires_grad = True) #torch.Floattensor expects a list
-        # For output, set requires_grad to False
-        Z = Variable(torch.FloatTensor([Z]), requires_grad = False)
+        # Variable is deprecated
+        input = torch.FloatTensor(XY) #torch.Floattensor expects a list
+
+        Z = torch.FloatTensor([Z])   # For output, set requires_grad to False
         # print("Input", input, input.size(),"output", Z)
         # Zero out previous gradients
         optimizer.zero_grad()
@@ -79,14 +92,15 @@ for epoch in range(20):
         loss = F.mse_loss(outputs, Z)
         #print("LOSS", loss)
 
+        visualize(net,input,loss,epoch)
 
-        # Backward should only be called on a scalar
         loss.backward() # loss.backward() equivalent to loss.backward(torch.Tensor([1]))
-        # only valid if tensor contains a single element
-        #print("GRADIENTS", net.fc1.weight.grad)
+                         # only valid if tensor contains a single element/scalar
+        #print("GRADIENTS", net.fc1.weight.grad
+
         # Update weights
         optimizer.step()
-        if i % 1 == 0:  # Check me please
+        if i % (len(data_z) -1) == 0 and i != 0:  # Check me please
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
 #%%
@@ -103,9 +117,15 @@ print(prediction, prediction.size())
 #%%
 
 # Using the MTNN
+
 model_config = yaml.load(open("/Users/mao6/proj/mtnnpython/MTNN/tests/test.yaml", "r"), Loader = yaml.SafeLoader)
-model = MTNN.Model(debug=True)
+model = MTNN.Model(tensorboard = True, debug=False)
 model.set_config(model_config)
+print(model.parameters())
+model_optimizer = optim.SGD(model.parameters(), lr = 0.01, momentum = 0.5)
+model.set_training_parameters(nn.MSELoss(), model_optimizer)
+
+
 print(model)
 print(model.view_parameters())
 
@@ -114,35 +134,35 @@ print("Testing on MTNN Model")
 # Testing on MTNN Model
 # Load Data_z into dataloader
 tensor_data_z = []
-for i, data2 in enumerate(data_z):
-    XY, Z = iter(data2)
+for i, data in enumerate(data_z):
+    XY, Z = iter(data)
     # Convert list to float tensor
-    input = Variable(torch.FloatTensor(XY), requires_grad = True) #torch.Floattensor expects a list
-    Z = Variable(torch.FloatTensor([Z]), requires_grad = False)
+    #Variable is deprecated
+    input = Variable(torch.FloatTensor(XY), requires_grad = False)#torch.Floattensor expects a list
+    Z = torch.FloatTensor([Z])
     tensor_data_z.append((input, Z))
 
 print("Data:", tensor_data_z)
 
 dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_size=1)
-in1, l1 = next(iter(dataloader_z))
-print(in1, l1)
-# Set training parameters
-#model.debug = True
-model.set_training_parameters(nn.MSELoss(), optimizer)
+#in1, l1 = next(iter(dataloader_z))
+#print(in1, l1)
 
+# Train.
 model.fit(dataloader=dataloader_z,
-          num_epochs=1,
+          num_epochs=10,
           log_interval=1)
+
 
 #%%
 # Check if network got to 3x+b
 print("Trained weights")
 #print(list(model.parameters()))
-model.view_parameters()
+model.view_parameters() # should be 3,2
 
 # Test prediction from network
 print("Prediction")
 prediction = model(torch.ones(2, 2)) #rows, columns
-print(prediction, prediction.size())
+print(prediction, prediction.size()) # should be 5
 #%%
 
