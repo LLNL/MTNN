@@ -56,6 +56,8 @@ class Model(nn.Module):
         self._optimizer = None
         self._train_count = 0
         self._test_count = 0
+        self._epoch = 0
+        self._batch = 0
         self.tensorboard = tensorboard
         self.debug = debug
 
@@ -112,7 +114,7 @@ class Model(nn.Module):
             except KeyError:
                 print(str(opt))
 
-    def set_training_parameters(self, objective_function=None, optimizer=None):
+    def set_training_parameters(self, objective=None, optimizer=None):
         """
         Args:
             obj_fn <torch.nn.modules.loss>
@@ -121,7 +123,7 @@ class Model(nn.Module):
         Returns:
 
         """
-        self._objective_fn = objective_function
+        self._objective_fn = objective
         self._optimizer = optimizer
 
     def visualize(self, epoch=None, batch_num=None, log_interval=None, model_input=None, loss=None):
@@ -141,21 +143,28 @@ class Model(nn.Module):
             model_input<torch.tensor>
 
         """
-
+        raw_input = model_input
         for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
-            model_input = model_input.view(model_input.size(0), -1) # has to be a leaf variable to maintain gradients
+            # input has to be a leaf variable to maintain gradients; no intermediate variables∂
+            model_input = model_input.view(model_input.size(0), -1)
 
             model_input = layer(model_input)
             model_input = activation(model_input)
 
             if self.debug:
                 logging.basicConfig(level = logging.DEBUG)
-                logging.debug("\n\tINPUT: %s ",  model_input)
+                logging.debug("\n\tINPUT: %s \n\tOUTPUT: %s",  raw_input, model_input)
                 logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ", layer.weight , layer.weight.size(),layer.bias)
                 logging.debug("\n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s", layer.weight.grad, layer.bias.grad)
-                # TODO: Clear Logdir fo previous runs
-                # TODO: Disable asynchronous logging?
+            # TODO: Clear Logdir from previous runs
+            # TODO: Disable asynchronous logging?
+
+        if self.tensorboard:
+            for i, (layer, activation) in enumerate(self.layers.values()):
+                for w_indx, w in enumerate(layer.weight[0]):
+                    self.WRITER.add_scalar('Train/Weights_' + str(w_indx),layer.weight[0][w_indx], self._epoch)
+
 
         self._train_count += 1
 
@@ -180,6 +189,7 @@ class Model(nn.Module):
 
         # Set children modules to training mode
         self.train()
+
         for epoch in range(1, num_epochs + 1):
             for batch_idx, (data, target) in enumerate(dataloader):
 
@@ -221,6 +231,9 @@ class Model(nn.Module):
                 # Save parameters.
                 if checkpoint:
                     self.checkpoint()
+                self._batch += 1
+
+            self._epoch += 1
         self.WRITER.close()
 
     def checkpoint(self):

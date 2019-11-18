@@ -15,7 +15,7 @@ class RandomPerturbation:
                 if "weight" in param:
                     pass
                     # Transform the parameter
-
+                    print(sourcemodel.parameters())
                     # Update the parameter.
                    # sourcemodel.state_dict[name].copy_(transformed_param)
 
