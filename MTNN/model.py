@@ -166,14 +166,7 @@ class Model(nn.Module):
                     self.WRITER.add_scalar('Train/Weights_' + str(w_i), layer.weight[0][w_i], self._epoch)
             # Visualize output
             model_output = model_input
-            print("Model Output")
-            print(model_output)
-            print(model_output.size())
-            print(model_output.size()[1])
-            print(model_output.data)
-            print(model_output.data[0][0])
             num_outputs = model_output.size()[1]
-            print([num_outputs])
             for i in range(1, num_outputs):
                 print(i)
                 self.WRITER.add_scalar('Train/Output_' + str(i), model_output.data[0][i], self._epoch)
