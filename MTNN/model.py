@@ -146,12 +146,10 @@ class Model(nn.Module):
         raw_input = model_input
         for i, (layer, activation) in enumerate(self.layers.values()):
             # Reshape data
-            # input has to be a leaf variable to maintain gradients; no intermediate variables∂
+            # Input has to be a leaf variable to maintain gradients; no intermediate variables
             model_input = model_input.view(model_input.size(0), -1)
-
             model_input = layer(model_input)
             model_input = activation(model_input)
-
             if self.debug:
                 logging.basicConfig(level = logging.DEBUG)
                 logging.debug("\n\tINPUT: %s \n\tOUTPUT: %s",  raw_input, model_input)
@@ -160,11 +158,25 @@ class Model(nn.Module):
             # TODO: Clear Logdir from previous runs
             # TODO: Disable asynchronous logging?
 
+        # Visualize
         if self.tensorboard:
+            # Visualize weights
             for i, (layer, activation) in enumerate(self.layers.values()):
-                for w_indx, w in enumerate(layer.weight[0]):
-                    self.WRITER.add_scalar('Train/Weights_' + str(w_indx),layer.weight[0][w_indx], self._epoch)
-
+                for w_i, w in enumerate(layer.weight[0]):
+                    self.WRITER.add_scalar('Train/Weights_' + str(w_i), layer.weight[0][w_i], self._epoch)
+            # Visualize output
+            model_output = model_input
+            print("Model Output")
+            print(model_output)
+            print(model_output.size())
+            print(model_output.size()[1])
+            print(model_output.data)
+            print(model_output.data[0][0])
+            num_outputs = model_output.size()[1]
+            print([num_outputs])
+            for i in range(1, num_outputs):
+                print(i)
+                self.WRITER.add_scalar('Train/Output_' + str(i), model_output.data[0][i], self._epoch)
 
         self._train_count += 1
 
@@ -216,7 +228,7 @@ class Model(nn.Module):
                     # TODO: Add logging of weights after update?
 
                 # Print statistics.
-                if batch_idx % log_interval == 0:
+                if batch_idx % (log_interval - 1 ) == 0 and batch_idx != 0:
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(dataloader.dataset),
                             100. * batch_idx / len(dataloader), loss.item()))
@@ -264,10 +276,10 @@ class Model(nn.Module):
     def view_parameters(self): #
         print("Model Parameters are:")
         for i in self.layers:
-            print("Weight: ",  self.layers[i][0].weight,
-                  "\nWeight Gradient", self.layers[i][0].weight.grad,
-                  "\nBias: ",  self.layers[i][0].bias,
-                  "\nBias Gradient:", self.layers[i][0].bias.grad)
+            print("\n\tWeight: ",  self.layers[i][0].weight,
+                  "\n\tWeight Gradient", self.layers[i][0].weight.grad,
+                  "\n\tBias: ",  self.layers[i][0].bias,
+                  "\n\tBias Gradient:", self.layers[i][0].bias.grad)
 
 
 

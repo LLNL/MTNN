@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 import MTNN
-from MTNN import randomperturb
+from MTNN import prolongation
 
 
 class Net(nn.Module):
@@ -64,16 +64,15 @@ z = lambda x,y: 3 * x + 2 *y
 data_z = gen_data()
 print(data_z)
 
-
+"""
 #%%
 # Run the main training loop
-#criterion = F.mse_loss()
 
-for epoch in range(20):
+for epoch in range(10):
     for i, data in enumerate(data_z):
         # unpack
         XY, Z = iter(data)
-       # print(X, Y, Z)
+        # print(X, Y, Z)
         # Tensorize input and wrap in Variable to apply gradient descent
         # requires_grad is False by default
 
@@ -96,15 +95,15 @@ for epoch in range(20):
 
         loss.backward() # loss.backward() equivalent to loss.backward(torch.Tensor([1]))
                          # only valid if tensor contains a single element/scalar
-        #print("GRADIENTS", net.fc1.weight.grad
+        #print("GRADIENTS", net.fc1.weight.grad)
 
         # Update weights
         optimizer.step()
-        if i % (len(data_z) -1) == 0 and i != 0:  # Check me please
+        if i % (len(data_z) - 1) == 0 and i != 0:  # Check me please
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
 #%%
-# Check if network got to 3x+b
+# Check if network got to 3x+ 3y +b
 print("Trained weights")
 print(list(net.parameters()))
 
@@ -113,17 +112,16 @@ print("Prediction")
 prediction = net(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size())
 
-
+"""
 #%%
-
 # Using the MTNN
 
 model_config = yaml.load(open("/Users/mao6/proj/mtnnpython/MTNN/tests/test.yaml", "r"), Loader = yaml.SafeLoader)
-model = MTNN.Model(tensorboard = True, debug=False)
+model = MTNN.Model(tensorboard=True, debug=False)
 model.set_config(model_config)
 print(model.parameters())
 model_optimizer = optim.SGD(model.parameters(), lr = 0.01, momentum = 0.5)
-model.set_training_parameters(nn.MSELoss(), model_optimizer)
+model.set_training_parameters( objective=nn.MSELoss(), optimizer=model_optimizer)
 
 
 print(model)
@@ -137,7 +135,7 @@ tensor_data_z = []
 for i, data in enumerate(data_z):
     XY, Z = iter(data)
     # Convert list to float tensor
-    #Variable is deprecated
+    # Variable is deprecated
     input = Variable(torch.FloatTensor(XY), requires_grad = False)#torch.Floattensor expects a list
     Z = torch.FloatTensor([Z])
     tensor_data_z.append((input, Z))
@@ -151,7 +149,7 @@ dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_
 # Train.
 model.fit(dataloader=dataloader_z,
           num_epochs=10,
-          log_interval=1)
+          log_interval=10)
 
 
 #%%
@@ -166,3 +164,6 @@ prediction = model(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size()) # should be 5
 #%%
 
+
+#%%
+randomtriangle=MTNN.prolongation.Lower_triangular()
