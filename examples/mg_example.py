@@ -92,7 +92,7 @@ interp=MTNN.IdentityInterpolator()
 # Another example might be:
 #interp = MTNN.LowerTriangular(refinement_factor=2)
 
-training_alg = MTNN.CascadicMG(smoother=smoother, refinement=interp, num_levels=3, criteria = None)
+training_alg = MTNN.CascadicMG(smoother=smoother, prolongation=None, refinement=interp, num_levels=3)
 stopping = None; # Cascadic MG is a "one-shot solver". The input is a
                  # coarse model and the output is a fine model.
 

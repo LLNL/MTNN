@@ -1,30 +1,26 @@
 """
 Copy + Noise Operator
 """
-# Public API
-__all__ = ["Random_perturbation_operator", "Lower_triangular_operator",
-           "Random_split_operator"]
+
+# Public API.
+__all__ = ["RandomPerturbationOperator", "LowerTriangleOperator",
+           "RandomSplitOperator"]
 
 import torch
 
 
-class Random_perturbation_operator:
+class RandomPerturbationOperator:
     def __init__(self):
        pass
 
     def apply(self, sourcemodel):
-        for name, param in enumerate(sourcemodel.state_dict()):
-            if "weight" in param:
-                pass
-                # Transform the parameter
-                print(sourcemodel.parameters())
-                # Update the parameter.
-               # sourcemodel.state_dict[name].copy_(transformed_param)
+        pass
 
         # TODO: lower triangular
         # TODO: randomsplit
 
-class Lower_triangular_operator:
+
+class LowerTriangleOperator:
     """
     Let x be the model input with dimension N_1(row) x N_in(col)
 
@@ -36,13 +32,13 @@ class Lower_triangular_operator:
     Dimensions of W'_i
     – The first hidden layer has dimensions
         – Weight matrix W'_1:  K * N_1 x N_in
-        - Bias vector b'_1: K * N_1 x N_1
+        - Bias vector b'_1: K * N_1 x 1
     – The ith hidden layer has dimensions
         - Weight matrix W'_i:  K * N_i * N_(i-1)
-        - Bias vector b'_i: K * N_1 X N_1
+        - Bias vector b'_i: K * N_1 X 1
     – The output layer has dimensions
         – Weight matrix W'_out: N_out X N_(i-1)
-        - Bias vector b'_out: b_out
+        - Bias vector b'_out: b_out X 1
 
      Ex. In a fully connected neural network with input x = [x1, x2] and 2 hidden layers of 1 neuron each (aka perceptron)
      (a neuron being the computational unit comprising of the linear transformation and non-linear activation function).
@@ -57,27 +53,31 @@ class Lower_triangular_operator:
      – Hidden layer n =2:
         w'_2 = | w2_11   w2_2 |  b'_2 = |b_2|
                | E2_21   E2_22|         |E_2|
+    Args:
+        sourcemodel <MTNN.model>: a MTNN.model object
+    Output:
     """
     def __init__(self):
             pass
 
     def apply(self, sourcemodel):
         print("STATEDICT", sourcemodel.state_dict())
-        for name, param in enumerate(sourcemodel.state_dict()):
-            print("key, value", name, param)
+        for layer, param in enumerate(sourcemodel.state_dict()):
+            print("layer", layer, "param", param)
             if "weight" or "bias" in param:
                 pass
                 # Transform the parameter
-                print("Parameters", param)
+
                 # Update the parameter.
-                print("StateDict", sourcemodel.state_dict().keys())
-                print("Weights", sourcemodel.state_dict()["layers.0.0.weight"].data.clone())
-                test_param = torch.nn.Parameter(sourcemodel.state_dict()["layers.0.0.weight"].data.clone())
+                print("StateDict\n", sourcemodel.state_dict().keys())
+                print("Weights\n", sourcemodel.state_dict()["layers.0.0.weight"].data.clone())
+                test_param = torch.nn.Parameter(torch.ones(1,2))
                 print(test_param)
                 sourcemodel.register_parameter("prolongated_parameters", test_param)
+                print("New Weight", sourcemodel.state_dict())
                # sourcemodel.state_dict[name].copy_(transformed_param)
         return
 
-class Random_split_operator:
+class RandomSplitOperator:
     def __init__(self):
             pass

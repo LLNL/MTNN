@@ -13,6 +13,7 @@ from torch.autograd.gradcheck import gradcheck
 # Local package
 from MTNN import model as mf
 
+# TODO: Generate tests with diff layer/neuron combinations
 
 def generate_data(lambda_fn):
     tensor_data = []

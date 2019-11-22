@@ -9,4 +9,3 @@ class IdentityInterpolator():
 
     def apply(self, source_model):
         return source_model
-    

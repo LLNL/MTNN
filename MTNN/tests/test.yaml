@@ -4,9 +4,9 @@ number-of-layers: 1
 layers:
   - layer:
       type: linear
-      neurons: 1
+      neurons: 2
       activation: relu
-      dropout: none
+      dropout: None
       output: False
 # output is implicit; set from inputs of next layer
 objective: mseloss

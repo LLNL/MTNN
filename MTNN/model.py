@@ -2,16 +2,17 @@
 """
 Defines the interface for creating extended torch.nn model
 """
+# System packages
 import os
 import sys
 import datetime
+import logging
+
+# Pytorch packages
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
-import logging
-
 
 
 # Public API.
@@ -153,7 +154,7 @@ class Model(nn.Module):
             if self.debug:
                 logging.basicConfig(level = logging.DEBUG)
                 logging.debug("\n\tINPUT: %s \n\tOUTPUT: %s",  raw_input, model_input)
-                logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ", layer.weight , layer.weight.size(),layer.bias)
+                logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ", layer.weight, layer.weight.size(),layer.bias)
                 logging.debug("\n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s", layer.weight.grad, layer.bias.grad)
             # TODO: Clear Logdir from previous runs
             # TODO: Disable asynchronous logging?
@@ -168,7 +169,6 @@ class Model(nn.Module):
             model_output = model_input
             num_outputs = model_output.size()[1]
             for i in range(1, num_outputs):
-                print(i)
                 self.WRITER.add_scalar('Train/Output_' + str(i), model_output.data[0][i], self._epoch)
 
         self._train_count += 1

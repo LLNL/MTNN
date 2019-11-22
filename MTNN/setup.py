@@ -7,6 +7,6 @@ setup(name = "MTNN",
       description = "Module to test multigrid training on neural networks",
       author = "",
       author_email = "",
-      # install_requires
+      #install_requires=
       packages = find_packages()
       )

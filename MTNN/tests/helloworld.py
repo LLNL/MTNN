@@ -1,5 +1,7 @@
 # !/usr/bin/env/ python
-# Code to test Model class
+"""
+Sample code to testModel class with a simple native Torch model
+"""
 #%%
 import datetime
 # Pytorch packages
@@ -10,9 +12,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
+#from torchsummary import summary
 
 import MTNN
-from MTNN import prolongation
+from MTNN import LowerTriangleOperator
 
 
 class Net(nn.Module):
@@ -55,7 +58,7 @@ print(net)
 print(list(net.parameters()))
 
 # create a stochastic gradient descent optimizer
-optimizer = optim.SGD(net.parameters(), lr = 0.01, momentum = 0.5)
+optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
 
 #%%
@@ -128,9 +131,10 @@ print(model)
 print(model.view_parameters())
 
 #%%
-print("Testing on MTNN Model")
 # Testing on MTNN Model
-# Load Data_z into dataloader
+print("Using MTNN Model")
+
+# Load Data_z into Pytorch dataloader
 tensor_data_z = []
 for i, data in enumerate(data_z):
     XY, Z = iter(data)
@@ -141,17 +145,14 @@ for i, data in enumerate(data_z):
     tensor_data_z.append((input, Z))
 
 print("Data:", tensor_data_z)
-
 dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_size=1)
 #in1, l1 = next(iter(dataloader_z))
 #print(in1, l1)
 
 # Train.
-model.fit(dataloader=dataloader_z,
-          num_epochs=10,
-          log_interval=10)
+model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
 
-
+"""
 #%%
 # Check if network got to 3x+b
 print("Trained weights")
@@ -163,7 +164,13 @@ print("Prediction")
 prediction = model(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size()) # should be 5
 #%%
-
+"""
 
 #%%
-randomtriangle=MTNN.prolongation.Lower_triangular()
+
+print("Model", model)
+#model.view_parameters()
+
+
+prolongation_operator = MTNN.LowerTriangleOperator()
+prolongation_operator.apply(model)
