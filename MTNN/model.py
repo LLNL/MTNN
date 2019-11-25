@@ -7,6 +7,7 @@ import os
 import sys
 import datetime
 import logging
+from collections import OrderedDict
 
 # Pytorch packages
 import torch.nn as nn
@@ -53,17 +54,32 @@ class Model(nn.Module):
         self._input_size = None
         self._layer_num = 0
         self._layer_config = None
+        self._layers = nn.ModuleDict() #TODO: Refactor to self._layers?
         self._objective_fn = None
         self._optimizer = None
         self._train_count = 0
         self._test_count = 0
         self._epoch = 0
         self._batch = 0
+
+        # For debugging
         self.tensorboard = tensorboard
         self.debug = debug
 
+        # Prolongation attributes
+        self._prolonged_layers = nn.ModuleDict()
+        self._prolonged_parameters = OrderedDict
+
     # noinspection PyAttributeOutsideInit
     def set_config(self, yaml_filestream):
+        """
+        Sets the configuration parameters from the YAML file.
+        Args:
+            yaml_filestream:
+
+        Returns:
+
+        """
         self._config = yaml_filestream
         self.model_type = self._config["model-type"]
         self.input_size = self._config["input-size"]
@@ -100,7 +116,7 @@ class Model(nn.Module):
             # TODO: Convolutional network
             
             layer_dict[str(n_layer)] = layerlist
-            self.layers = layer_dict
+            self._layers = layer_dict
 
             # Set hyperparameters.
             try:
@@ -121,7 +137,7 @@ class Model(nn.Module):
             obj_fn <torch.nn.modules.loss>
             opt <torch.optim>
 
-        Returns:
+        Returns: Null
 
         """
         self._objective_fn = objective
@@ -145,7 +161,7 @@ class Model(nn.Module):
 
         """
         raw_input = model_input
-        for i, (layer, activation) in enumerate(self.layers.values()):
+        for i, (layer, activation) in enumerate(self._layers.values()):
             # Reshape data
             # Input has to be a leaf variable to maintain gradients; no intermediate variables
             model_input = model_input.view(model_input.size(0), -1)
@@ -154,7 +170,8 @@ class Model(nn.Module):
             if self.debug:
                 logging.basicConfig(level = logging.DEBUG)
                 logging.debug("\n\tINPUT: %s \n\tOUTPUT: %s",  raw_input, model_input)
-                logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ", layer.weight, layer.weight.size(),layer.bias)
+                logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ",\
+                               layer.weight, layer.weight.size(), layer.bias)
                 logging.debug("\n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s", layer.weight.grad, layer.bias.grad)
             # TODO: Clear Logdir from previous runs
             # TODO: Disable asynchronous logging?
@@ -162,7 +179,7 @@ class Model(nn.Module):
         # Visualize
         if self.tensorboard:
             # Visualize weights
-            for i, (layer, activation) in enumerate(self.layers.values()):
+            for i, (layer, activation) in enumerate(self._layers.values()):
                 for w_i, w in enumerate(layer.weight[0]):
                     self.WRITER.add_scalar('Train/Weights_' + str(w_i), layer.weight[0][w_i], self._epoch)
             # Visualize output
@@ -174,8 +191,6 @@ class Model(nn.Module):
         self._train_count += 1
 
         return model_input
-
-
 
     def fit(self, dataloader, num_epochs, log_interval=1, checkpoint=False):
         """
@@ -268,18 +283,16 @@ class Model(nn.Module):
 
     def view_parameters(self): #
         print("Model Parameters are:")
-        for i in self.layers:
-            print("\n\tWeight: ",  self.layers[i][0].weight,
-                  "\n\tWeight Gradient", self.layers[i][0].weight.grad,
-                  "\n\tBias: ",  self.layers[i][0].bias,
-                  "\n\tBias Gradient:", self.layers[i][0].bias.grad)
-
-
+        for i in self._layers:
+            print("\n\tWeight: ", self._layers[i][0].weight,
+                  "\n\tWeight Gradient", self._layers[i][0].weight.grad,
+                  "\n\tBias: ", self._layers[i][0].bias,
+                  "\n\tBias Gradient:", self._layers[i][0].bias.grad)
 
     def get_properties(self) -> list:
         model_properties = (self.model_type,
                             self.input_size,
-                            self.layers,
+                            self._layers,
                             self.output_activation_fn)
         return model_properties
 

@@ -70,7 +70,7 @@ class LowerTriangleOperator:
 
                 # Update the parameter.
                 print("StateDict\n", sourcemodel.state_dict().keys())
-                print("Weights\n", sourcemodel.state_dict()["layers.0.0.weight"].data.clone())
+                print("Weights\n", sourcemodel.state_dict()["_layers.0.0.weight"].data.clone())
                 test_param = torch.nn.Parameter(torch.ones(1,2))
                 print(test_param)
                 sourcemodel.register_parameter("prolongated_parameters", test_param)

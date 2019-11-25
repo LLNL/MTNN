@@ -1,6 +1,7 @@
 # !/usr/bin/env/ python
 """
-Sample code to testModel class with a simple native Torch model
+Sample code to test Model class with a simple native Torch model
+Best to run this in a Jupyter notebook environment  to observe each step.
 """
 #%%
 import datetime
@@ -67,7 +68,7 @@ z = lambda x,y: 3 * x + 2 *y
 data_z = gen_data()
 print(data_z)
 
-"""
+
 #%%
 # Run the main training loop
 
@@ -115,7 +116,7 @@ print("Prediction")
 prediction = net(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size())
 
-"""
+
 #%%
 # Using the MTNN
 
@@ -152,7 +153,7 @@ dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_
 # Train.
 model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
 
-"""
+
 #%%
 # Check if network got to 3x+b
 print("Trained weights")
@@ -164,7 +165,7 @@ print("Prediction")
 prediction = model(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size()) # should be 5
 #%%
-"""
+
 
 #%%
 
