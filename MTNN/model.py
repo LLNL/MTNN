@@ -31,8 +31,9 @@ class Model(nn.Module):
     # Tensorboard Writer
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs
 
+    # TODO: make case-insensitive
     OPTIMIZATIONS = {
-        # TODO: fill-in
+        # TODO: fill-in but instantiate?
     }
 
     LOSS = {
@@ -41,16 +42,15 @@ class Model(nn.Module):
     }
 
     ACTIVATIONS = {
-        # TODO: make case-insensitive
         "relu": nn.ReLU(),
         "tanh": nn.Tanh(),
         "sigmoid": nn.Sigmoid(),
         "softmax": nn.Softmax()
     }
 
-    def __init__(self, tensorboard=None, debug=False):
+    def __init__(self, config=None, tensorboard=None, debug=False):
         super(Model, self).__init__()
-        self._config = None
+        self.config_file = config
         self._model_type = None
         self._input_size = None
         self._num_layers = 0
@@ -78,13 +78,11 @@ class Model(nn.Module):
         Returns:
 
         """
-        self._config = yaml_filestream
-        self._model_type = self._config["model-type"]
-        self._input_size = self._config["input-size"]
-        self._num_layers = self._config["number-of-layers"]
-        self._layer_config = self._config["layers"]
-        obj = self._config["objective"]
-        opt = self._config["optimization"]
+        self.config_file = yaml_filestream
+        self._model_type = self.config_file["model-type"]
+        self._input_size = self.config_file["input-size"]
+        self._num_layers = self.config_file["number-of-layers"]
+        self._layer_config = self.config_file["layers"]
 
         # Process and set Layers.
         layer_dict = nn.ModuleDict()
@@ -118,15 +116,20 @@ class Model(nn.Module):
             self._layers = layer_dict
 
             # Set hyperparameters.
+            obj = self.config_file["objective"]
+            opt = self.config_file["optimization"]
+
+            # Objective function
             try:
                 self._objective_fn = self.LOSS[obj]
             except KeyError:
                 print(str(obj) + "is not a valid torch.nn.loss function")
                 sys.exit(1)
 
+            # Optimizer
             try:
                 # TODO
-                self._optimizer = self._config["optimization"]
+                self._optimizer = self.config_file["optimization"]
             except KeyError:
                 print(str(opt))
 
@@ -160,6 +163,11 @@ class Model(nn.Module):
 
         """
         raw_input = model_input
+
+        if self.debug:
+            logging.basicConfig(level = logging.DEBUG)
+            logging.debug("\n\tINPUT: %s \n\tOUTPUT: %s", raw_input, model_input)
+
         for i, (layer, activation) in enumerate(self._layers.values()):
             # Reshape data
             # Input has to be a leaf variable to maintain gradients; no intermediate variables
@@ -167,11 +175,11 @@ class Model(nn.Module):
             model_input = layer(model_input)
             model_input = activation(model_input)
             if self.debug:
-                logging.basicConfig(level = logging.DEBUG)
-                logging.debug("\n\tINPUT: %s \n\tOUTPUT: %s",  raw_input, model_input)
-                logging.debug ("\n\tWEIGHTS: %s \n\t WEIGHTSHAPE: %s \n\tBIAS: %s ",\
-                               layer.weight, layer.weight.size(), layer.bias)
-                logging.debug("\n\tWEIGHTS GRADIENTS: %s \n\tBIAS GRADIENTS: %s", layer.weight.grad, layer.bias.grad)
+                logging.debug ("\n\tLAYER: %s \n\tWEIGHTS:\n\t\t %s \n\tWEIGHTSHAPE: %s \n\tBIAS: \n\t %s"
+                               " \n\tWEIGHTS GRADIENTS: \n\t %s \n\tBIAS GRADIENTS:\n\t %s",
+                               layer, layer.weight, layer.weight.size(), layer.bias,
+                               layer.weight.grad, layer.bias.grad)
+
             # TODO: Clear Logdir from previous runs
             # TODO: Disable asynchronous logging?
 

@@ -14,6 +14,8 @@ layers:
         activation: relu
         dropout: None
         output: False
-# output is implicit; set from inputs of next layer
+# The output of each layer is implicit; set from inputs of next layer
 objective: mseloss
 optimization: SGD
+    #learning_rate: 0.01
+    #momentum: 0.5
