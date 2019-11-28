@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from torchsummary import summary
+#from torchsummary import summary
 
 import MTNN
 from MTNN import LowerTriangleOperator
