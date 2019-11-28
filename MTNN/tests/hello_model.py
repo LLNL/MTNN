@@ -58,7 +58,7 @@ z = lambda x,y: 3 * x + 2 *y
 data_z = gen_data()
 print(data_z)
 
-
+"""
 # Using Simple net class
 net = Net()
 print(net)
@@ -103,7 +103,7 @@ for epoch in range(10):
         if i % (len(data_z) - 1) == 0 and i != 0:  # Check me please
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
-#%%
+
 # Check if network got to 3x+ 3y +b
 print("Trained weights")
 print(list(net.parameters()))
@@ -113,7 +113,7 @@ print("Prediction")
 prediction = net(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size())
 
-
+"""
 
 # Using the MTNN model
 
@@ -145,7 +145,7 @@ print("Data:", tensor_data_z)
 dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_size=1)
 
 # Train.
-model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
+#model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
 
 
 
