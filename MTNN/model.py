@@ -32,7 +32,7 @@ class Model(nn.Module):
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs
 
     OPTIMIZATIONS = {
-        # TODO
+        # TODO: fill-in
     }
 
     LOSS = {
@@ -41,6 +41,7 @@ class Model(nn.Module):
     }
 
     ACTIVATIONS = {
+        # TODO: make case-insensitive
         "relu": nn.ReLU(),
         "tanh": nn.Tanh(),
         "sigmoid": nn.Sigmoid(),
@@ -52,9 +53,9 @@ class Model(nn.Module):
         self._config = None
         self._model_type = None
         self._input_size = None
-        self._layer_num = 0
+        self._num_layers = 0
         self._layer_config = None
-        self._layers = nn.ModuleDict() #TODO: Refactor to self._layers?
+        self._layers = nn.ModuleDict()
         self._objective_fn = None
         self._optimizer = None
         self._train_count = 0
@@ -66,9 +67,6 @@ class Model(nn.Module):
         self.tensorboard = tensorboard
         self.debug = debug
 
-        # Prolongation attributes
-        self._prolonged_layers = nn.ModuleDict()
-        self._prolonged_parameters = OrderedDict
 
     # noinspection PyAttributeOutsideInit
     def set_config(self, yaml_filestream):
@@ -81,31 +79,32 @@ class Model(nn.Module):
 
         """
         self._config = yaml_filestream
-        self.model_type = self._config["model-type"]
-        self.input_size = self._config["input-size"]
-        self.layer_num = self._config["number-of-layers"]
-        self.layer_config = self._config["layers"]
+        self._model_type = self._config["model-type"]
+        self._input_size = self._config["input-size"]
+        self._num_layers = self._config["number-of-layers"]
+        self._layer_config = self._config["layers"]
         obj = self._config["objective"]
         opt = self._config["optimization"]
 
         # Process and set Layers.
         layer_dict = nn.ModuleDict()
-        for n_layer in range(len(self.layer_config)):
+        for n_layer in range(len(self._layer_config)):
             layerlist = nn.ModuleList()
-            this_layer = self.layer_config[n_layer]["layer"]
-            prev_layer = self.layer_config[n_layer-1]["layer"]
+            this_layer = self._layer_config[n_layer]["layer"]
+            prev_layer = self._layer_config[n_layer - 1]["layer"]
             layer_input = this_layer["neurons"]
             activation_type = this_layer["activation"]
             dropout = this_layer["dropout"]
 
             # Using ModuleDict
+            # Append hidden layer
             if n_layer == 0:  # First layer
                 if this_layer["type"] == "linear":
-                    layerlist.append(nn.Linear(self.input_size, layer_input))
+                    layerlist.append(nn.Linear(self._input_size, layer_input))
             else:
                 layerlist.append(nn.Linear(prev_layer["neurons"], layer_input))
 
-            # Add hidden activation layer
+            # Append activation layer
             try:
                 layerlist.append(self.ACTIVATIONS[activation_type])
             except KeyError:
@@ -115,7 +114,7 @@ class Model(nn.Module):
             # TODO: Add dropout layers
             # TODO: Convolutional network
             
-            layer_dict[str(n_layer)] = layerlist
+            layer_dict["layer" + str(n_layer)] = layerlist
             self._layers = layer_dict
 
             # Set hyperparameters.
@@ -281,17 +280,23 @@ class Model(nn.Module):
                 test_loss, correct, len(test_loader.dataset),
                 100. * correct / len(test_loader.dataset)))
 
-    def view_parameters(self): #
-        print("Model Parameters are:")
+    def view_parameters(self):
+        """
+        Prints out weights and biases
+        Returns:
+
+        """
+        print("\n MODEL PARAMETERS:")
         for i in self._layers:
-            print("\n\tWeight: ", self._layers[i][0].weight,
+            print("\n\tLayer: ", i,
+                  "\n\tWeight: ", self._layers[i][0].weight,
                   "\n\tWeight Gradient", self._layers[i][0].weight.grad,
                   "\n\tBias: ", self._layers[i][0].bias,
                   "\n\tBias Gradient:", self._layers[i][0].bias.grad)
 
     def get_properties(self) -> list:
-        model_properties = (self.model_type,
-                            self.input_size,
+        model_properties = (self._model_type,
+                            self._input_size,
                             self._layers,
                             self.output_activation_fn)
         return model_properties

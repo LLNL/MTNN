@@ -1,6 +1,6 @@
 model-type: fully-connected
 input-size: 2
-number-of-layers: 1
+number-of-layers: 2
 layers:
   - layer:
       type: linear
@@ -8,6 +8,12 @@ layers:
       activation: relu
       dropout: None
       output: False
+  - layer:
+        type: linear
+        neurons: 2
+        activation: relu
+        dropout: None
+        output: False
 # output is implicit; set from inputs of next layer
 objective: mseloss
 optimization: SGD

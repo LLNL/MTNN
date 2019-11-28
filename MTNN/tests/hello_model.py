@@ -3,8 +3,9 @@
 Sample code to test Model class with a simple native Torch model
 Best to run this in a Jupyter notebook environment  to observe each step.
 """
-#%%
+
 import datetime
+
 # Pytorch packages
 import yaml
 import torch
@@ -13,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-#from torchsummary import summary
+from torchsummary import summary
 
 import MTNN
 from MTNN import LowerTriangleOperator
@@ -52,8 +53,13 @@ def visualize(model, input, loss, epoch):
     writer.add_graph(model, input)
     writer.flush()
 
-#%%
-# Using Simple net
+# Creating dummy data for training
+z = lambda x,y: 3 * x + 2 *y
+data_z = gen_data()
+print(data_z)
+
+
+# Using Simple net class
 net = Net()
 print(net)
 print(list(net.parameters()))
@@ -62,16 +68,7 @@ print(list(net.parameters()))
 optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
 
-#%%
-# Creating dummy data for training
-z = lambda x,y: 3 * x + 2 *y
-data_z = gen_data()
-print(data_z)
-
-
-#%%
 # Run the main training loop
-
 for epoch in range(10):
     for i, data in enumerate(data_z):
         # unpack
@@ -117,8 +114,8 @@ prediction = net(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size())
 
 
-#%%
-# Using the MTNN
+
+# Using the MTNN model
 
 model_config = yaml.load(open("/Users/mao6/proj/mtnnpython/MTNN/tests/test.yaml", "r"), Loader = yaml.SafeLoader)
 model = MTNN.Model(tensorboard=True, debug=False)
@@ -131,7 +128,7 @@ model.set_training_parameters( objective=nn.MSELoss(), optimizer=model_optimizer
 print(model)
 print(model.view_parameters())
 
-#%%
+
 # Testing on MTNN Model
 print("Using MTNN Model")
 
@@ -140,38 +137,34 @@ tensor_data_z = []
 for i, data in enumerate(data_z):
     XY, Z = iter(data)
     # Convert list to float tensor
-    # Variable is deprecated
-    input = Variable(torch.FloatTensor(XY), requires_grad = False)#torch.Floattensor expects a list
+    input = Variable(torch.FloatTensor(XY), requires_grad = False) #torch.Floattensor expects a list
     Z = torch.FloatTensor([Z])
     tensor_data_z.append((input, Z))
 
 print("Data:", tensor_data_z)
 dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_size=1)
-#in1, l1 = next(iter(dataloader_z))
-#print(in1, l1)
 
 # Train.
 model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
 
 
-#%%
+
 # Check if network got to 3x+b
 print("Trained weights")
-#print(list(model.parameters()))
-model.view_parameters() # should be 3,2
+model.view_parameters()  # should be 3,2
 
 # Test prediction from network
 print("Prediction")
 prediction = model(torch.ones(2, 2)) #rows, columns
 print(prediction, prediction.size()) # should be 5
-#%%
 
 
-#%%
-
-print("Model", model)
-#model.view_parameters()
-
-
+# Testing Lower Triangular Operator
 prolongation_operator = MTNN.LowerTriangleOperator()
-prolongation_operator.apply(model)
+prolonged_model = prolongation_operator.apply(model, expansionfactor=2)
+prolonged_model.__setattr__('debug', True)
+
+prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, momentum = 0.5)
+prolonged_model.set_training_parameters( objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
+prolonged_model.fit(dataloader = dataloader_z, num_epochs = 1, log_interval = 10)
+
