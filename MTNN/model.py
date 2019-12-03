@@ -128,7 +128,7 @@ class Model(nn.Module):
 
             # Optimizer
             try:
-                # TODO
+                # TODO: Is this even a good idea?
                 self._optimizer = self.config_file["optimization"]
             except KeyError:
                 print(str(opt))

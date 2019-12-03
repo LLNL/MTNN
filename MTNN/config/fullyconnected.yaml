@@ -7,17 +7,17 @@ number-of-layers: 3
 layers:
   - layer:
       type: linear
-      input: 500
+      neurons: 500
       activation: relu
       dropout: none
   - layer:
       type: linear
-      input: 256
+      neurons: 256
       activation: sigmoid
       dropout: none
   - layer:
       type: linear
-      input: 10
+      neurons: 10
       activation: relu
       dropout: none
   # output layer
