@@ -1,13 +1,13 @@
 # !/usr/bin/env/ python
 """
-Sample code to test Model class with a simple native Torch model
-Best to run this in a Jupyter notebook environment  to observe each step.
+Sample code to test MTNN.Model class with a simple native Torch model
+Note: Best to run this in a Jupyter notebook environment to observe each step.
 """
-
+# system packages
 import datetime
-
-# Pytorch packages
 import yaml
+
+# pytorch packages
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
@@ -16,10 +16,13 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 #from torchsummary import summary
 
+# local packages
 import MTNN
 from MTNN import LowerTriangleOperator
 
-
+##################################################
+# Simple fully-connected network
+##################################################
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -32,6 +35,7 @@ class Net(nn.Module):
         x = F.relu(x)
         return x
 
+
 def gen_data():
     data = []
     z = lambda x,y: 3 * x + 2 *y 
@@ -40,6 +44,7 @@ def gen_data():
         input = ((i,i), z(i,i))
         data.append(input)
     return data
+
 
 def visualize(model, input, loss, epoch):
     # Clear previous runs
@@ -116,10 +121,11 @@ print(prediction, prediction.size())
 """
 
 # Using the MTNN model
-
-model_config = yaml.load(open("/Users/mao6/proj/mtnnpython/MTNN/tests/test.yaml", "r"), Loader = yaml.SafeLoader)
+# Using test.yaml config file
+model_config = yaml.load(open("/Users/mao6/proj/mtnnpython/MTNN/tests/test.yaml", "r"), Loader=yaml.SafeLoader)
 model = MTNN.Model(tensorboard=True, debug=False)
 model.set_config(model_config)
+
 print(model.parameters())
 model_optimizer = optim.SGD(model.parameters(), lr = 0.01, momentum = 0.5)
 model.set_training_parameters( objective=nn.MSELoss(), optimizer=model_optimizer)
@@ -128,8 +134,9 @@ model.set_training_parameters( objective=nn.MSELoss(), optimizer=model_optimizer
 print(model)
 print(model.view_parameters())
 
-
+###########################################################
 # Testing on MTNN Model
+##########################################################
 print("Using MTNN Model")
 
 # Load Data_z into Pytorch dataloader
@@ -137,7 +144,7 @@ tensor_data_z = []
 for i, data in enumerate(data_z):
     XY, Z = iter(data)
     # Convert list to float tensor
-    input = Variable(torch.FloatTensor(XY), requires_grad = False) #torch.Floattensor expects a list
+    input = Variable(torch.FloatTensor(XY), requires_grad = False) # Note: torch.Floattensor expects a list
     Z = torch.FloatTensor([Z])
     tensor_data_z.append((input, Z))
 
@@ -145,26 +152,29 @@ print("Data:", tensor_data_z)
 dataloader_z = torch.utils.data.DataLoader(tensor_data_z, shuffle= False, batch_size=1)
 
 # Train.
-#model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
+model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
 
 
-
-# Check if network got to 3x+b
+# Check if network weights converged to lambda fn 3x+b
 print("Trained weights")
 model.view_parameters()  # should be 3,2
 
 # Test prediction from network
 print("Prediction")
-prediction = model(torch.ones(2, 2)) #rows, columns
-print(prediction, prediction.size()) # should be 5
+prediction = model(torch.ones(2, 2))  # rows, columns
+print(prediction, prediction.size())  # should be 5
 
 
 # Testing Lower Triangular Operator
 prolongation_operator = MTNN.LowerTriangleOperator()
-prolonged_model = prolongation_operator.apply(model, expansionfactor=2)
-prolonged_model.__setattr__('debug', True)
+prolonged_model = prolongation_operator.apply(model, expansion_factor=3)
+prolonged_model.__setattr__('debug', False) #TODO: Make a mutator method to set debug (insetad of using magic method)
 
 prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, momentum = 0.5)
 prolonged_model.set_training_parameters( objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
 prolonged_model.fit(dataloader = dataloader_z, num_epochs = 1, log_interval = 10)
 
+
+# Train on prolonged model.
+prolonged_model.__setattr__('debug', False)
+prolonged_model.fit(dataloader=dataloader_z, num_epochs=10,log_interval=10)
