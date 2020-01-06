@@ -17,8 +17,8 @@ from MTNN.prolongation import *
 
 # Global Variables for /tests
 # Directory paths to store config files.
-ROOT = os.getcwd()
-CONFIG_DIR = os.path.abspath(ROOT + "/tests/config/")
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_DIR = os.path.abspath(ROOT_DIR + "/tests/config/")
 
 if not os.path.exists(CONFIG_DIR):
     # TODO: Sanitize file path
