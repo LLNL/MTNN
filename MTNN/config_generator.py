@@ -1,25 +1,12 @@
-"""
-Script to generate permutations of fully-connected neural network yaml files
-"""
+"""Script to generate permutations of fully-connected neural network yaml files"""
 #!/usr/bin/env python
-import os
+
+# System package
 import itertools
 import yaml
 
-# Edit this.
-CONFIG_PARAMETERS = {
-    "layers": (1, 3),  # (min, max)
-    "neurons": (1, 2),
-    "input": (1, 1),
-}
-
-# Edit file paths.
-PATH = os.getcwd()
-CONFIG_DIR = PATH + "/tests/config/"
-
-# Check path.
-if not os.path.exists(CONFIG_DIR):
-    os.mkdir(CONFIG_DIR)
+# Local package
+from MTNN import CONFIG_DIR, CONFIG_PARAMETERS
 
 
 class Layer:
@@ -180,7 +167,7 @@ def gen_config(parameters: dict, product: bool):
         for num_neuron in range(neuron_min, neuron_max + 1):
             for model_input in range(input_min, input_max + 1):
 
-                file_name = CONFIG_DIR + "test" + str(num_layer) + str(num_neuron) + \
+                file_name = CONFIG_DIR + "/test" + str(num_layer) + str(num_neuron) + \
                             str(model_input) + ".yaml"
 
                 # Create the layer.
@@ -252,7 +239,7 @@ def gen_config(parameters: dict, product: bool):
                             data = a_model.write_as_yaml()
 
                             # Write to file.
-                            file_name = CONFIG_DIR + "test" + str(num_layer) + str(num_neuron) \
+                            file_name = CONFIG_DIR + "/test" + str(num_layer) + str(num_neuron) \
                                         + str(model_input) + "p" \
                                         + str(list(a_prod)).replace(", ", "").strip('[]') + ".yaml"
                             print(file_name)

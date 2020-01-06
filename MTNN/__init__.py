@@ -1,6 +1,6 @@
 """The MTNN prototype code"""
 import sys
-
+import os
 # Check for Python 3
 if sys.version_info[0] != 3:
     raise ImportError('Python 3 is required')
@@ -13,3 +13,22 @@ from MTNN.sgd_training import *
 from MTNN.training_alg_smoother import *
 from MTNN.model import *
 from MTNN.prolongation import *
+
+
+# Global Variables for /tests
+# Directory paths to store config files.
+ROOT = os.getcwd()
+CONFIG_DIR = os.path.abspath(ROOT + "/tests/config/")
+
+if not os.path.exists(CONFIG_DIR):
+    # TODO: Sanitize file path
+    os.mkdir(CONFIG_DIR)
+
+# Edit this.
+CONFIG_PARAMETERS = {
+    "layers": (1, 3),  # (min, max)
+    "neurons": (1, 2),
+    "input": (1, 1),
+}
+
+
