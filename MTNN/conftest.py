@@ -1,10 +1,5 @@
 # MTNN/tests/conftest.py
-# PyTest plug-in
-# Hooks for global set-up and tear-down functions for MTNN/tests
-
-# Used to import external plug-ins or modules
-# Declare directory-specific hooks/fixtures such as set-up and tear-down methods
-# Place conftest.py in root dir/path s.t. pytest recognizes application modules without specifying PYTHONPATH
+# PyTest Hooks for global set-up and tear-down functions for MTNN/tests
 
 # Built-in packages
 import os
@@ -15,12 +10,13 @@ import yaml
 import torch
 from torch.autograd import Variable
 import sklearn.datasets as data
-import numpy as np
+
 
 # Local package
 from MTNN import model as mtnnModel
 from MTNN import config_generator
-from MTNN import TESTFN_PARAMS
+from MTNN import TEST_FN_PARAMETERS
+
 
 ##################################################
 # Set-up code.
@@ -28,7 +24,7 @@ from MTNN import TESTFN_PARAMS
 
 # Generate YAML configuration files.
 @pytest.fixture(autouse=True, scope='session')
-def gen_yamlconfigs():
+def gen_configs():
     """
     Generates YAML configuration files and returns the directory path where they are stored.
     Returns:
@@ -49,7 +45,7 @@ def gen_yamlconfigs():
 
 # Model Object Factory.
 @pytest.fixture(autouse=True, scope='session')
-def make_models(gen_yamlconfigs):
+def make_models(gen_configs):
     """
     Generator function: yields a MTNN.Model object
     Args:
@@ -59,16 +55,30 @@ def make_models(gen_yamlconfigs):
     """
     print("\nSETUP: Collection_of_models")
 
-    for yaml_file in os.listdir(gen_yamlconfigs):
+    for yaml_file in os.listdir(gen_configs):
 
-        config = yaml.load(open(gen_yamlconfigs + "/" + yaml_file, 'r'), Loader = yaml.SafeLoader)
+        config = yaml.load(open(gen_configs + "/" + yaml_file, 'r'), Loader = yaml.SafeLoader)
         model = mtnnModel.Model(config)
 
     yield model
 
 
-# TODO: Generate Dummy Training Data.
+# TODO: Test regression_training_data on test_model/test_prolongation
+@pytest.fixture(autouse=True, scope='session')
+def regression_training_data():
+    print("\nSETUP: Generating regression training data")
+    x, y = data.make_regression(n_samples = TEST_FN_PARAMETERS['n_samples'],
+                                n_features = TEST_FN_PARAMETERS['n_features'],
+                                noise = TEST_FN_PARAMETERS['noise'])
+    # Reshape.
+    y.shape = x.shape
 
+    # Tensorize data.
+    for i in range(len(x)):
+        input = Variable(torch.FloatTensor(x), requires_grad = True)
+        output = Variable(torch.FloatTensor(x))
+
+    yield x, y
 
 
 ##################################################
@@ -78,7 +88,6 @@ def make_models(gen_yamlconfigs):
 def teardown():
     print("TEARDOWN run_tests")
     # TODO: Fill in teardown code
-
 
 
 ##################################################

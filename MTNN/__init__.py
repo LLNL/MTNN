@@ -14,8 +14,9 @@ from MTNN.training_alg_smoother import *
 from MTNN.model import *
 from MTNN.prolongation import *
 
-
-# Global Variables for /tests
+################################################
+# Global Variables for config_generator.py
+################################################
 # Directory paths to store config files.
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR = os.path.abspath(ROOT_DIR + "/tests/config/")
@@ -31,4 +32,10 @@ CONFIG_PARAMETERS = {
     "input": (1, 1),
 }
 
-
+################################################
+# Global Variables for conftest.py
+################################################
+TEST_FN_PARAMETERS = {'n_samples': 10,
+                 'n_features': 1,
+                 'noise': 0.1
+                 }

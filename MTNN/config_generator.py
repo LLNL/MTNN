@@ -1,7 +1,8 @@
 """Script to generate permutations of fully-connected neural network yaml files"""
 #!/usr/bin/env python
 
-# System package
+# Built-in packages
+import os
 import itertools
 import yaml
 
@@ -245,11 +246,29 @@ def gen_config(parameters: dict, product: bool):
                             print(file_name)
                             write_to_file(file_name, data)
 
+def dir_is_empty():
+    """ Checks if the configuration direcotry path is empty
+    Returns:
+        - <Bool> True if empty.
+    """
+    if os.listdir(CONFIG_DIR):
+        return False
+    else:
+        return True
+
+def get_config_dir():
+    """ Returns the configuration directory path
+    Returns:
+         - CONFIG_DIR <string> Directory path where the YAML config files are stored
+    """
+    return CONFIG_DIR
+
 
 def main():
-    """ Generates variations of fully connected model yaml configuration files.
-     Edit configuration parameters in CONFIG_PARAMETERS variable.
-     Configuration files are written to path stored in CONFIG_DIR variable.
+    """
+    Generates variations of fully connected model yaml configuration files.
+    To change the configuration parameters, edit the  CONFIG_PARAMETERS variable in MTNN/__init__.py
+    Configuration files are written to path stored in CONFIG_DIR variable.
     """
     # Write model yaml config files out to CONFIG_DIR/config
     gen_config(CONFIG_PARAMETERS, product=True)
