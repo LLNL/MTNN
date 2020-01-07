@@ -36,6 +36,6 @@ CONFIG_PARAMETERS = {
 # Global Variables for conftest.py
 ################################################
 TEST_FN_PARAMETERS = {'n_samples': 10,
-                 'n_features': 1,
-                 'noise': 0.1
-                 }
+                     'n_features': 1,
+                     'noise': 0.1
+                     }

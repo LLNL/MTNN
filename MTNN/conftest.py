@@ -64,8 +64,17 @@ def make_models(gen_configs):
 
 
 # TODO: Test regression_training_data on test_model/test_prolongation
+
 @pytest.fixture(autouse=True, scope='session')
 def regression_training_data():
+    """
+    Generator function: yields tensor training (input, output) data from a randomly generated regression problem.
+    To change test problem parameters, modify TEST_FN_PARAMETERS in MTNN/__init__.py
+    Returns:
+        training_data_input <tensor>
+        training_data_output <tensor>
+
+    """
     print("\nSETUP: Generating regression training data")
     x, y = data.make_regression(n_samples = TEST_FN_PARAMETERS['n_samples'],
                                 n_features = TEST_FN_PARAMETERS['n_features'],
@@ -75,16 +84,16 @@ def regression_training_data():
 
     # Tensorize data.
     for i in range(len(x)):
-        input = Variable(torch.FloatTensor(x), requires_grad = True)
-        output = Variable(torch.FloatTensor(x))
+        training_data_input = Variable(torch.FloatTensor(x), requires_grad = True)
+        training_data_output = Variable(torch.FloatTensor(x))
 
-    yield x, y
+    yield training_data_input, training_data_output
 
 
 ##################################################
 # Teardown code.
 ##################################################
-@pytest.fixture(scope="session")
+@pytest.fixture(autouse=True, scope="session")
 def teardown():
     print("TEARDOWN run_tests")
     # TODO: Fill in teardown code
