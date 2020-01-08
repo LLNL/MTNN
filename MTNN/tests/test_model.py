@@ -1,20 +1,23 @@
-#Test fully connected neural network model
-# System packages
+# Filename: MTNN/tests/test_model.py
+# Baseline Unit test for MTNN.model on a fully connected network
+
+# Built-in packages
+import os
+
+# External packages
 import pytest
-import yaml
-from itertools import permutations
 
 # Pytorch packages
 import torch
 from torch import nn
-from torch.autograd import Variable
-from torch.autograd.gradcheck import gradcheck
 
 # Local package
-from MTNN import model as mf
+from MTNN import model as mtnnmodel
+from MTNN import CONFIG_DIR
 
 # TODO: Generate tests with diff layer/neuron combinations
 
+"""
 def generate_data(lambda_fn):
     tensor_data = []
     z = lambda_fn
@@ -30,31 +33,35 @@ model_config = yaml.load(file, Loader = yaml.SafeLoader)
 
 test_fn = lambda x,y: 3 * x + 2 *y
 test_data = generate_data(test_fn)
-
+"""
 
 @pytest.fixture
-#Rewrite to class Test_model
 def my_model():
-    my_model = mf.Model()
+    my_model = mtnnmodel.Model()
     return my_model
 
 
-def test_set_config(my_model):
-    my_model.set_config(model_config)
-    assert len(my_model.model_type) != 0
-    assert my_model.input_size > 0
-    assert my_model.layer_num != 0
-    assert len(my_model.layers) == my_model.layer_num
-    assert issubclass(type(my_model._objective_fn.__class__), type(nn.Module))
-    # TODO: Better test for loss function is subclass of nn.modules.loss
-    # TODO: Optimizer
+def test_set_config(my_model, gen_configs):
+    """Test model attributes set from config file"""
 
-@pytest.mark.parametrize("data", test_data)
-def test_input(my_model, data):
+    for config_file in os.listdir(gen_configs):
+        my_model.set_config(CONFIG_DIR + "/" + config_file)
+
+        assert len(my_model._model_type) != 0
+        assert my_model._input_size > 0
+        assert my_model._num_layers != 0
+        assert len(my_model._layers) == my_model._num_layers
+        assert issubclass(type(my_model._objective_fn.__class__), type(nn.Module))
+        # TODO: Better test for loss function is subclass of nn.modules.loss
+        # TODO: Test for the Optimizer
+
+
+def test_input(regression_training_data):
+    """"
     (model_input, expected_output) = data
     my_model.set_config(model_config)
     assert len(model_input) == my_model.input_size
-
+    """
 
 # Test model sizes weights and biases
 def test_parameters(my_model):
@@ -87,8 +94,3 @@ def test_validate():
     pass
 
 # TODO: test target size
-
-
-
-
-
