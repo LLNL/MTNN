@@ -7,7 +7,7 @@ import itertools
 import yaml
 
 # Local package
-from MTNN import CONFIG_DIR, CONFIG_PARAMETERS
+from MTNN import CONFIG_DIR, CONFIG_HYPERPARAMETERS, CONFIG_LAYER_PARAMETERS, CONFIG_MODEL_PARAMETERS
 
 
 class Layer:
@@ -56,12 +56,13 @@ class Layer:
         return layer_dict
 
 
-class Model:
+class YAMLModel:
     """ Base model yaml template class
 
     Used to set the model parameters.
     """
-    def __init__(self, modeltype: str, inputsize: int, numlayers: int, layerlist: list):
+    def __init__(self, modeltype: str, inputsize: int, numlayers: int, layerlist: list,
+                 objective_fn: str, optimization_method: str):
         """
         Model yaml template
         Args:
@@ -72,8 +73,10 @@ class Model:
         """
         self.model_type = modeltype
         self.input_size = inputsize
-        self.num_layers = numlayers
+        self.number_of_layers = numlayers
         self.layers = layerlist
+        self.objective = objective_fn
+        self.optimization = optimization_method
 
     # Mutator methods.
     def set_model_type(self, model: str):
@@ -87,6 +90,12 @@ class Model:
 
     def append_layer(self, layer: Layer):
         self.layers.append(layer)
+
+    def set_objective(self, objective_fn: str):
+        self.objective = objective_fn
+
+    def set_optimization(self, optimization_method: str):
+        self.optimization = optimization_method
 
     def write_as_yaml(self) -> str:
         """Writes Model object attributes as string in this format:
@@ -104,16 +113,15 @@ class Model:
 # Helper functions
 ########################################################
 class NoAliasDumper(yaml.SafeDumper):
-    """ Used to call yaml.dump without anchors and aliases errors
-    """
+    """ Used to call yaml.dump without anchors and aliases errors"""
     def ignore_aliases(self, _data):
         return True
 
 
 def get_layer_data(layer_list: list):
     """ Used to process Layer data into string.
-     Pre-processes data to be used in Model object.
-     Gets list of Layer objects and returns a list of dicts.
+    Pre-processes data to be used in Model object.
+    Gets list of Layer objects and returns a list of dicts.
     Args:
         layerlist <list<Layers>>
     Returns:
@@ -172,10 +180,10 @@ def gen_config(parameters: dict, product: bool):
                             str(model_input) + ".yaml"
 
                 # Create the layer.
-                a_layer = Layer(layertype="linear",
+                a_layer = Layer(layertype=CONFIG_LAYER_PARAMETERS["layer_type"],
                                 numneurons=num_neuron,
-                                activationtype="relu",
-                                dropout=False)
+                                activationtype=CONFIG_LAYER_PARAMETERS["activation_type"],
+                                dropout=CONFIG_LAYER_PARAMETERS["dropout"])
 
                 # Append layers.
                 list_of_layers = []
@@ -185,10 +193,12 @@ def gen_config(parameters: dict, product: bool):
                 layer_data = get_layer_data(list_of_layers)
 
                 # Create/overwrite Model Instance.
-                a_model = Model(modeltype="fully-connected",
-                                inputsize=model_input,
-                                numlayers=num_layer,
-                                layerlist=layer_data)
+                a_model = YAMLModel(modeltype=CONFIG_MODEL_PARAMETERS["model_type"],
+                                    inputsize=model_input,
+                                    numlayers=num_layer,
+                                    layerlist=layer_data,
+                                    objective_fn=CONFIG_MODEL_PARAMETERS["objective_function"],
+                                    optimization_method=CONFIG_MODEL_PARAMETERS["optimization_method"])
 
                 # Format data as string
                 data = a_model.write_as_yaml()
@@ -208,7 +218,7 @@ def gen_config(parameters: dict, product: bool):
             for num_neuron in range(neuron_min, neuron_max + 1):
 
                 if num_layer > 1 and num_neuron > 1:
-                    print("Product: layer:", num_layer, "neurons:", CONFIG_PARAMETERS["neurons"])
+                    print("Product: layer:", num_layer, "neurons:", CONFIG_HYPERPARAMETERS["neurons"])
 
                     # Get number of permutations.
                     neuron_range = range(1, num_neuron + 1)
@@ -220,10 +230,10 @@ def gen_config(parameters: dict, product: bool):
 
                         for p in a_prod:
                             # Set layer neurons and append.
-                            a_layer = Layer(layertype="linear",
+                            a_layer = Layer(layertype=CONFIG_LAYER_PARAMETERS["layer_type"],
                                             numneurons=p,
-                                            activationtype="relu",
-                                            dropout=False)
+                                            activationtype=CONFIG_LAYER_PARAMETERS["activation_type"],
+                                            dropout=CONFIG_LAYER_PARAMETERS["dropout"])
                             list_of_layers.append(a_layer)
 
                         layer_data = get_layer_data(list_of_layers)
@@ -231,10 +241,12 @@ def gen_config(parameters: dict, product: bool):
                         # Create the model.
                         for model_input in range(input_min, input_max + 1):
 
-                            a_model = Model(modeltype="fully-connected",
-                                            inputsize=model_input,
-                                            numlayers=num_layer,
-                                            layerlist=layer_data)
+                            a_model = YAMLModel(modeltype= CONFIG_MODEL_PARAMETERS["model_type"],
+                                                inputsize=model_input,
+                                                numlayers=num_layer,
+                                                layerlist=layer_data,
+                                                objective_fn=CONFIG_MODEL_PARAMETERS["objective_function"],
+                                                optimization_method=CONFIG_MODEL_PARAMETERS["optimization_method"])
 
                             # Format model data to string.
                             data = a_model.write_as_yaml()
@@ -246,6 +258,7 @@ def gen_config(parameters: dict, product: bool):
                             print(file_name)
                             write_to_file(file_name, data)
 
+
 def dir_is_empty():
     """ Checks if the configuration direcotry path is empty
     Returns:
@@ -255,6 +268,7 @@ def dir_is_empty():
         return False
     else:
         return True
+
 
 def get_config_dir():
     """ Returns the configuration directory path
@@ -271,7 +285,7 @@ def main():
     Configuration files are written to path stored in CONFIG_DIR variable.
     """
     # Write model yaml config files out to CONFIG_DIR/config
-    gen_config(CONFIG_PARAMETERS, product=True)
+    gen_config(CONFIG_HYPERPARAMETERS, product=True)
 
 
 if __name__ == "__main__":

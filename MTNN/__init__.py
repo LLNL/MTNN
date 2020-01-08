@@ -26,15 +26,29 @@ if not os.path.exists(CONFIG_DIR):
     os.mkdir(CONFIG_DIR)
 
 # Edit this.
-CONFIG_PARAMETERS = {
+CONFIG_HYPERPARAMETERS = {
     "layers": (1, 3),  # (min, max)
     "neurons": (1, 2),
     "input": (1, 1),
 }
 
+CONFIG_LAYER_PARAMETERS = {
+    'layer_type': "linear",
+    'activation_type':"relu",
+    'dropout':False
+}
+
+CONFIG_MODEL_PARAMETERS = {
+    "model_type": "fully-connected",
+    "objective_function": "mseloss",
+    "optimization_method": "SGD"
+}
+
+
 ################################################
 # Global Variables for conftest.py
 ################################################
+# Edit this.
 TEST_FN_PARAMETERS = {'n_samples': 10,
                      'n_features': 1,
                      'noise': 0.1
