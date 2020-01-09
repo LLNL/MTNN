@@ -8,5 +8,5 @@ setup(name = "MTNN",
       author = "",
       author_email = "",
       #install_requires=
-      packages = find_packages()
+      packages = find_packages(), install_requires = ['PyYAML', 'torch', 'pytest', 'scikit-learn']
       )

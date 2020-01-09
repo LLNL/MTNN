@@ -11,8 +11,8 @@ import itertools
 import yaml
 
 # Local package
-#from MTNN import POSITIVE_TEST_DIR, TEST_CONFIG_HYPERPARAMETERS, TEST_CONFIG_LAYER_PARAMETERS, TEST_CONFIG_MODEL_PARAMETERS
 import globalvar as gv
+
 
 class Layer:
     """Base Layer yaml template class

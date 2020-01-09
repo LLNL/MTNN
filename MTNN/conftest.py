@@ -2,11 +2,11 @@
  Filename: MTNN/tests/conftest.py
  PyTest Hooks for global set-up and tear-down functions for MTNN/tests
 """
-# Built-in packages
+# Standard packages
 import os
 import logging
 
-# External packages
+# Third-party packages
 import pytest
 import yaml
 import pprint
