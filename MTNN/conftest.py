@@ -1,22 +1,32 @@
-# MTNN/tests/conftest.py
-# PyTest Hooks for global set-up and tear-down functions for MTNN/tests
-
+"""
+ Filename: MTNN/tests/conftest.py
+ PyTest Hooks for global set-up and tear-down functions for MTNN/tests
+"""
 # Built-in packages
 import os
+import logging
 
 # External packages
 import pytest
 import yaml
+import pprint
+
+# Pytorch
 import torch
 from torch.autograd import Variable
-import sklearn.datasets as data
-
+import sklearn.datasets as skdata
 
 # Local package
-from MTNN import model as mtnnModel
+import globalvar as gv
+from MTNN import model as mtnnmodel
 from MTNN import config_generator
-from MTNN import TEST_FN_PARAMETERS
 
+
+# Logging set-up
+# TODO: Configure Logger
+# TODO: Clean print statements -> logger
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+pp = pprint.PrettyPrinter(indent=4)
 
 ##################################################
 # Set-up code.
@@ -26,28 +36,27 @@ from MTNN import TEST_FN_PARAMETERS
 @pytest.fixture(autouse=True, scope='session')
 def gen_configs():
     """
-    Generates YAML configuration files and returns the directory path where they are stored.
+    Generates YAML configuration files.
     Returns:
         config_dir <string> Absolute directory path where generated YAML configuration files are stored.
     """
-
+    print("\nSETUP: Generating config files ")
     if config_generator.dir_is_empty():
         pass
     else:
         config_generator.main()
 
     # Get configuration files directory path.
-    config_dir = config_generator.get_config_dir()
-    print("\nSETUP: Generated config files to " + config_dir)
+    print("\nSETUP: Config files stored in " + config_generator.get_config_dir())
 
-    return config_dir
+    return
 
 
-# Model Object Factory.
-@pytest.fixture(autouse=True, scope='session')
-def make_models(gen_configs):
+# Generate MTNN Models.
+@pytest.yield_fixture(autouse=True, scope='session')
+def make_models():
     """
-    Generator function: yields a MTNN.Model object
+    Returns an iterator that yields a MTNN.Model object
     Args:
         gen_configs <string> YAML configuration file directory
     Returns:
@@ -55,30 +64,40 @@ def make_models(gen_configs):
     """
     print("\nSETUP: Collection_of_models")
 
-    for yaml_file in os.listdir(gen_configs):
+    collection_of_models = []
+    for yaml_file in os.listdir(gv.POSITIVE_TEST_DIR):
 
-        config = yaml.load(open(gen_configs + "/" + yaml_file, 'r'), Loader = yaml.SafeLoader)
-        model = mtnnModel.Model(config)
+        yaml_file_path = gv.POSITIVE_TEST_DIR + "/" + yaml_file
 
-    yield model
+        config = yaml.load(open(yaml_file_path, 'r'), Loader = yaml.SafeLoader)
+        model = mtnnmodel.Model(config)
+        model.set_config()
+        collection_of_models.append(model)
+
+    # Logging
+    logging.debug(collection_of_models)
+
+    yield collection_of_models
 
 
 # TODO: Test regression_training_data on test_model/test_prolongation
 
-@pytest.fixture(autouse=True, scope='session')
+# Generate training Data.
+@pytest.yield_fixture(autouse=True, scope='session')
 def regression_training_data():
     """
-    Generator function: yields tensor training (input, output) data from a randomly generated regression problem.
-    To change test problem parameters, modify TEST_FN_PARAMETERS in MTNN/__init__.py
+    Returns an iterator that yields a tuple of tensor training input and output data
+    from a randomly generated regression problem. To change test problem parameters,
+    modify TEST_FN_PARAMETERS in MTNN/__init__.py
     Returns:
         training_data_input <tensor>
         training_data_output <tensor>
 
     """
     print("\nSETUP: Generating regression training data")
-    x, y = data.make_regression(n_samples = TEST_FN_PARAMETERS['n_samples'],
-                                n_features = TEST_FN_PARAMETERS['n_features'],
-                                noise = TEST_FN_PARAMETERS['noise'])
+    x, y = skdata.make_regression(n_samples=gv.TEST_FN_PARAMETERS['n_samples'],
+                                  n_features=gv.TEST_FN_PARAMETERS['n_features'],
+                                  noise=gv.TEST_FN_PARAMETERS['noise'])
     # Reshape.
     y.shape = x.shape
 
@@ -86,6 +105,12 @@ def regression_training_data():
     for i in range(len(x)):
         training_data_input = Variable(torch.FloatTensor(x), requires_grad = True)
         training_data_output = Variable(torch.FloatTensor(x))
+
+    # Logging
+    logging.debug("Regression Training Input Data")
+    logging.debug(training_data_input)
+    logging.debug("Regression Training Output Data")
+    logging.debug(training_data_output)
 
     yield training_data_input, training_data_output
 
@@ -95,7 +120,7 @@ def regression_training_data():
 ##################################################
 @pytest.fixture(autouse=True, scope="session")
 def teardown():
-    print("TEARDOWN run_tests")
+    print("TEARDOWN")
     # TODO: Fill in teardown code
 
 

@@ -1,13 +1,16 @@
-# MTNN/model.py
 """
+Filename: MTNN/model.py
 Defines the interface for creating extended torch.nn model
 """
-# System packages
+# Standard packages
 import os
 import sys
 import datetime
 import logging
 from collections import OrderedDict
+
+# Third-party packages
+import yaml
 
 # Pytorch packages
 import torch.nn as nn
@@ -15,6 +18,8 @@ import torch.nn.functional as F
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+# Local imports
+import globalvar as gv
 
 # Public API.
 __all__ = ["Model"]
@@ -24,10 +29,13 @@ class Model(nn.Module):
     """
     Instantiates a neural network
     Attributes:
-        ACTIVATION_TYPE (dict): available activation layers
-    Args:
-        config_file: a YAML configuration file
+        LOSS <dict>: available PyTorch loss functions
+        OPTIMIZATION <dict>: available PyTorch optimization functions
+        ACTIVATION_TYPE <dict>: available PyTorch activation layers
     """
+
+    # TODO: Refactor. Move global variables to __init__.py or config.ini
+
     # Tensorboard Writer
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs
 
@@ -67,21 +75,24 @@ class Model(nn.Module):
         self.tensorboard = tensorboard
         self.debug = debug
 
-
-    # noinspection PyAttributeOutsideInit
-    def set_config(self, yaml_filestream):
+    def set_config(self, config=gv.DEFAULT_CONFIG):
         """
-        Sets the configuration parameters from the YAML file.
+        Sets MTNN Model attributes from the YAML configuration file.
         Args:
-            yaml_filestream:
+            config: <str> File path for a YAML-formatted configuration file
 
         Returns:
-
+            <None> MTNN.Model with set attributes.
         """
-        self.config_file = yaml_filestream
-        self._model_type = self.config_file["model-type"]
-        self._input_size = self.config_file["input-size"]
-        self._num_layers = self.config_file["number-of-layers"]
+
+        if config:
+            self.config_file = yaml.load(open(config, "r"), Loader=yaml.SafeLoader)
+
+        #TODO: validate keys
+        self._model_type = self.config_file["model_type"]
+        self._input_size = self.config_file["input_size"]
+        # TODO: Refactor: Remove num_layers attribute. Get from len(config[layers])
+        self._num_layers = self.config_file["number_of_layers"]
         self._layer_config = self.config_file["layers"]
 
         # Process and set Layers.
@@ -111,7 +122,7 @@ class Model(nn.Module):
             # TODO: Add Final softmax
             # TODO: Add dropout layers
             # TODO: Convolutional network
-            
+
             layer_dict["layer" + str(n_layer)] = layerlist
             self._layers = layer_dict
 
@@ -170,7 +181,7 @@ class Model(nn.Module):
 
         for i, (layer, activation) in enumerate(self._layers.values()):
             # Reshape data
-            # Input has to be a leaf variable to maintain gradients; no intermediate variables
+            # Note: Input has to be a leaf variable to maintain gradients; no intermediate variables
             model_input = model_input.view(model_input.size(0), -1)
             model_input = layer(model_input)
             model_input = activation(model_input)

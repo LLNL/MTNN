@@ -1,14 +1,18 @@
-"""Script to generate permutations of fully-connected neural network yaml files"""
+"""
+Filename: MTNN/config_generator.py
+Script to generate permutations of fully-connected neural network yaml files
+"""
+
 #!/usr/bin/env python
 
-# Built-in packages
+# Standard packages
 import os
 import itertools
 import yaml
 
 # Local package
-from MTNN import CONFIG_DIR, CONFIG_HYPERPARAMETERS, CONFIG_LAYER_PARAMETERS, CONFIG_MODEL_PARAMETERS
-
+#from MTNN import POSITIVE_TEST_DIR, TEST_CONFIG_HYPERPARAMETERS, TEST_CONFIG_LAYER_PARAMETERS, TEST_CONFIG_MODEL_PARAMETERS
+import globalvar as gv
 
 class Layer:
     """Base Layer yaml template class
@@ -30,6 +34,7 @@ class Layer:
 
     def set_neurons(self, num_neurons):
         self.neurons = num_neurons
+
 
     def set_dropout(self, dropout: str): # Check pytorch type
         self.dropout = dropout
@@ -118,7 +123,7 @@ class NoAliasDumper(yaml.SafeDumper):
         return True
 
 
-def get_layer_data(layer_list: list):
+def get_layer_data(layer_list: list) -> list:
     """ Used to process Layer data into string.
     Pre-processes data to be used in Model object.
     Gets list of Layer objects and returns a list of dicts.
@@ -171,19 +176,19 @@ def gen_config(parameters: dict, product: bool):
     input_min = parameters["input"][0]
     input_max = parameters["input"][1]
 
-    # Make fully connected model configs with uniform neuron layers.
+    # Makefile fully connected model configs with uniform neuron layers.
     for num_layer in range(layer_min, layer_max + 1):
         for num_neuron in range(neuron_min, neuron_max + 1):
             for model_input in range(input_min, input_max + 1):
 
-                file_name = CONFIG_DIR + "/test" + str(num_layer) + str(num_neuron) + \
-                            str(model_input) + ".yaml"
+                file_name = (gv.POSITIVE_TEST_DIR  + "/test" + str(num_layer) + str(num_neuron) +
+                            str(model_input) + ".yaml")
 
                 # Create the layer.
-                a_layer = Layer(layertype=CONFIG_LAYER_PARAMETERS["layer_type"],
+                a_layer = Layer(layertype=gv.TEST_CONFIG_LAYER_PARAMETERS["layer_type"],
                                 numneurons=num_neuron,
-                                activationtype=CONFIG_LAYER_PARAMETERS["activation_type"],
-                                dropout=CONFIG_LAYER_PARAMETERS["dropout"])
+                                activationtype=gv.TEST_CONFIG_LAYER_PARAMETERS["activation_type"],
+                                dropout=gv.TEST_CONFIG_LAYER_PARAMETERS["dropout"])
 
                 # Append layers.
                 list_of_layers = []
@@ -193,12 +198,12 @@ def gen_config(parameters: dict, product: bool):
                 layer_data = get_layer_data(list_of_layers)
 
                 # Create/overwrite Model Instance.
-                a_model = YAMLModel(modeltype=CONFIG_MODEL_PARAMETERS["model_type"],
+                a_model = YAMLModel(modeltype=gv.TEST_CONFIG_MODEL_PARAMETERS["model_type"],
                                     inputsize=model_input,
                                     numlayers=num_layer,
                                     layerlist=layer_data,
-                                    objective_fn=CONFIG_MODEL_PARAMETERS["objective_function"],
-                                    optimization_method=CONFIG_MODEL_PARAMETERS["optimization_method"])
+                                    objective_fn=gv.TEST_CONFIG_MODEL_PARAMETERS["objective_function"],
+                                    optimization_method=gv.TEST_CONFIG_MODEL_PARAMETERS["optimization_method"])
 
                 # Format data as string
                 data = a_model.write_as_yaml()
@@ -218,7 +223,7 @@ def gen_config(parameters: dict, product: bool):
             for num_neuron in range(neuron_min, neuron_max + 1):
 
                 if num_layer > 1 and num_neuron > 1:
-                    print("Product: layer:", num_layer, "neurons:", CONFIG_HYPERPARAMETERS["neurons"])
+                    print("Product: layer:", num_layer, "neurons:", gv.TEST_CONFIG_HYPERPARAMETERS["neurons"])
 
                     # Get number of permutations.
                     neuron_range = range(1, num_neuron + 1)
@@ -230,10 +235,10 @@ def gen_config(parameters: dict, product: bool):
 
                         for p in a_prod:
                             # Set layer neurons and append.
-                            a_layer = Layer(layertype=CONFIG_LAYER_PARAMETERS["layer_type"],
+                            a_layer = Layer(layertype=gv.TEST_CONFIG_LAYER_PARAMETERS["layer_type"],
                                             numneurons=p,
-                                            activationtype=CONFIG_LAYER_PARAMETERS["activation_type"],
-                                            dropout=CONFIG_LAYER_PARAMETERS["dropout"])
+                                            activationtype=gv.TEST_CONFIG_LAYER_PARAMETERS["activation_type"],
+                                            dropout=gv.TEST_CONFIG_LAYER_PARAMETERS["dropout"])
                             list_of_layers.append(a_layer)
 
                         layer_data = get_layer_data(list_of_layers)
@@ -241,41 +246,43 @@ def gen_config(parameters: dict, product: bool):
                         # Create the model.
                         for model_input in range(input_min, input_max + 1):
 
-                            a_model = YAMLModel(modeltype= CONFIG_MODEL_PARAMETERS["model_type"],
+                            a_model = YAMLModel(modeltype=gv.TEST_CONFIG_MODEL_PARAMETERS["model_type"],
                                                 inputsize=model_input,
                                                 numlayers=num_layer,
                                                 layerlist=layer_data,
-                                                objective_fn=CONFIG_MODEL_PARAMETERS["objective_function"],
-                                                optimization_method=CONFIG_MODEL_PARAMETERS["optimization_method"])
+                                                objective_fn=gv.TEST_CONFIG_MODEL_PARAMETERS["objective_function"],
+                                                optimization_method=gv.TEST_CONFIG_MODEL_PARAMETERS["optimization_method"])
 
                             # Format model data to string.
                             data = a_model.write_as_yaml()
 
                             # Write to file.
-                            file_name = CONFIG_DIR + "/test" + str(num_layer) + str(num_neuron) \
-                                        + str(model_input) + "p" \
-                                        + str(list(a_prod)).replace(", ", "").strip('[]') + ".yaml"
+                            file_name = (gv.POSITIVE_TEST_DIR +  "/test" + str(num_layer) + str(num_neuron)
+                                        + str(model_input) + "p"
+                                        + str(list(a_prod)).replace(", ", "").strip('[]') + ".yaml")
                             print(file_name)
                             write_to_file(file_name, data)
 
 
-def dir_is_empty():
-    """ Checks if the configuration direcotry path is empty
+def dir_is_empty() -> bool:
+    # TODO: Refactor
+    """ Checks if the configuration directry path is empty
     Returns:
         - <Bool> True if empty.
     """
-    if os.listdir(CONFIG_DIR):
+    if os.listdir(gv.POSITIVE_TEST_DIR):
         return False
     else:
         return True
 
 
-def get_config_dir():
+def get_config_dir() -> str:
+    # TODO: Refactor
     """ Returns the configuration directory path
     Returns:
          - CONFIG_DIR <string> Directory path where the YAML config files are stored
     """
-    return CONFIG_DIR
+    return gv.POSITIVE_TEST_DIR
 
 
 def main():
@@ -285,7 +292,7 @@ def main():
     Configuration files are written to path stored in CONFIG_DIR variable.
     """
     # Write model yaml config files out to CONFIG_DIR/config
-    gen_config(CONFIG_HYPERPARAMETERS, product=True)
+    gen_config(gv.TEST_CONFIG_HYPERPARAMETERS, product=True)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,8 @@
 # Specifies the layers of a fully connected neural network model
 # Using MNIST data
-
-model-type: fully-connected
-input-size: 784  # 28 * 28 pixels
-number-of-layers: 3
+model_type: fully-connected
+input_size: 784  # 28 * 28 pixels
+number_of_layers: 3
 layers:
   - layer:
       type: linear
@@ -20,6 +19,8 @@ layers:
       neurons: 10
       activation: relu
       dropout: none
+objective: mseloss
+optimization: SGD
   # output layer
   #- layer:
   #    type: output
