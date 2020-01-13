@@ -1,26 +1,26 @@
 """
  Filename: MTNN/tests/conftest.py
- PyTest Hooks for global set-up and tear-down functions for MTNN/tests
+ PyTest Hooks for global set-up and tear-down for MTNN/tests
 """
-# Standard packages
+
+# standard packages
 import os
 import logging
 
-# Third-party packages
+# third-party packages
 import pytest
 import yaml
 import pprint
 
-# Pytorch
+# pytorch
 import torch
 from torch.autograd import Variable
 import sklearn.datasets as skdata
 
-# Local package
+# local package
 import globalvar as gv
 from MTNN import model as mtnnmodel
 from MTNN import config_generator
-
 
 # Logging set-up
 # TODO: Configure Logger

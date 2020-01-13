@@ -1,7 +1,9 @@
-"""
-Filename: MTNN/model.py
+""" MTNN/model.py
 Defines the interface for creating extended torch.nn model
 """
+# Public API.
+__all__ = ["Model"]
+
 # Standard packages
 import os
 import sys
@@ -20,9 +22,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Local imports
 import globalvar as gv
-
-# Public API.
-__all__ = ["Model"]
 
 
 class Model(nn.Module):

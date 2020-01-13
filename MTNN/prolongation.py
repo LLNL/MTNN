@@ -1,5 +1,5 @@
-"""
-# Prolongation operators
+""" MTNN/prolongation.py
+ Prolongation operators definitions
 """
 
 # Public API.

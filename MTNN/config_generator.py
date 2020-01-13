@@ -1,16 +1,17 @@
-"""
-Filename: MTNN/config_generator.py
-Script to generate permutations of fully-connected neural network yaml files
-"""
-
 #!/usr/bin/env python
+"""MTNN/config_generator.py
+Script to generate permutations of fully-connected neural network yaml files
+Stores generated files in path specified by globalvar.POSITIVE_TEST_DIR
+"""
 
-# Standard packages
+# standard packages
 import os
 import itertools
+
+# third-party packages
 import yaml
 
-# Local package
+# local packages
 import globalvar as gv
 
 

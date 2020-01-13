@@ -1,5 +1,4 @@
-"""
-Filename: MTNN/globalvar.py
+""" MTNN/globalvar.py
 Global Variables for MTNN package
 """
 import os
