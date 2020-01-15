@@ -1,4 +1,4 @@
-""" MTNN/globalvar.py
+""" MTNN/tests_var.py
 Global Variables for MTNN package
 """
 import os
@@ -16,7 +16,6 @@ if not os.path.exists(POSITIVE_TEST_DIR):
     # TODO: Sanitize file path
     os.mkdir(POSITIVE_TEST_DIR)
 
-
 # Edit this.
 TEST_CONFIG_HYPERPARAMETERS = {
     "layers": (1, 3),  # (min, max)
@@ -27,7 +26,7 @@ TEST_CONFIG_HYPERPARAMETERS = {
 # Edit this.
 TEST_CONFIG_LAYER_PARAMETERS = {
     'layer_type': "linear",
-    'activation_type':"relu",
+    'activation_type': "relu",
     'dropout': False
 }
 
@@ -38,19 +37,17 @@ TEST_CONFIG_MODEL_PARAMETERS = {
     "optimization_method": "SGD"
 }
 
-
 ################################################
 # Global Variables for conftest.py
 ################################################
 # Edit this.
 TEST_FN_PARAMETERS = {'n_samples': 10,
-                     'n_features': 1,
-                     'noise': 0.1
-                     }
+                      'n_features': 1,
+                      'noise': 0.1
+                      }
 
 ################################################
 # Global Variables for model.py
 ################################################
 CONFIG_DIR = os.path.abspath(ROOT_DIR + "/config")
 DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
-

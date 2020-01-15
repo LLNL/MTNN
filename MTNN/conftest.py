@@ -18,7 +18,7 @@ from torch.autograd import Variable
 import sklearn.datasets as skdata
 
 # local package
-import globalvar as gv
+import tests_var as gv
 from MTNN import model as mtnnmodel
 from MTNN import config_generator
 
@@ -60,7 +60,7 @@ def make_models():
     Args:
         gen_configs <string> YAML configuration file directory
     Returns:
-        model <MTNN.Model> Instance of a MTNN.Model
+        model <MTNN.Model> Instance of a MTNN.Model object
     """
     print("\nSETUP: Collection_of_models")
 
@@ -88,7 +88,7 @@ def regression_training_data():
     """
     Returns an iterator that yields a tuple of tensor training input and output data
     from a randomly generated regression problem. To change test problem parameters,
-    modify TEST_FN_PARAMETERS in MTNN/__init__.py
+    modify TEST_FN_PARAMETERS in tests_var.py
     Returns:
         training_data_input <tensor>
         training_data_output <tensor>
