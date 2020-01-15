@@ -18,13 +18,13 @@ class CascadicMG():
     def __init__(self, num_levels, smoother=None, prolongation=None, refinement=None):
         self.levels = [Level(presmoother=smoother, prolongation=prolongation, refinement=refinement)] * num_levels
 
-    def train(self, net, dataset, obj_func, criteria):
+    def train(self, net, dataset, obj_func, criteria, expansion):
         num_levels = len(self.levels)
         for lev_id in range(num_levels-1):
             this_level = self.levels[lev_id]
         
             this_level.presmoother.smooth(net, dataset, obj_func)
-            this_level.prolongation.apply(net)
+            this_level.prolongation.apply(net, expansion)
 
             net = this_level.refinement.apply(net)
         # Do the last level's smoothing:
