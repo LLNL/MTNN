@@ -2,6 +2,8 @@
 Global Variables for MTNN package
 """
 import os
+import datetime
+import inspect
 
 ################################################
 # Global Variables for config_generator.py
@@ -51,3 +53,29 @@ TEST_FN_PARAMETERS = {'n_samples': 10,
 ################################################
 CONFIG_DIR = os.path.abspath(ROOT_DIR + "/config")
 DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
+
+
+################################################
+# Global Variables for hello_model_sklearn.py
+################################################
+
+def get_caller_filepath():
+    # get the caller's stack frame and extract its file path
+    frame_info = inspect.stack()[1]
+    filepath = frame_info[1]  # in python 3.5+, you can use frame_info.filename
+    del frame_info  # drop the reference to the stack frame to avoid reference cycles
+
+    caller_filepath = os.path.basename(filepath)
+
+    return caller_filepath
+
+
+EXAMPLES_DIR = os.path.abspath(os.path.join(ROOT_DIR, os.pardir, "examples"))
+EXPERIMENT_LOGS_DIR = os.path.abspath(os.path.join(EXAMPLES_DIR + "/runs/logs/"))
+
+if not os.path.exists(EXPERIMENT_LOGS_DIR):
+    # TODO: Sanitize file path
+    os.mkdir(EXPERIMENT_LOGS_DIR)
+
+EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + get_caller_filepath() +"/"
+                                    + datetime.datetime.now().strftime("%H:%M:%S"))
