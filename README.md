@@ -22,3 +22,13 @@ The example is in `examples/` and the source is in `MTNN/`.
     * Defaults to port 6006
     * Don't use quotation marks in the directory path; Tensorboard will not raise any errors
 3. In your browser:  http://localhost:6006 or CTRL + click on link in the commandline terminal
+
+
+## Testing
+## Testing Set-up
+* In tests_var.py, edit the TEST_CONFIG_* parameters to modify the range of parameters you want to
+ create for testing yaml configuration files
+* Run config_generator.py
+    * This will generate test configuration files to MTNN/tests/config/positive by default
+* Run tests in MTNN/tests
+
