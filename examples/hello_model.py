@@ -60,7 +60,6 @@ def visualize(model, input, loss, epoch):
     writer.flush()
 
 # Creating dummy data for training
-z = lambda x,y: 3 * x + 2 *y
 data_z = gen_data()
 print(data_z)
 

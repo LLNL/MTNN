@@ -3,9 +3,13 @@
 Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native Torch model
 - using generated linear regression data
 - without MTNN framework
+# TODO:
+    * Add logging to a file
 """
 # standard
+import os
 import datetime
+import logging
 
 # third-party
 import sklearn.datasets as skdata
@@ -20,6 +24,19 @@ from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN
+from MTNN import tests_var
+
+
+# Set-up logger.
+logging.basicConfig(filename=tests_var.EXPERIMENT_LOGS_DIR + "/" + tests_var.get_caller_filepath()
+                            + "_"
+                            + datetime.datetime.now().strftime("%H:%M:%S"),
+                    filemode='w',
+                    #format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    format='%(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
+
 
 ##################################################
 # Simple fully-connected network
@@ -139,36 +156,47 @@ def tensorize_data(training_data: list):
 
     return dataloader
 
-def gen_data():
-    data = []
-    z = lambda x,y: 3 * x + 2 *y
-    for i in range(10):
-        input = ((i,i), z(i,i))
-        data.append(input)
-    return data
 
-#training_data = regression_training_data(10, 2, 0.5)
+def gen_data():
+    generated_data = []
+    linear_function = lambda x, y: 3 * x + 2 * y
+    for i in range(10):
+        input_data = ((i, i), linear_function(i, i))
+        generated_data.append(input_data)
+    return generated_data
+
+
+# Generate Data.
 training_data = gen_data()
+
+regression_data = regression_training_data(10, 2, 0.5)
+tensor_training_data = tensorize_data(training_data)
+
+
 #########################################################
 # Using Simple net class
 #########################################################
-net = Net()
-print(list(net.parameters()))
+print("\n\n*****************************")
+print("Using Simple net Class")
+print("*****************************")
 
-# create a stochastic gradient descent optimizer
+net = Net()
+print("\nNET Parameters", list(net.parameters()))
+
 optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
 # TODO: Refactor
 # Train.
 for epoch in range(10):
-    for i, data in enumerate(training_data):
+    for batch_idx, data in enumerate(training_data):
         XY, Z = iter(data)
 
         # Convert list to float tensor
         # Note: Variable is deprecated
         input = torch.FloatTensor(XY) #torch.Floattensor expects a list
-
         Z = torch.FloatTensor([Z]) # For output, set requires_grad to False
+
+
         #TODO: FIX Z ValueError: only one element tensors can be converted to python scalars
         optimizer.zero_grad()
         outputs = net(input)  # outputs is predicted Y
@@ -183,29 +211,34 @@ for epoch in range(10):
         optimizer.step()
 
         # Print out
-        if i % (len(training_data) - 1) == 0 and i != 0:
+        if batch_idx % (len(training_data) - 1) == 0 and batch_idx != 0:
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
+            # TODO: Fix after regression_training_data working
+            #print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            #    epoch, batch_idx * len(input), len(training_data.dataset),
+            #           100. * batch_idx / len(training_data), loss.item()))
+
+
 # Predict.
-print_prediction(net, (2,2))
+print_prediction(net, (2, 2)) #should be 5
 
 ###########################################################
 # Using MTNN Model
 ##########################################################
+print("\n\n*****************************")
 print("Using MTNN Model")
-model_config ="/Users/mao6/proj/mtnnpython/MTNN/tests/hello_model.yaml"
+print("*****************************")
 
 # Set-up.
-mtnnmodel = MTNN.Model(tensorboard=True, debug=False)
+model_config = os.path.join(tests_var.CONFIG_DIR + "/hello_model.yaml")
+mtnnmodel = MTNN.Model(tensorboard=True, debug=True)
 mtnnmodel.set_config(model_config)
 model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
 
 # View parameters.
-mtnnmodel.view_parameters()
-
-# Prepare data.
-tensor_training_data = tensorize_data(training_data)
+#mtnnmodel.print_parameters()
 
 # Train.
 mtnnmodel.fit(dataloader=tensor_training_data, num_epochs=10, log_interval=10)
@@ -216,7 +249,9 @@ print_prediction(mtnnmodel, (2,2)) # should be 5
 #########################################################
 # Using Prolonged Model
 #########################################################
+print("\n\n*****************************")
 print("USING PROLONGED MTNN MODEL")
+print("*****************************")
 # Applying Lower Triangular Operator
 prolongation_operator = MTNN.LowerTriangleOperator()
 prolonged_model = prolongation_operator.apply(mtnnmodel, expansion_factor=3)
@@ -227,10 +262,10 @@ prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, m
 prolonged_model.set_training_parameters( objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
 
 # View Parameters.
-prolonged_model.view_parameters()
+#prolonged_model.print_parameters()
 
 # Train.
-prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 1, log_interval = 10)
+prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 10, log_interval = 10)
 
 # Predict.
 print_prediction(prolonged_model, (2,2)) # should be 5
@@ -238,10 +273,13 @@ print_prediction(prolonged_model, (2,2)) # should be 5
 ############################################################
 # Evaluate Results
 #############################################################
+print("\n\n*****************************")
 print("EVALUATION")
+print("*****************************")
 evaluator = MTNN.BasicEvaluator()
+print("Net")
 evaluator.evaluate_output(model=net, dataset=tensor_training_data)
+print("MTNN Model")
 evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
+print("Prolonged Model")
 evaluator.evaluate_output(model=prolonged_model, dataset=tensor_training_data)
-
-

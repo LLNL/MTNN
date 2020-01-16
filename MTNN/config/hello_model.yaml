@@ -4,7 +4,7 @@ number_of_layers: 1
 layers:
   - layer:
       type: linear
-      neurons: 2
+      neurons: 1
       activation: relu
       dropout: None
 
