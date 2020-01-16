@@ -1,5 +1,7 @@
 """ MTNN/model.py
 Defines the interface for creating extended torch.nn model
+# TODO:
+    * Logging: Change to literal string interpolation format (Python 3.6+)
 """
 # Public API.
 __all__ = ["Model"]
@@ -23,8 +25,6 @@ from torch.utils.tensorboard import SummaryWriter
 # local source
 import tests_var
 
-pp = pprint.PrettyPrinter(indent = 4)
-
 
 class Model(nn.Module):
     """
@@ -38,7 +38,7 @@ class Model(nn.Module):
     # TODO: Refactor. Move global variables to __init__.py or config.ini
 
     # Tensorboard Writer
-    WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs
+    WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs/model
 
     # TODO: make case-insensitive
     OPTIMIZATIONS = {
@@ -58,7 +58,6 @@ class Model(nn.Module):
     }
 
 
-
     def __init__(self, config=None, tensorboard=None, debug=False):
         super(Model, self).__init__()
         self.config_file = config
@@ -66,7 +65,7 @@ class Model(nn.Module):
         self._input_size = None
         self._num_layers = 0
         self._layer_config = None
-        self._layers = nn.ModuleDict()
+        self._module_layers = nn.ModuleDict()
 
         # Hyper-parameterS
         self._objective_fn = None
@@ -132,7 +131,7 @@ class Model(nn.Module):
             # TODO: Convolutional network
 
             layer_dict["layer" + str(n_layer)] = layer_list
-            self._layers = layer_dict
+            self._module_layers = layer_dict
 
             obj = self.config_file["objective"]
             opt = self.config_file["optimization"]
@@ -154,28 +153,19 @@ class Model(nn.Module):
         # Logging
 
         if self.debug:
-            #logging.debug("Model Type %(model)s" % {"model": self._model_type})
-            logging.debug("**************************************")
-            logging.debug("SETTING MODEL CONFIGURATION")
-            logging.debug("**************************************")
-            logging.debug(("\nMODEL TYPE: {modeltype} "
-                           "\nEXPECTED INPUT SIZE: {inputsize}"
-                           "\nLAYERS: {layers} ").format(modeltype=self._model_type,
-                                                        inputsize=self._input_size,
-                                                        layers=self._layers))
-
-            logging.debug("\n MODEL PARAMETERS:")
-            for i in self._layers:
-                logging.debug(("\n\tLAYER: {layerid}"
-                               "\n\tWEIGHT: {weightmatrix}"
-                               "\n\tWEIGHT GRADIENTS: {weightgrad}" 
-                               "\n\tBIAS: {bias}"
-                               "\n\tBIAS GRADIENT: {biasgrad}"). format(layerid=i,
-                                                            weightmatrix=self._layers[i][0].weight,
-                                                            weightgrad=self._layers[i][0].weight.grad,
-                                                            bias=self._layers[i][0].bias,
-                                                            biasgrad=self._layers[i][0].bias.grad))
-
+            logging.debug("\n*****************************************************"
+                          "SETTING MODEL CONFIGURATION"
+                         "********************************************************")
+            logging.debug(f"\nMODEL TYPE: {self._model_type}")
+            logging.debug(f"\nEXPECTED INPUT SIZE: {self._input_size}")
+            logging.debug(f"\nLAYERS: {self._module_layers}")
+            logging.debug("\nMODEL PARAMETERS:")
+            for layer_idx in self._module_layers:
+                logging.debug(f"\n\tLAYER: {layer_idx}")
+                logging.debug(f"\n\tWEIGHT: {self._module_layers[layer_idx][0].weight}")
+                logging.debug(f"\n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}")
+                logging.debug(f"\n\tBIAS: {self._module_layers[layer_idx][0].bias}")
+                logging.debug(f"\n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
 
 
 
@@ -204,45 +194,45 @@ class Model(nn.Module):
         Args:
             model_input <torch.tensor>
 
-        Returns:
-            model_input<torch.tensor>
+        Returns: None
 
         """
-        raw_input = model_input
 
-        if self.debug:
-            logging.debug("\n\tINPUT: %s \n\tTARGET: %s", raw_input, model_input)
+        # Reshape input data
+        # Note: Input has to be a leaf variable to maintain gradients; no intermediate variables
+        model_input = model_input.view(model_input.size(0), -1)
 
-        for i, (layer, activation) in enumerate(self._layers.values()):
-            # Reshape data
-            # Note: Input has to be a leaf variable to maintain gradients; no intermediate variables
-            model_input = model_input.view(model_input.size(0), -1)
-            model_input = layer(model_input)
-            model_input = activation(model_input)
+        for module_indx in range(len(self._module_layers)):
+            module_key = 'layer' + str(module_indx)
+
+            layer = self._module_layers[module_key][0] # hard-coded. Assumes each module is one linear, one activation
+            activation = self._module_layers[module_key][1]
+
+            if not self.debug:
+                model_input = layer(model_input)
+                model_input = activation(model_input)
 
             if self.debug:
-                #TODO: Add requires_grad to logging. Parse output of layer.weight, layer.bias
-                logging.debug(("\n\tLAYER: {layer} "
-                               "\n\tWEIGHTS:\n\t\t {weightmatrix} "
-                               "\n\tWEIGHT SHAPE:\n\t\t{weightshape} "
-                               "\n\tBIAS: \n\t\t{bias}"
-                               "\n\tBIAS SHAPE: \n\t\t{biasshape}"
-                              " \n\tWEIGHTS GRADIENTS: \n\t\t {weightgrad} "
-                               "\n\tBIAS GRADIENTS:\n\t\t {biasgrad}").format(layer=layer,
-                                                                              weightmatrix=layer.weight.data[0],
-                                                                              weightshape=layer.weight.size(),
-                                                                              bias=layer.bias.data[0],
-                                                                              biasshape=layer.bias.size(),
-                                                                              weightgrad=layer.weight.grad,
-                                                                              biasgrad=layer.bias.grad))
+                logging.debug(f"FORWARD PASS LAYER #: {module_indx} ")
+                logging.debug(f"\nINPUT: {model_input}")
+                model_input = layer(model_input)
+                model_input = activation(model_input)
+                logging.debug(f"\n\tLAYER: {layer}")
+                logging.debug(f"\n\t\tWEIGHTS:\n\t\t {layer.weight}")
+                logging.debug(f"\n\t\tWEIGHT SHAPE:\n\t\t{layer.weight.size()}") #Tracerwarning
+                logging.debug(f"\n\t\tBIAS: \n\t\t{layer.bias}")
+                logging.debug(f"\n\t\tBIAS SHAPE: \n\t\t{layer.bias.size()}") #Tracerwarning
+                logging.debug(f"\n\t\tWEIGHTS GRADIENTS: \n\t\t {layer.weight.grad}")
+                logging.debug(f"\n\t\tBIAS GRADIENTS:\n\t\t {layer.bias.grad}")
 
             # TODO: Clear Logdir from previous runs
             # TODO: Disable asynchronous logging?
 
         # Visualize
+        #TODO: FIX
         if self.tensorboard:
             # Visualize weights
-            for i, (layer, activation) in enumerate(self._layers.values()):
+            for i, (layer, activation) in enumerate(self._module_layers.values()):
                 for w_i, w in enumerate(layer.weight[0]):
                     self.WRITER.add_scalar('Train/Weights_' + str(w_i), layer.weight[0][w_i], self._epoch)
             # Visualize output
@@ -254,6 +244,7 @@ class Model(nn.Module):
                 self.WRITER.add_scalar('Train/Output_' + str(i), model_output.data[0][i], self._epoch)
 
         self._train_count += 1
+
 
         return model_input
 
@@ -276,19 +267,21 @@ class Model(nn.Module):
         self.train()
 
         if self.debug:
-            logging.debug("**************************************")
-            logging.debug("STARTING TRAINING")
-            logging.debug("**************************************")
+            logging.debug("\n*********************************************************"
+                          "STARTING TRAINING"
+                          "***********************************************************")
 
         for epoch in range(1, num_epochs + 1):
+
             for batch_idx, (input_data, target_data) in enumerate(dataloader):
 
-                # Zero out parameter gradients
+                # Reset weight/bias gradients
                 self._optimizer.zero_grad()
 
                 # TODO: Check and Reshape target size? Will be broadcasted if both tensors are broadcastable.
 
                 if not self.debug:
+
                     # Forward pass
                     prediction = self.forward(input_data)
                     loss = self._objective_fn(prediction, target_data)
@@ -299,13 +292,31 @@ class Model(nn.Module):
 
                 # Train with logging
                 else:
+                    batch_total = len(dataloader)
+                    logging.debug(f"\nEPOCH: {epoch} BATCH: {batch_idx}")
+                    logging.debug(f"INPUT: {input_data}")
+                    logging.debug(f"TARGET: {target_data}")
+
+                    logging.debug("FORWARD PASS...")
+                    logging.debug(f"BATCH [{batch_idx}/{batch_total}]")
                     prediction = self.forward(input_data)
+
+                    logging.debug(f"PREDICTION: {prediction}")
+
+                    logging.debug("\nCALCULATING LOSS...")
                     loss = self._objective_fn(prediction, target_data)
-                    logging.debug("\nEPOCH: %i BATCH: %i \nTARGET:%s PREDICTION %s  \nLOSS: %s",
-                                  epoch, batch_idx, target_data, prediction, loss)
+
+                    logging.debug(f"LOSS: {loss}")
                     loss.backward(retain_graph = True)
-                    logging.debug("")
+
+                    logging.debug("UPDATING GRADIENTS...")
+                    self._optimizer.step()
+
+                    logging.debug("UPDATED GRADIENTS")
                     # TODO: Add logging of weights after update?
+
+                logging.debug(f"FINISHED BATCH {batch_idx}")
+                logging.debug("*************************************************")
 
                 # Print statistics.
                 if batch_idx % (log_interval - 1) == 0 and batch_idx != 0:
@@ -359,12 +370,12 @@ class Model(nn.Module):
         Returns: None
         """
         print("\n MODEL PARAMETERS:")
-        for i in self._layers:
+        for i in self._module_layers:
             print("\n\tLayer: ", i,
-                  "\n\tWeight: ", self._layers[i][0].weight,
-                  "\n\tWeight Gradient", self._layers[i][0].weight.grad,
-                  "\n\tBias: ", self._layers[i][0].bias,
-                  "\n\tBias Gradient:", self._layers[i][0].bias.grad)
+                  "\n\tWeight: ", self._module_layers[i][0].weight,
+                  "\n\tWeight Gradient", self._module_layers[i][0].weight.grad,
+                  "\n\tBias: ", self._module_layers[i][0].bias,
+                  "\n\tBias Gradient:", self._module_layers[i][0].bias.grad)
 
     def get_properties(self) -> list:
         """
@@ -373,7 +384,7 @@ class Model(nn.Module):
         """
         model_properties = (self._model_type,
                             self._input_size,
-                            self._layers)
+                            self._module_layers)
         return model_properties
 
     # Mutator Methods.

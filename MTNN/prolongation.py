@@ -69,8 +69,8 @@ class LowerTriangleOperator:
         prolonged_model = copy.deepcopy(source_model)
 
         print("\nAPPLYING BLOCK LOWER TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K =", expansion_factor)
-        for index, layer_key in enumerate(source_model._layers):
-            for layer in prolonged_model._layers[layer_key]:
+        for index, layer_key in enumerate(source_model._module_layers):
+            for layer in prolonged_model._module_layers[layer_key]:
 
                 # Check if linear layer
                 if hasattr(layer, 'weight'):

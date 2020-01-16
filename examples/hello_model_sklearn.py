@@ -185,7 +185,7 @@ print("\nNET Parameters", list(net.parameters()))
 
 optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
-# TODO: Refactor
+# TODO: Clean
 # Train.
 for epoch in range(10):
     for batch_idx, data in enumerate(training_data):
@@ -214,11 +214,6 @@ for epoch in range(10):
         if batch_idx % (len(training_data) - 1) == 0 and batch_idx != 0:
             print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
-            # TODO: Fix after regression_training_data working
-            #print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-            #    epoch, batch_idx * len(input), len(training_data.dataset),
-            #           100. * batch_idx / len(training_data), loss.item()))
-
 
 # Predict.
 print_prediction(net, (2, 2)) #should be 5
@@ -232,7 +227,7 @@ print("*****************************")
 
 # Set-up.
 model_config = os.path.join(tests_var.CONFIG_DIR + "/hello_model.yaml")
-mtnnmodel = MTNN.Model(tensorboard=True, debug=True)
+mtnnmodel = MTNN.Model(tensorboard=False, debug=True)
 mtnnmodel.set_config(model_config)
 model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)

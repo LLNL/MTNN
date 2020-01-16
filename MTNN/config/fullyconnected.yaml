@@ -2,7 +2,7 @@
 # Using MNIST data
 model_type: fully-connected
 input_size: 784  # 28 * 28 pixels
-number_of_layers: 3
+number_of_layers: 3 # Todo: Remove. Redundant
 layers:
   - layer:
       type: linear
@@ -19,11 +19,12 @@ layers:
       neurons: 10
       activation: relu
       dropout: none
+# Refactor Hyperparameters?
 objective: mseloss
 optimization: SGD
-  # output layer
-  #- layer:
-  #    type: output
-  #    input: 10
-  #    activation: softmax
-  #    dropout: none
+# output layer
+#- layer:
+#    type: output
+#    input: 10
+#    activation: softmax
+#    dropout: none
