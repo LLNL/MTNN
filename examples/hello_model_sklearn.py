@@ -3,8 +3,6 @@
 Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native Torch model
 - using generated linear regression data
 - without MTNN framework
-# TODO:
-    * Add logging to a file
 """
 # standard
 import os
@@ -30,18 +28,21 @@ from MTNN import tests_var
 
 # Set-up logger.
 logging.basicConfig(filename=tests_var.EXPERIMENT_LOGS_DIR + "/" + tests_var.get_caller_filepath()
-                            + "_log"
-                            + datetime.datetime.now().strftime("%H:%M:%S"),
+                            + "_"
+                            + datetime.datetime.now().strftime("%H:%M:%S")
+                            + ".log.txt",
                     filemode='w',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
 
 # Redirecting stdout to file in MTNN/examples/runs/logs
-FILEOUT = open(tests_var.EXPERIMENT_LOGS_DIR \
-          + "/" + tests_var.get_caller_filepath()\
-          + "_" + "commandline"\
-          + datetime.datetime.now().strftime("%H:%M:%S"), "w")
+FILEOUT = open(tests_var.EXPERIMENT_LOGS_DIR
+               + "/" + tests_var.get_caller_filepath()
+               + "_"
+               + datetime.datetime.now().strftime("%H:%M:%S")
+               + ".stdout.txt", "w")
+
 sys.stdout = FILEOUT
 
 ##################################################
@@ -276,7 +277,7 @@ print_prediction(prolonged_model, (2,2)) # should be 5
 print("\n\n*****************************")
 print("EVALUATION")
 print("*****************************")
-print("FUNCTION", linear_function)
+print("FUNCTION:  3x+2y")
 evaluator = MTNN.BasicEvaluator()
 print("Net")
 evaluator.evaluate_output(model=net, dataset=tensor_training_data)
