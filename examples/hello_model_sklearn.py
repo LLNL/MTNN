@@ -10,6 +10,7 @@ Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native To
 import os
 import datetime
 import logging
+import sys
 
 # third-party
 import sklearn.datasets as skdata
@@ -29,14 +30,19 @@ from MTNN import tests_var
 
 # Set-up logger.
 logging.basicConfig(filename=tests_var.EXPERIMENT_LOGS_DIR + "/" + tests_var.get_caller_filepath()
-                            + "_"
+                            + "_log"
                             + datetime.datetime.now().strftime("%H:%M:%S"),
                     filemode='w',
-                    #format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
 
+# Redirecting stdout to file in MTNN/examples/runs/logs
+FILEOUT = open(tests_var.EXPERIMENT_LOGS_DIR \
+          + "/" + tests_var.get_caller_filepath()\
+          + "_" + "commandline"\
+          + datetime.datetime.now().strftime("%H:%M:%S"), "w")
+sys.stdout = FILEOUT
 
 ##################################################
 # Simple fully-connected network
@@ -157,17 +163,16 @@ def tensorize_data(training_data: list):
     return dataloader
 
 
-def gen_data():
+def gen_data(linear_function):
     generated_data = []
-    linear_function = lambda x, y: 3 * x + 2 * y
     for i in range(10):
         input_data = ((i, i), linear_function(i, i))
         generated_data.append(input_data)
     return generated_data
 
-
 # Generate Data.
-training_data = gen_data()
+linear_function = lambda x, y: 3 * x + 2 * y
+training_data = gen_data(linear_function)
 
 regression_data = regression_training_data(10, 2, 0.5)
 tensor_training_data = tensorize_data(training_data)
@@ -211,8 +216,8 @@ for epoch in range(10):
         optimizer.step()
 
         # Print out
-        if batch_idx % (len(training_data) - 1) == 0 and batch_idx != 0:
-            print("Epoch {} - loss: {}".format(epoch, loss.item ()))
+        #if batch_idx % (len(training_data) - 1) == 0 and batch_idx != 0:
+        print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
 
 # Predict.
@@ -233,7 +238,7 @@ model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
 
 # View parameters.
-#mtnnmodel.print_parameters()
+mtnnmodel.print_parameters()
 
 # Train.
 mtnnmodel.fit(dataloader=tensor_training_data, num_epochs=10, log_interval=10)
@@ -257,7 +262,7 @@ prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, m
 prolonged_model.set_training_parameters( objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
 
 # View Parameters.
-#prolonged_model.print_parameters()
+prolonged_model.print_parameters()
 
 # Train.
 prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 10, log_interval = 10)
@@ -271,6 +276,7 @@ print_prediction(prolonged_model, (2,2)) # should be 5
 print("\n\n*****************************")
 print("EVALUATION")
 print("*****************************")
+print("FUNCTION", linear_function)
 evaluator = MTNN.BasicEvaluator()
 print("Net")
 evaluator.evaluate_output(model=net, dataset=tensor_training_data)
@@ -278,3 +284,5 @@ print("MTNN Model")
 evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
 print("Prolonged Model")
 evaluator.evaluate_output(model=prolonged_model, dataset=tensor_training_data)
+
+FILEOUT.close()

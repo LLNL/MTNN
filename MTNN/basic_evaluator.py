@@ -26,14 +26,14 @@ class BasicEvaluator():
         correct = 0
         total = 0
 
-        print("TARGET | PREDICTION")
+        print("INPUT | TARGET | PREDICTION")
         with torch.no_grad():
             for data in dataset:
                 input_data, labels = data
                 outputs = model(input_data)
                 _, predicted = torch.max(outputs.data, 1)
 
-                printout = "{} | {}".format(labels.tolist(), predicted.tolist())
+                printout = "{} | {} | {}".format(input_data, labels.tolist(), predicted.tolist())
                 print(printout)
 
                 total += labels.size(0)

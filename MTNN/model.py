@@ -26,6 +26,9 @@ from torch.utils.tensorboard import SummaryWriter
 import tests_var
 
 
+# TODO: Logger INI file
+# TODO: Apply logging best practices
+
 class Model(nn.Module):
     """
     Instantiates a neural network
@@ -35,7 +38,7 @@ class Model(nn.Module):
         ACTIVATION_TYPE <dict>: available PyTorch activation layers
     """
 
-    # TODO: Refactor. Move global variables to __init__.py or config.ini
+    # TODO: Refactor. Move global variables
 
     # Tensorboard Writer
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs/model
@@ -303,13 +306,11 @@ class Model(nn.Module):
 
                     logging.debug(f"PREDICTION: {prediction}")
 
-                    logging.debug("\nCALCULATING LOSS...")
                     loss = self._objective_fn(prediction, target_data)
 
                     logging.debug(f"LOSS: {loss}")
                     loss.backward(retain_graph = True)
 
-                    logging.debug("UPDATING GRADIENTS...")
                     self._optimizer.step()
 
                     logging.debug("UPDATED GRADIENTS")
@@ -319,10 +320,19 @@ class Model(nn.Module):
                 logging.debug("*************************************************")
 
                 # Print statistics.
-                if batch_idx % (log_interval - 1) == 0 and batch_idx != 0:
+                if not self.debug:
+                    if batch_idx % (log_interval - 1) == 0 and batch_idx != 0:
+                        print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                            epoch, batch_idx * len(input_data), len(dataloader.dataset),
+                                100. * batch_idx / len(dataloader), loss.item()))
+                        train_losses.append(loss.item())
+                        train_counter.append(
+                            (batch_idx * 64) + ((epoch - 1) * len(dataloader.dataset)))
+
+                else:
                     print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(input_data), len(dataloader.dataset),
-                            100. * batch_idx / len(dataloader), loss.item()))
+                               100. * batch_idx / len(dataloader), loss.item()))
                     train_losses.append(loss.item())
                     train_counter.append(
                         (batch_idx * 64) + ((epoch - 1) * len(dataloader.dataset)))
