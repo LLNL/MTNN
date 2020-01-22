@@ -23,23 +23,26 @@ from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN
-from MTNN import tests_var
+from MTNN import mtnnconstants
 
 
 # Set-up logger.
-logging.basicConfig(filename=tests_var.EXPERIMENT_LOGS_DIR + "/" + tests_var.get_caller_filepath()
-                            + "_"
-                            + datetime.datetime.now().strftime("%H:%M:%S")
-                            + ".log.txt",
+logging.basicConfig(#filename=mtnnconstants.EXPERIMENT_LOGS_DIR + "/" + mtnnconstants.get_caller_filepath() + "_"
+                    #          + datetime.datetime.today().strftime("%A") + "_"
+                    #          + datetime.datetime.today().strftime("%m%d%Y") + "_"
+                    #          + datetime.datetime.now().strftime("%H:%M:%S")
+                    #          + ".log.txt",
+                    filename=(mtnnconstants.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
                     filemode='w',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
 
 # Redirecting stdout to file in MTNN/examples/runs/logs
-FILEOUT = open(tests_var.EXPERIMENT_LOGS_DIR
-               + "/" + tests_var.get_caller_filepath()
-               + "_"
+FILEOUT = open(mtnnconstants.EXPERIMENT_LOGS_DIR
+               + "/" + mtnnconstants.get_caller_filepath() + "_"
+               + datetime.datetime.today().strftime("%A") + "_"
+               + datetime.datetime.today().strftime("%m%d%Y") + "_"
                + datetime.datetime.now().strftime("%H:%M:%S")
                + ".stdout.txt", "w")
 
@@ -229,7 +232,7 @@ print("Using MTNN Model")
 print("*****************************")
 
 # Set-up.
-model_config = os.path.join(tests_var.CONFIG_DIR + "/hello_model.yaml")
+model_config = os.path.join(mtnnconstants.CONFIG_DIR + "/hello_model.yaml")
 mtnnmodel = MTNN.Model(tensorboard=False, debug=True)
 mtnnmodel.set_config(model_config)
 model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
@@ -274,7 +277,7 @@ print_prediction(prolonged_model, (2,2)) # should be 5
 print("\n\n*****************************")
 print("EVALUATION")
 print("*****************************")
-print("FUNCTION", linear_function(1,1))
+print("FUNCTION 3x + 2y")
 evaluator = MTNN.BasicEvaluator()
 print("Net")
 evaluator.evaluate_output(model=net, dataset=tensor_training_data)

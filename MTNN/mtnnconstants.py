@@ -1,4 +1,4 @@
-""" MTNN/tests_var.py
+""" MTNN/mtnnconstants.py
 Global Variables for MTNN package
 """
 import os
@@ -16,7 +16,7 @@ POSITIVE_TEST_DIR = os.path.abspath(TEST_CONFIG_DIR + "/positive")
 
 if not os.path.exists(POSITIVE_TEST_DIR):
     # TODO: Sanitize file path
-    os.mkdir(POSITIVE_TEST_DIR)
+    os.makedirs(POSITIVE_TEST_DIR)
 
 # Edit this.
 TEST_CONFIG_HYPERPARAMETERS = {
@@ -59,15 +59,24 @@ DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
 # Global Variables for hello_model_sklearn.py
 ################################################
 
+#TODO: Fix
 def get_caller_filepath():
+    """
+    Gets previous caller's filepath.
+    Returns:
+        caller_filepath <str>: Previous caller's filepath
+
+    """
+
     # get the caller's stack frame and extract its file path
-    frame_info = inspect.stack()[1]
-    filepath = frame_info[1]  # in python 3.5+, you can use frame_info.filename
-    del frame_info  # drop the reference to the stack frame to avoid reference cycles
+    last_frame_info = inspect.stack()[-1]
 
-    caller_filepath = os.path.basename(filepath)
+    filepath = last_frame_info[1]  # in python 3.5+, you can use frame_info.filename
+    del last_frame_info  # drop the reference to the stack frame to avoid reference cycles
 
-    return caller_filepath
+    prev_caller_filepath = os.path.basename(filepath).strip(".py")
+
+    return prev_caller_filepath
 
 
 EXAMPLES_DIR = os.path.abspath(os.path.join(ROOT_DIR, os.pardir, "examples"))
@@ -75,7 +84,22 @@ EXPERIMENT_LOGS_DIR = os.path.abspath(os.path.join(EXAMPLES_DIR + "/runs/logs/")
 
 if not os.path.exists(EXPERIMENT_LOGS_DIR):
     # TODO: Sanitize file path
-    os.mkdir(EXPERIMENT_LOGS_DIR)
+    os.makedirs(EXPERIMENT_LOGS_DIR)
 
-EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + get_caller_filepath() +"/"
+# TODO: Get file caller id and not this file.
+EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_filepath() + "_"
+                                    + datetime.datetime.today().strftime("%A") + "_"
+                                    + datetime.datetime.today().strftime("%m%d%Y") + "_"
                                     + datetime.datetime.now().strftime("%H:%M:%S"))
+
+
+##################################################
+# Set training hyper-parameters
+##################################################
+N_EPOCHS = 2  # Set for testing
+BATCH_SIZE_TRAIN = 100  # Set for testing
+BATCH_SIZE_TEST = 500  # Set for testing
+LEARNING_RATE = 0.01
+MOMENTUM = 0.5
+LOG_INTERVAL = 10  # Set for testing
+
