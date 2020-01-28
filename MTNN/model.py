@@ -23,8 +23,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 # local source
-import constants
-
+import MTNN
+import MTNN.mtnnconstants as mtnnconstants
 
 # TODO: Logger INI file
 # TODO: Apply logging best practices
@@ -85,7 +85,7 @@ class Model(nn.Module):
             logging.basicConfig(level = logging.DEBUG)
 
 
-    def set_config(self, config=constants.DEFAULT_CONFIG):
+    def set_config(self, config=mtnnconstants.DEFAULT_CONFIG):
         """
         Sets MTNN Model attributes from the YAML configuration file.
         Args:

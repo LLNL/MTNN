@@ -79,7 +79,7 @@ def get_caller_filepath():
     return prev_caller_filepath
 
 
-EXAMPLES_DIR = os.path.abspath(os.path.join(ROOT_DIR, os.pardir, "examples"))
+EXAMPLES_DIR = os.path.abspath(os.path.join(ROOT_DIR, "examples"))
 EXPERIMENT_LOGS_DIR = os.path.abspath(os.path.join(EXAMPLES_DIR + "/runs/logs/"))
 
 if not os.path.exists(EXPERIMENT_LOGS_DIR):
