@@ -35,10 +35,8 @@ Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.
     
     Checkout this branch: Prolongation 
 
-che MTNN PyTorch Stuff
-che MTNN PyTorch Stuff
-```
-git checkout prolongation
+    ```
+    git checkout prolongation
     ```
 
 2. Create a Conda environment with  Python 3.7.4 and pip pre-installed.  In this example, `mtnnenv` is the name of the environment, but any name of your choosing can be given. 
