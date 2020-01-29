@@ -11,7 +11,8 @@ setup(name = "MTNN",
       package_dir={' ':'MTNN'},
       install_requires=['PyYAML',
 			 'torch',
-			 'pytest', 
+			 'pytest',
+			'tensorboard', 
 			'scikit-learn'],
       python_requires='>=3.7'
       )
