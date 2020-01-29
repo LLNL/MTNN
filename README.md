@@ -1,7 +1,7 @@
-MTNN PyTorch 
+MTNN LDRD
 ==============================================
 # Purpose 
-MTNN is a framework to develop and test the applicaiton of multigrid algorithms to various neural network architectures. 
+MTNN is a PyTorch framework to develop and test the applicaiton of multigrid algorithms to various neural network architectures.
 
 ## Project Layout
 
@@ -17,7 +17,6 @@ MTNN is a framework to develop and test the applicaiton of multigrid algorithms 
 * **Example scripts** using MTNN modules & framework are in `examples/`
 
 
-
 # Environment Set-up
 How to set-up environment and package dependencies on LC machines.
 The following was tested on Pascal. 
@@ -28,50 +27,78 @@ Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.
 **The following assumes Bash shell and that Anaconda is already installed on the system.** 
 * To-do: Make this into a shell script/makefile
 
-1. Log-in to an LC machine and HTTPS Git clone this repository. You'll be prompted to authenticate with your Active Directory Official Username (OUN) and RSA-OTP (One Time Password ).
-    ```
+Pre-step: Update your Conda repository
+
+```bash
+conda update --all
+```
+
+1. Log-in to an LC machine and HTTPS Git clone this repository. You'll be prompted to authenticate with your Active Directory Official Username (OUN) and RSA-OTP (One Time Password).
+
+    ```bash
     git clone https://lc.llnl.gov/bitbucket/scm/mtnn/mtnnpython.git
     ```
-    
-    Checkout this branch: Prolongation 
 
-    ```
-    git checkout prolongation
+    Checkout this branch: dev/mao6
+
+    ```bash
+    cd mtnnpython/
+    git checkout dev/mao6
     ```
 
-2. Create a Conda environment with  Python 3.7.4 and pip pre-installed.  In this example, `mtnnenv` is the name of the environment, but any name of your choosing can be given. 
-    ```
+2. Create a Conda environment with  Python 3.7.4 and pip pre-installed.  In this example, `mtnnenv` is the name of the environment, but any name of your choosing can be given.
+
+    ```bash
     conda create -n mtnnenv pip python=3.7.4
     ```
-3. Activate your conda environment 
-    ```
+
+3. Activate your conda environment
+
+    ```bash
     conda activate mtnnenv
     ```
 
+4. a. **Developer Mode** Install Python dependencies with `setup.py`. Setup.py adds the source code to the (virtualenv) Python path. Develop mode creates a symbolic link from the deployment directory `/home/user/.conda/envs/mtnnenv/lib/python3.7/site-packages/` to this source code directory `/home/user/mtnnpython/` instead of copying the source code directly. 
 
-4. a. Navigate to to `mtnnpython/MTNN/environment/` 
-    ```
-    cd mtnnpython/MTNN/environment
-    ```
-    b. Install Python dependencies in `requirements.txt` with `pip` in your Conda environment
-
-    ```
-    pip install -r requirements.txt
-    ```
-
-5. b. Build source code 
-    ```
-    cd ..
+    ```bash
     python setup.py develop
     ```
 
-6. Run an example script
+    To clean up distribution packages symbolic links:
+
+    ```bash
+    python setup.py develop --uninstall
     ```
-    cd /examples
-    python hello_model.py
+
+    b. **Safest method**  `Setup.py` might pull the latest (incomptaible) package versions, whereas `pip install` will search the local project directory for dependencies.
+
+    ```bash
+    pip install .
     ```
+
+    Development mode:
+
+    ```bash
+    pip install -e .
+    ```
+
+    c. **Alternative** Navigate to to `mtnnpython/MTNN/environment/` and install version-specific Python dependencies in `requirements.txt` with `pip` in your Conda environment
+
+    ```bash
+    cd MTNN/environment
+    pip install -r requirements.txt
+    ```
+  
+
+5. Run an example script in `scripts/`
+
+    ```bash
+    python scripts/examples/hello_model.py
+    ```
+
 ## With Virtualenv
-```
+
+```bash
     cd mtnnpython/mtnn
     python3 -m venv mtnn
     source mtnn/bin/activate
@@ -79,26 +106,35 @@ Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.
     pip install -r requirements.txt
 ```
 
+## How to export dependencies to requirements.txt
 
-# Configuration 
+* Do a clean install of your conda/virtualenv (see Environment Set-up/With Conda steps 1-3)
+* Test run code (e.g. examples/) and ensure all dependencies are imported 
+* `$pip freeze > requirements.txt`
+
+
+# Model Configuration 
 The neural network architecture can be specified by a YAML configuration file. These are stored in `MTNN/config`.
 
 ## With Yaml Files
-   * To-do: Make a template example yaml file
+
+* To-do: Make a template example yaml file
 
 
 # Testing
-## Testing Set-up
+
 * In `mtnnconstants.py`, edit the `TEST_CONFIG_*` parameters to modify the range of parameters you want to
  create for testing yaml configuration files
 * Run `config_generator.py`
     * This will generate test configuration files to `MTNN/tests/config/positive by default`
 * Run tests in `MTNN/tests`
 
-# Generating  Sphinx Documentation 
+# Generating Sphinx Documentation 
+
  * To-do
 
 # Debugging 
+
 ## With MTNN Model logs
 * For a MTNN Model object, set `Model.debug` to `True` to enable logging
 * Logs will be stored in  `source folder/logs/`
@@ -106,15 +142,19 @@ The neural network architecture can be specified by a YAML configuration file. T
 ## Visualization With  Tensorboard
 1. Initialize or set Model.Tensorboard to True
 1.5 Remove Previous logs:
-    ```
+
+    ```bash
     !rm -rf ./runs/
     ```
+
 2. In the commandline terminal:
-    ```
+
+    ```bash
     tensorboard --logdir=<full path to log directory> --port 6006
     ```
-    * Defaults to port 6006
+
+    * Defaults to `port 6006`
     * Don't use quotation marks in the directory path; Tensorboard will not raise any errors
-3. In your browser:  http://localhost:6006 or CTRL + click on link in the commandline terminal
+3. In your browser:  `http://localhost:6006` or CTRL + click on link in the commandline terminal
 
 
