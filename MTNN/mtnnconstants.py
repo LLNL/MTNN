@@ -2,6 +2,7 @@
 Global Variables for MTNN package
 """
 import os
+import re
 import datetime
 import inspect
 
@@ -59,38 +60,51 @@ DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
 # Global Variables for hello_model_sklearn.py
 ################################################
 
-#TODO: Fix
+
+def get_caller_filename():
+    """
+    Gets previous caller's filepath.
+    Returns:
+        prev_caller_filepath <str>: Previous caller's filename
+
+    """
+    # Get the previous caller's stack frame and extract its file path
+    last_frame_info = inspect.stack()[-1]
+    caller_filepath = last_frame_info[1]  # in python 3.5+, you can use frame_info.filename
+    del last_frame_info  # drop the reference to the stack frame to avoid reference cycles
+
+    prev_caller_filename = os.path.basename(caller_filepath).strip(".py")
+    return prev_caller_filename
+
 def get_caller_filepath():
     """
     Gets previous caller's filepath.
     Returns:
-        caller_filepath <str>: Previous caller's filepath
+        clean_caller_filepath <str>: Previous caller's absolute file path
 
     """
-
-    # get the caller's stack frame and extract its file path
+    # Get the previous caller's stack frame and extract its file path.
     last_frame_info = inspect.stack()[-1]
-
-    filepath = last_frame_info[1]  # in python 3.5+, you can use frame_info.filename
+    caller_filepath = last_frame_info[1]  # in python 3.5+, you can use frame_info.filename
     del last_frame_info  # drop the reference to the stack frame to avoid reference cycles
 
-    prev_caller_filepath = os.path.basename(filepath).strip(".py")
+    # Use regex to get the base filepath.
+    filename_match = re.search( "\w*.py$", caller_filepath)
+    clean_caller_filepath = (caller_filepath).strip(filename_match.group())
+    return clean_caller_filepath
 
-    return prev_caller_filepath
 
-
-EXAMPLES_DIR = os.path.abspath(os.path.join(ROOT_DIR, "examples"))
-EXPERIMENT_LOGS_DIR = os.path.abspath(os.path.join(EXAMPLES_DIR + "/runs/logs/"))
+EXPERIMENT_LOGS_DIR = os.path.abspath(os.path.join(get_caller_filepath() + "runs/logs/"))
 
 if not os.path.exists(EXPERIMENT_LOGS_DIR):
     # TODO: Sanitize file path
     os.makedirs(EXPERIMENT_LOGS_DIR)
 
 # TODO: Get file caller id and not this file.
-EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_filepath() + "_"
-                                    + datetime.datetime.today().strftime("%A") + "_"
-                                    + datetime.datetime.today().strftime("%m%d%Y") + "_"
-                                    + datetime.datetime.now().strftime("%H:%M:%S"))
+EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_filename() + "_"
+                                        + datetime.datetime.today().strftime("%A") + "_"
+                                        + datetime.datetime.today().strftime("%m%d%Y") + "_"
+                                        + datetime.datetime.now().strftime("%H:%M:%S"))
 
 
 ##################################################

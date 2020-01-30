@@ -2,17 +2,17 @@
 
 from setuptools import setup, find_packages
 
-setup(name = "MTNN",
+setup(name="MTNN",
       version="0.1",
       description="Package to develop and test multigrid algorithms on neural networks",
       author="Christina Mao",
-      author_email="cm@llnl.gov",
+      author_email="mao6@llnl.gov",
       packages=find_packages(),
-      package_dir={' ':'MTNN'},
+      package_dir={' ': 'MTNN'},
       install_requires=['PyYAML',
-			 'torch',
-			 'pytest',
-			'tensorboard', 
-			'scikit-learn'],
+                        'torch',
+                        'pytest',
+                        'tensorboard',
+                        'scikit-learn'],
       python_requires='>=3.7'
       )

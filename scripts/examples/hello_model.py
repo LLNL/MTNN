@@ -1,5 +1,5 @@
 # !/usr/bin/env/ python
-""" mtnnpython/MTNN/hello_model.py
+""" scripts/examples/hello_model.py
 Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native Torch model
 - using generated linear regression data 3x + 2y
 - without MTNN framework
@@ -25,14 +25,8 @@ from torch.utils.tensorboard import SummaryWriter
 import MTNN
 from MTNN import mtnnconstants
 
-
 # Set-up logger.
-logging.basicConfig(#filename=mtnnconstants.EXPERIMENT_LOGS_DIR + "/" + mtnnconstants.get_caller_filepath() + "_"
-                    #          + datetime.datetime.today().strftime("%A") + "_"
-                    #          + datetime.datetime.today().strftime("%m%d%Y") + "_"
-                    #          + datetime.datetime.now().strftime("%H:%M:%S")
-                    #          + ".log.txt",
-                    filename=(mtnnconstants.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
+logging.basicConfig(filename=(mtnnconstants.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
                     filemode='w',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
@@ -40,7 +34,7 @@ logging.basicConfig(#filename=mtnnconstants.EXPERIMENT_LOGS_DIR + "/" + mtnncons
 
 # Redirecting stdout to file in MTNN/examples/runs/logs
 FILEOUT = open(mtnnconstants.EXPERIMENT_LOGS_DIR
-               + "/" + mtnnconstants.get_caller_filepath() + "_"
+               + "/" + mtnnconstants.get_caller_filename() + "_"
                + datetime.datetime.today().strftime("%A") + "_"
                + datetime.datetime.today().strftime("%m%d%Y") + "_"
                + datetime.datetime.now().strftime("%H:%M:%S")

@@ -23,11 +23,11 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 # local source
-import MTNN
 import MTNN.mtnnconstants as mtnnconstants
 
 # TODO: Logger INI file
 # TODO: Apply logging best practices
+
 
 class Model(nn.Module):
     """
