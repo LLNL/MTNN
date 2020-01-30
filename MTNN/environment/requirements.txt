@@ -12,7 +12,6 @@ joblib==0.14.1
 kaggle==1.5.6
 Markdown==3.1.1
 more-itertools==8.2.0
--e git+https://lc.llnl.gov/bitbucket/scm/mtnn/mtnnpython.git@75fcb06f3db0b8b5a73c0d75208fcae12be0b35c#egg=MTNN
 numpy==1.18.1
 oauthlib==3.1.0
 packaging==20.1
