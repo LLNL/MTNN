@@ -1,7 +1,7 @@
 MTNN LDRD
 ==============================================
 # Purpose 
-MTNN is a PyTorch framework to develop and test the applicaiton of multigrid algorithms to various neural network architectures.
+MTNN is a PyTorch framework to develop and test the application of multigrid algorithms to various neural network architectures.
 
 ## Project Layout
 
@@ -70,11 +70,7 @@ conda update --all
     python setup.py develop --uninstall
     ```
 
-    b. **Safest method**  `Setup.py` might pull the latest (incomptaible) package versions, whereas `pip install` will search the local project directory for dependencies.
-
-    ```bash
-    pip install .
-    ```
+    b. **Safest method**  `Setup.py` might pull the latest (incomptaible) package versions, whereas `pip install` will search the local project directory for dependencies. 
 
     Development mode:
 
