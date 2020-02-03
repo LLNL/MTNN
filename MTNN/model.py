@@ -23,10 +23,10 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 # local source
-import MTNN.mtnnconstants as mtnnconstants
+import MTNN.mtnnconstants as mtnnconsts
+import MTNN.torch_builtins as torchconsts
 
 # TODO: Logger INI file
-# TODO: Apply logging best practices
 
 
 class Model(nn.Module):
@@ -37,28 +37,8 @@ class Model(nn.Module):
         OPTIMIZATION <dict>: available PyTorch optimization functions
         ACTIVATION_TYPE <dict>: available PyTorch activation layers
     """
-
-    # TODO: Refactor. Move global variables
-
     # Tensorboard Writer
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs/model
-
-    # TODO: make case-insensitive
-    OPTIMIZATIONS = {
-        # TODO: fill-in but instantiate?
-    }
-
-    LOSS = {
-        "crossentropy": nn.CrossEntropyLoss(),
-        "mseloss": nn.MSELoss()
-    }
-
-    ACTIVATIONS = {
-        "relu": nn.ReLU(),
-        "tanh": nn.Tanh(),
-        "sigmoid": nn.Sigmoid(),
-        "softmax": nn.Softmax()
-    }
 
 
     def __init__(self, config=None, tensorboard=None, debug=False):
@@ -69,6 +49,7 @@ class Model(nn.Module):
         self._num_layers = 0
         self._layer_config = None
         self._module_layers = nn.ModuleDict()
+        self._hyperparameters = None
 
         # Hyper-parameterS
         self._objective_fn = None
@@ -84,8 +65,7 @@ class Model(nn.Module):
         if self.debug:
             logging.basicConfig(level = logging.DEBUG)
 
-
-    def set_config(self, config=mtnnconstants.DEFAULT_CONFIG):
+    def set_config(self, config=mtnnconsts.DEFAULT_CONFIG):
         """
         Sets MTNN Model attributes from the YAML configuration file.
         Args:
@@ -115,7 +95,7 @@ class Model(nn.Module):
             activation_type = this_layer["activation"]
             dropout = this_layer["dropout"]
 
-            # Using ModuleDict
+            # Using Pytorch ModuleDict
             # Append hidden layer
             if n_layer == 0:  # First layer
                 if this_layer["type"] == "linear":
@@ -125,31 +105,34 @@ class Model(nn.Module):
 
             # Append activation layer
             try:
-                layer_list.append(self.ACTIVATIONS[activation_type])
+                layer_list.append(torchconsts.ACTIVATIONS[activation_type])
             except KeyError:
                 print(str(activation_type) + " is not a valid torch.nn.activation function.")
                 sys.exit(1)
             # TODO: Add Final softmax
             # TODO: Add dropout layers
-            # TODO: Convolutional network
+            # TODO: Support for a CNN
 
+            # Update Layer dict
             layer_dict["layer" + str(n_layer)] = layer_list
             self._module_layers = layer_dict
 
-            obj = self.config_file["objective"]
-            opt = self.config_file["optimization"]
+            # Set model hyper-parameters
+            self._hyperparameters = self.config_file["hyperparameters"]
+            obj = self._hyperparameters["objective"]
+            opt = self._hyperparameters["optimization"]
 
-            # Objective function
+            # Set Objective function
             try:
-                self._objective_fn = self.LOSS[obj]
+                self._objective_fn = torchconsts.LOSS[obj]
             except KeyError:
                 print(str(obj) + "is not a valid torch.nn.loss function")
                 sys.exit(1)
 
-            # Optimizer
+            # Set Optimizer
+            # TODO: Clean/Refactor
             try:
-                # TODO: Is this even a good idea?
-                self._optimizer = self.config_file["optimization"]
+                self._optimizer = torchconsts.OPTIMIZATION["optimization"]
             except KeyError:
                 print(str(opt))
 
@@ -169,8 +152,6 @@ class Model(nn.Module):
                 logging.debug(f"\n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}")
                 logging.debug(f"\n\tBIAS: {self._module_layers[layer_idx][0].bias}")
                 logging.debug(f"\n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
-
-
 
     def set_training_parameters(self, objective=None, optimizer=None):
         """
