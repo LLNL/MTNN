@@ -1,5 +1,5 @@
 # !/usr/bin/env/ python
-"""mtnnpython/scripts/experiments/mnist_base.py
+"""mtnnpython/scripts/experiments/mnist_mgbase.py
  * Template script to run build and train fully-connected neural network
  * with MNIST data using prolongation operators
  * with the MTNN framework
@@ -29,18 +29,19 @@ from torch.utils.tensorboard import SummaryWriter
 import MTNN
 import MTNN.builder as builder
 import MTNN.config_reader as reader
+import MTNN.mtnn_defaults as mtnnconsts
 
 
 ######################################
 # Read from YAML Configuration File
 #####################################
-CONFIG_PATH = locals()['config_path']
+# If called from main()
+try:
+    CONFIG_PATH = locals()['config_path']
 
-""" Local with YAML 
-conf = yaml.load(open(CONFIG_PATH, "r"), Loader=yaml.SafeLoader)
-BATCH_SIZE_TRAIN = conf['hyperparameters']['batch_size_train']
-BATCH_SIZE_TEST = conf['hyperparameters']['batch_size_test']
-"""
+except KeyError:
+    # Else use default MNIST_mgbase.yaml
+    CONFIG_PATH = os.path.abspath(os.path.join(mtnnconsts.CONFIG_DIR, 'mnist_mgbase.yaml'))
 
 conf = reader.YamlConfig(CONFIG_PATH)
 BATCH_SIZE_TRAIN = conf.get_property('batch_size_train')

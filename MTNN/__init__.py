@@ -10,7 +10,7 @@ from MTNN.basic_evaluator import *
 from MTNN.cascadic_mg_alg import *
 from MTNN.identity_interpolator import *
 from MTNN.model import * 
-from MTNN.mtnnconstants import * 
+from MTNN.mtnn_defaults import *
 from MTNN.sgd_training import *
 from MTNN.training_alg_smoother import *
 from MTNN.prolongation import *

@@ -1,5 +1,5 @@
-""" MTNN/mtnnconstants.py
-Global Variables for MTNN package
+""" MTNN/mtnn_defaults.py
+Global default variables for MTNN package
 """
 import os
 import re
@@ -109,6 +109,7 @@ EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_f
 ##################################################
 # Set training hyper-parameters
 ##################################################
+# Used for examples/hello_model.py
 # TODO: Refactor. Take hyper-parameters from configuration file
 # Set for MNIST
 N_EPOCHS = 2  # Set for testing

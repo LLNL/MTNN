@@ -23,7 +23,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 # local source
-import MTNN.mtnnconstants as mtnnconsts
+import MTNN.mtnn_defaults as mtnnconsts
 import MTNN.torch_builtins as torchconsts
 
 # TODO: Logger INI file
@@ -36,7 +36,7 @@ class Model(nn.Module):
         config (str): The path to the YAML configuration file
         tensorboard (bool): Sets tensorboard visualization of the training
         debug (bool): Sets logging during the the training.
-            Logs are generated to the filepath specified in mtnnconstants.py
+            Logs are generated to the filepath specified in mtnn_defaults.py
     Attributes:
         config_file (str): File path to the YAML configuration file
         model_type (str): Specifies type of neural network architecture: Fully-Connected, CNN, etc.
