@@ -32,10 +32,26 @@ import MTNN.torch_builtins as torchconsts
 class Model(nn.Module):
     """
     Instantiates a neural network
+    Args:
+        config (str): The path to the YAML configuration file
+        tensorboard (bool): Sets tensorboard visualization of the training
+        debug (bool): Sets logging during the the training.
+            Logs are generated to the filepath specified in mtnnconstants.py
     Attributes:
-        LOSS <dict>: available PyTorch loss functions
-        OPTIMIZATION <dict>: available PyTorch optimization functions
-        ACTIVATION_TYPE <dict>: available PyTorch activation layers
+        config_file (str): File path to the YAML configuration file
+        model_type (str): Specifies type of neural network architecture: Fully-Connected, CNN, etc.
+        input_size (int): Specifies the expected input size to the neural network
+        layer_config (list): List of layers specified in the YAML configuration file
+        module_layers (nn.ModuleDict()): A dictionary of layers with the key being layer<num>
+                and the value being a nn.ModuleList of layers. The inner layers can be
+                "stacked" with layer objects from torch.nn (i.e. Linear, Relu)
+        hyperparameters (dict): A dictionary of training parameters specified from the configuration file
+        objective_fn (torch.nn.*Loss): A torch.nn Loss function. See https://pytorch.org/docs/stable/nn.html#loss-functions
+        optimizer (torch.optim): An instantiated torch.optim.optimizer object specified by the YAML configuration file.
+                Expected to be built with builder.build_optimizer. See https://pytorch.org/docs/stable/optim.html#
+        tensorboard (bool): Sets data and control flow tracking through the optimizer to create a tensorboard visualization.
+                See README.md for additional instructions on how to run Tensorboard.
+        debug(bool): Sets additional logging to be collected when Model.fit is called.
     """
     # Tensorboard Writer
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs/model
@@ -46,12 +62,11 @@ class Model(nn.Module):
         self.config_file = config
         self._model_type = None
         self._input_size = None
-        self._num_layers = 0
         self._layer_config = None
         self._module_layers = nn.ModuleDict()
         self._hyperparameters = None
 
-        # Hyper-parameterS
+        # Hyper-parameters
         self._objective_fn = None
         self._optimizer = None
         self._train_count = 0
@@ -64,6 +79,7 @@ class Model(nn.Module):
         self.debug = debug
         if self.debug:
             logging.basicConfig(level = logging.DEBUG)
+
 
     def set_config(self, config=mtnnconsts.DEFAULT_CONFIG):
         """
@@ -78,11 +94,8 @@ class Model(nn.Module):
         if config:
             self.config_file = yaml.load(open(config, "r"), Loader=yaml.SafeLoader)
 
-        #TODO: validate keys
         self._model_type = self.config_file["model_type"]
         self._input_size = self.config_file["input_size"]
-        # TODO: Refactor: Remove num_layers attribute. Get from len(config[layers])
-        self._num_layers = self.config_file["number_of_layers"]
         self._layer_config = self.config_file["layers"]
 
         # Process and set Layers.
@@ -117,6 +130,7 @@ class Model(nn.Module):
             layer_dict["layer" + str(n_layer)] = layer_list
             self._module_layers = layer_dict
 
+            # TODO: Clean/Refactor
             # Set model hyper-parameters
             self._hyperparameters = self.config_file["hyperparameters"]
             obj = self._hyperparameters["objective"]
@@ -130,7 +144,6 @@ class Model(nn.Module):
                 sys.exit(1)
 
             # Set Optimizer
-            # TODO: Clean/Refactor
             try:
                 self._optimizer = torchconsts.OPTIMIZATION["optimization"]
             except KeyError:
@@ -368,18 +381,43 @@ class Model(nn.Module):
                   "\n\tBias: ", self._module_layers[i][0].bias,
                   "\n\tBias Gradient:", self._module_layers[i][0].bias.grad)
 
-    def get_properties(self) -> list:
+    # Accessor methods.
+    def view_properties(self) -> list:
         """
         Returns model configuration
         Returns: None
         """
-        model_properties = (self._model_type,
-                            self._input_size,
-                            self._module_layers)
-        return model_properties
+        model_properties = f'\n MODEL TYPE: {self._model_type}' \
+                           f'\n INPUT SIZE: {self._input_size}' \
+                           f'\n HYPER-PARAMETERS: {self._hyperparameters}' \
+                           f'\n MODULE LAYERS: {self._module_layers}'\
+                           f'\n OBJECTIVE FUNCTION: {self._objective_fn}'\
+                           f'\n OPTIMIZATION: {self._optimizer}'
+        print(model_properties)
+        return
 
     # Mutator Methods.
     def set_debug(self, debug: bool):
         self.debug = debug
+
+    def set_model_type(self, model_type: str):
+        self._model_type = model_type
+
+    def set_input_size(self, input_size: int):
+        self._input_size = input_size
+
+    def set_layer_config(self, layer_config: list):
+        self._layer_config = layer_config
+
+    def set_hyperparameters(self, hyperparameters: list):
+        self._hyperparameters = hyperparameters
+
+    def set_objective(self, objective_fn):
+        # TODO: Python type
+        self._objective_fn = objective_fn
+
+    def set_optimizer(self, optimizer):
+        # TODO: Python type
+        self._optimizer = optimizer
 
 

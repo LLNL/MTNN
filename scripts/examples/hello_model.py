@@ -254,7 +254,7 @@ prolonged_model.set_debug(True)
 
 # Set-up.
 prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, momentum = 0.5)
-prolonged_model.set_training_parameters( objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
+prolonged_model.set_training_parameters(objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
 
 # View Parameters.
 prolonged_model.print_parameters()

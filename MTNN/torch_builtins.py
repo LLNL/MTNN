@@ -1,5 +1,5 @@
 """MTNN/torch_builtins.py
-Stores PyTorch Functions and Variables
+Stores PyTorch Functions used by Model
 See: https://pytorch.org/docs/stable/optim.html#
 """
 # pytorch
@@ -8,19 +8,6 @@ import torch.nn as nn
 
 # Note: Keys are defined by their respective PyTorch Function Name
 
-OPTIMIZATIONS = {
-    "Adadelta": optim.Adadelt(),
-    "Adagrad": optim.Adagrad(),
-    "Adam": optim.Adam(),
-    "AdamW": optim.AdamW(),
-    "SparseAdam": optim.SparseAdam(),
-    "Adamax": optim.Adamax(),
-    "ASGD": optim.ASGD(),
-    "LBFGS": optim.LBFGS(),
-    "RMSprop": optim.RMSprop(),
-    "Rprop": optim.Rprop(),
-    "SGD": optim.SGD()
-}
 
 LOSS = {
     "crossentropy": nn.CrossEntropyLoss(),

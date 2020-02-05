@@ -7,9 +7,12 @@ layers:
       neurons: 1
       activation: relu
       dropout: None
-
+hyperparameters:
 # The output of each layer is implicit; set from inputs of next layer
-objective: mseloss
-optimization: SGD
+  objective: mseloss
+  learning-rate: 0.01
+  momentum: 0.5
+  optimization: SGD
+
 #  learning-rate: 0.01
 #  momentum: 0.5

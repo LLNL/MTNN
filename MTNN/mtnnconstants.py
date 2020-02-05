@@ -55,7 +55,6 @@ TEST_FN_PARAMETERS = {'n_samples': 10,
 CONFIG_DIR = os.path.abspath(ROOT_DIR + "/config")
 DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
 
-
 ################################################
 # Global Variables for hello_model_sklearn.py
 ################################################
@@ -110,6 +109,8 @@ EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_f
 ##################################################
 # Set training hyper-parameters
 ##################################################
+# TODO: Refactor. Take hyper-parameters from configuration file
+# Set for MNIST
 N_EPOCHS = 2  # Set for testing
 BATCH_SIZE_TRAIN = 100  # Set for testing
 BATCH_SIZE_TEST = 500  # Set for testing
