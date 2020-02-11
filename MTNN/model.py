@@ -122,32 +122,18 @@ class Model(nn.Module):
             except KeyError:
                 print(str(activation_type) + " is not a valid torch.nn.activation function.")
                 sys.exit(1)
+
             # TODO: Add Final softmax
             # TODO: Add dropout layers
-            # TODO: Support for a CNN
+            # TODO: Add support for a CNN
 
             # Update Layer dict
             layer_dict["layer" + str(n_layer)] = layer_list
             self._module_layers = layer_dict
 
-            # TODO: Clean/Refactor
             # Set model hyper-parameters
             self._hyperparameters = self.config_file["hyperparameters"]
-            obj = self._hyperparameters["objective"]
-            opt = self._hyperparameters["optimization"]
 
-            # Set Objective function
-            try:
-                self._objective_fn = torchconsts.LOSS[obj]
-            except KeyError:
-                print(str(obj) + "is not a valid torch.nn.loss function")
-                sys.exit(1)
-
-            # Set Optimizer
-            try:
-                self._optimizer = torchconsts.OPTIMIZATION["optimization"]
-            except KeyError:
-                print(str(opt))
 
         # Logging
 

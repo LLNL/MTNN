@@ -24,6 +24,8 @@ from torch.utils.tensorboard import SummaryWriter
 # local source
 import MTNN
 from MTNN import mtnn_defaults
+import MTNN.logger as logger
+
 
 # Set-up logger.
 logging.basicConfig(filename=(mtnn_defaults.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
@@ -33,6 +35,7 @@ logging.basicConfig(filename=(mtnn_defaults.EXPERIMENT_LOGS_FILENAME + ".log.txt
                     level=logging.DEBUG)
 
 # Redirecting stdout to file in MTNN/examples/runs/logs
+"""
 FILEOUT = open(mtnn_defaults.EXPERIMENT_LOGS_DIR
                + "/" + mtnn_defaults.get_caller_filename() + "_"
                + datetime.datetime.today().strftime("%A") + "_"
@@ -40,7 +43,9 @@ FILEOUT = open(mtnn_defaults.EXPERIMENT_LOGS_DIR
                + datetime.datetime.now().strftime("%H:%M:%S")
                + ".stdout.txt", "w")
 
-sys.stdout = FILEOUT
+#sys.stdout = FILEOUT
+"""
+sys.stdout = logger.StreamLogger()
 
 ##################################################
 # Simple fully-connected network
@@ -280,4 +285,3 @@ evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
 print("Prolonged Model")
 evaluator.evaluate_output(model=prolonged_model, dataset=tensor_training_data)
 
-FILEOUT.close()
