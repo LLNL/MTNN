@@ -28,6 +28,7 @@ from torch.utils.tensorboard import SummaryWriter
 # local source
 import MTNN
 import MTNN.builder as builder
+import MTNN.trainer as trainer
 import MTNN.config_reader as reader
 import MTNN.mtnn_defaults as mtnnconsts
 
@@ -82,7 +83,7 @@ print("Building the MTNN Model")
 mtnn_model = builder.build_model(CONFIG_PATH)
 
 # Build Optimizer.
-optimizer = builder.build_optimizer(CONFIG_PATH, mtnn_model.parameters())
+optimizer = trainer.build_optimizer(CONFIG_PATH, mtnn_model.parameters())
 
 # Set Optimizer.
 mtnn_model.set_optimizer(optimizer)
@@ -105,12 +106,13 @@ training_alg = MTNN.CascadicMG(smoother=smoother, prolongation=prolongation, ref
 stopping = None; # Cascadic MG is a "one-shot solver". The input is a
                  # coarse model and the output is a fine model.
 
+"""
 print('Starting Training')
 start = time.perf_counter()
 net = training_alg.train(mtnn_model, TRAINLOADER, loss, stopping)
 stop = time.perf_counter()
 print('Finished Training (%.3fs)' % (stop-start))
-
+"""
 #####################################
 # Prolong
 #####################################

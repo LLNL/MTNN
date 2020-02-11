@@ -86,7 +86,7 @@ def check_config(filepath: str) -> bool:
 
 
 if __name__ == "__main__":
-    # Parse command line arguments.
+    # Parse command line arguments
     args = parse_args()
     script_path = check_paths(args.script[0])
     config_path = check_paths(args.configuration[0])
