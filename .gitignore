@@ -3,8 +3,8 @@
 .project
 *.o
 *.a
-Makefile
-makefile
+#Makefile
+#makefile
 
 # Building semi-out-of-source garbage
 build/

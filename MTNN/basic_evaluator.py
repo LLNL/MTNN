@@ -26,12 +26,14 @@ class BasicEvaluator():
         correct = 0
         total = 0
 
-        print("INPUT | TARGET | PREDICTION")
+        print("\n   INPUT  |   TARGET  |   PREDICTION")
         with torch.no_grad():
             for data in dataset:
                 input_data, labels = data
                 outputs = model(input_data)
-                _, predicted = torch.max(outputs.data, 1)
+               # print("output", outputs)
+                print("output.data", outputs.data)
+                predicted, _ = torch.max(outputs.data, 1)
 
                 printout = "{} | {} | {}".format(input_data, labels.tolist(), predicted.tolist())
                 print(printout)

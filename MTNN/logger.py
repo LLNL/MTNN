@@ -12,8 +12,9 @@ FILEOUT = mtnn_defaults.EXPERIMENT_LOGS_DIR\
           + "/" + mtnn_defaults.get_caller_filename() + "_"\
           + datetime.datetime.today().strftime("%m%d%Y") + "_"\
           + datetime.datetime.now().strftime("%H:%M:%S") + "_"\
-          + datetime.datetime.today().strftime("%A") + "_" \
+          + datetime.datetime.today().strftime("%A") \
           + ".stdout.txt"
+
 
 class StreamLogger:
     def __init__(self):

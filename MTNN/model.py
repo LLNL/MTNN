@@ -136,7 +136,6 @@ class Model(nn.Module):
 
 
         # Logging
-
         if self.debug:
             logging.debug("\n*****************************************************"
                           "SETTING MODEL CONFIGURATION"

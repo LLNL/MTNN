@@ -3,6 +3,9 @@ Reads and Builds Model from YAML configuration files
 # TODO: Add support to read JSON files
 # TODO: Get tensorboard and debug settings from commandline
 """
+# standard
+import logging
+
 # pytorch
 import torch.nn as nn
 import torch.optim as optim
@@ -13,7 +16,7 @@ import MTNN.config_reader as reader
 import torch_builtins as torchconsts
 
 
-def build_model(confpath: str):
+def build_model(confpath: str, debug: bool):
     """
     Same functionality as MTNN.Model.set_config. Creates Layer_dict and sets model._module_layers
     Args:
@@ -64,5 +67,22 @@ def build_model(confpath: str):
         # Update Layer dict
         layer_dict["layer" + str(n_layer)] = layer_list
         model._module_layers = layer_dict
+
+        # Logging
+        if debug:
+            logging.debug("\n*****************************************************"
+                          "SETTING MODEL CONFIGURATION"
+                          "********************************************************")
+            logging.debug(f"\nMODEL TYPE: {self._model_type}")
+            logging.debug(f"\nEXPECTED INPUT SIZE: {self._input_size}")
+            logging.debug(f"\nLAYERS: {self._module_layers}")
+            logging.debug("\nMODEL PARAMETERS:")
+            for layer_idx in self._module_layers:
+                logging.debug(f"\n\tLAYER: {layer_idx}")
+                logging.debug(f"\n\tWEIGHT: {self._module_layers[layer_idx][0].weight}")
+                logging.debug(f"\n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}")
+                logging.debug(f"\n\tBIAS: {self._module_layers[layer_idx][0].bias}")
+                logging.debug(f"\n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
+
     return model
 

@@ -20,6 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
+from torchsummary import summary
 
 # local source
 import MTNN
@@ -92,23 +93,38 @@ def visualize(model, input, loss, epoch):
     writer.flush()
 
 
-def print_prediction(model, input:tuple):
+def print_prediction(model, input_value: tuple):
     """ Prints out model weights and the prediction given the input.
     Args:
         model: <torch.Net> or <MTNN.model>
-        input: <tuple>
+        input_value: <tuple>
 
     Returns: None
 
     """
+    # Summary of parameters
+
+
     # See if network weights converged to linear fn Wx+b
-    print("\nTRAINED WEIGHTS")
-    model.parameters()
+
+
+    try: # For MTNN Model
+        print("\nTRAINED WEIGHTS")
+        model.print_parameters()
+    except:
+        summary(model, input_value)
+        print("\nTRAINED WEIGHTS")
+        for param in model.parameters():
+            print(param.data)
+
+    # Input
+    print(f'\nINPUT:{input_value}')
 
     # Print prediction from network
     print("\nPrediction")
-    prediction =model(torch.ones(input))  # rows, columns
+    prediction = model(torch.ones(input_value))  # rows, columns
     print(prediction, prediction.size())
+
 
 
 #########################################################
@@ -221,7 +237,10 @@ for epoch in range(10):
 
 
 # Predict.
-print_prediction(net, (2, 2)) #should be 5
+#print_prediction(net, (2, 2)) #should be 5
+print("NET MODEL PARAMETERS")
+for param in net.parameters():
+    print(param.data)
 
 ###########################################################
 # Using MTNN Model
@@ -237,14 +256,14 @@ mtnnmodel.set_config(model_config)
 model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
 
-# View parameters.
-mtnnmodel.print_parameters()
-
 # Train.
 mtnnmodel.fit(dataloader=tensor_training_data, num_epochs=10, log_interval=10)
 
+# View parameters.
+mtnnmodel.print_parameters()
+
 # Predict.
-print_prediction(mtnnmodel, (2,2)) # should be 5
+#print_prediction(mtnnmodel, (2,2)) # should be 5
 
 #########################################################
 # Using Prolonged Model
@@ -261,14 +280,14 @@ prolonged_model.set_debug(True)
 prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, momentum = 0.5)
 prolonged_model.set_training_parameters(objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
 
-# View Parameters.
-prolonged_model.print_parameters()
-
 # Train.
 prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 10, log_interval = 10)
 
+# View Parameters.
+prolonged_model.print_parameters()
+
 # Predict.
-print_prediction(prolonged_model, (2,2)) # should be 5
+#print_prediction(prolonged_model, (2, 2)) # should be 5
 
 ############################################################
 # Evaluate Results
@@ -277,11 +296,16 @@ print("\n\n*****************************")
 print("EVALUATION")
 print("*****************************")
 print("FUNCTION 3x + 2y")
+print("NET MODEL PARAMETERS")
+for param in net.parameters():
+    print(param.data)
 evaluator = MTNN.BasicEvaluator()
-print("Net")
+print("\nNet")
 evaluator.evaluate_output(model=net, dataset=tensor_training_data)
-print("MTNN Model")
+print("\nMTNN Model")
+mtnnmodel.print_parameters()
 evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
-print("Prolonged Model")
+print("\nProlonged Model")
+prolonged_model.print_parameters()
 evaluator.evaluate_output(model=prolonged_model, dataset=tensor_training_data)
 
