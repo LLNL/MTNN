@@ -21,5 +21,5 @@
 - [x] Logging weights/parameters in Model
 - [ ] Add plotting functionality
 - [ ] Refactor Logger
-- [ ] Add support for JSON configuration format 
+- [ ] Add support for JSON configuration format
 

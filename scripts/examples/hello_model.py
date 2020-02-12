@@ -20,7 +20,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from torchsummary import summary
 
 # local source
 import MTNN
@@ -112,7 +111,6 @@ def print_prediction(model, input_value: tuple):
         print("\nTRAINED WEIGHTS")
         model.print_parameters()
     except:
-        summary(model, input_value)
         print("\nTRAINED WEIGHTS")
         for param in model.parameters():
             print(param.data)
