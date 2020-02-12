@@ -80,7 +80,7 @@ TESTLOADER = utils.data.DataLoader(TEST_DATASET,
 # Instantiate Model
 #######################################
 print("Building the MTNN Model")
-mtnn_model = builder.build_model(CONFIG_PATH)
+mtnn_model = builder.build_model(CONFIG_PATH, debug=True)
 
 # Build Optimizer.
 optimizer = trainer.build_optimizer(CONFIG_PATH, mtnn_model.parameters())

@@ -20,7 +20,8 @@ def build_model(confpath: str, debug: bool):
     """
     Same functionality as MTNN.Model.set_config. Creates Layer_dict and sets model._module_layers
     Args:
-        confpath:
+        confpath: <str> Absolute file path of the model configuration file
+        debug: <bool> Used to set debugging logs to pring to console
 
     Returns:
         model: <MTNN.model>
@@ -73,16 +74,16 @@ def build_model(confpath: str, debug: bool):
             logging.debug("\n*****************************************************"
                           "SETTING MODEL CONFIGURATION"
                           "********************************************************")
-            logging.debug(f"\nMODEL TYPE: {self._model_type}")
-            logging.debug(f"\nEXPECTED INPUT SIZE: {self._input_size}")
-            logging.debug(f"\nLAYERS: {self._module_layers}")
+            logging.debug(f"\nMODEL TYPE: {model._model_type}")
+            logging.debug(f"\nEXPECTED INPUT SIZE: {model._input_size}")
+            logging.debug(f"\nLAYERS: {model._module_layers}")
             logging.debug("\nMODEL PARAMETERS:")
-            for layer_idx in self._module_layers:
+            for layer_idx in model._module_layers:
                 logging.debug(f"\n\tLAYER: {layer_idx}")
-                logging.debug(f"\n\tWEIGHT: {self._module_layers[layer_idx][0].weight}")
-                logging.debug(f"\n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}")
-                logging.debug(f"\n\tBIAS: {self._module_layers[layer_idx][0].bias}")
-                logging.debug(f"\n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
+                logging.debug(f"\n\tWEIGHT: {model._module_layers[layer_idx][0].weight}")
+                logging.debug(f"\n\tWEIGHT GRADIENTS: {model._module_layers[layer_idx][0].weight.grad}")
+                logging.debug(f"\n\tBIAS: {model._module_layers[layer_idx][0].bias}")
+                logging.debug(f"\n\tBIAS GRADIENT: {model._module_layers[layer_idx][0].bias.grad}")
 
     return model
 

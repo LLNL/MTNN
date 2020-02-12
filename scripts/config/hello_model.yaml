@@ -14,5 +14,3 @@ hyperparameters:
   momentum: 0.5
   optimization: SGD
 
-#  learning-rate: 0.01
-#  momentum: 0.5
