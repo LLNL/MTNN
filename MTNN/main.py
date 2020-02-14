@@ -10,6 +10,9 @@ import os
 import pathlib
 from os import path
 
+# local source
+from MTNN import builder
+
 
 def parse_args() -> list:
     """
@@ -89,7 +92,16 @@ if __name__ == "__main__":
     # Parse command line arguments
     args = parse_args()
     script_path = check_paths(args.script[0])
-    config_path = check_paths(args.configuration[0])
+    config_file = args.configuration[0]
+
+   # Absolute/relative path
+    if os.path.exists(config_file):
+        print("path", config_file)
+        config_path = check_paths(args.configuration[0])
+
+    # Filename only
+    else:
+        config_path = builder.find_config(config_file)
 
     # Validate YAML configuration file
     check_config(config_path)

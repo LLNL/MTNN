@@ -4,6 +4,8 @@ Reads and Builds Model from YAML configuration files
 # TODO: Get tensorboard and debug settings from commandline
 """
 # standard
+import os
+import sys
 import logging
 
 # pytorch
@@ -16,7 +18,20 @@ import MTNN.config_reader as reader
 import torch_builtins as torchconsts
 
 
-def build_model(confpath: str, debug: bool):
+def find_config(filename):
+    cwd = os.getcwd()
+    results = []
+    for root, dirs, files in os.walk(cwd):
+        if filename in files:
+            path = os.path.join(root, filename)
+            results.append(path)
+            return path
+    if not results:
+        print(f"Unable to find {filename} in current directory.")
+        sys.exit(1)
+
+
+def build_model(confpath: str, debug=False):
     """
     Same functionality as MTNN.Model.set_config. Creates Layer_dict and sets model._module_layers
     Args:
