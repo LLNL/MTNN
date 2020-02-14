@@ -6,11 +6,24 @@
 __all__ = ["RandomPerturbationOperator", "LowerTriangleOperator",
            "RandomSplitOperator"]
 import logging
+import sys
 import copy
 import torch
 import torch.nn as nn
 
 # TODO: set-up logger
+
+class IdentityOperator():
+    """Identity Interpolation Operator
+
+    Copy model weights.
+    """
+
+    def __init__(self):
+        pass
+
+    def apply(self, source_model):
+        return source_model
 
 
 class LowerTriangleOperator:
@@ -66,60 +79,68 @@ class LowerTriangleOperator:
         Returns:
             prolonged_model <Model>
         """
-        prolonged_model = copy.deepcopy(source_model)
+        # 1 Layer case:
+        if len(source_model._module_layers) == 1:
+            print("Single layer model. Applying the identity operator...")
+            return IdentityOperator().apply(source_model)
 
-        print("\nAPPLYING BLOCK LOWER TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K =", expansion_factor)
-        for index, layer_key in enumerate(source_model._module_layers):
-            for layer in prolonged_model._module_layers[layer_key]:
+        else:
+            prolonged_model = copy.deepcopy(source_model)
 
-                # Check if linear layer
-                if hasattr(layer, 'weight'):
-                    # Get weight matrix dimensions
-                    weight_row = layer.weight.size()[0]
-                    weight_col = layer.weight.size()[1]
+            print("\nAPPLYING BLOCK LOWER TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K =", expansion_factor)
 
-                    # Block matrices dimensions
-                    bias_dim = expansion_factor * weight_row - weight_row
-                    noise1_dim = ((expansion_factor * weight_row) - weight_row, weight_col)  # First layer
-                    noise2_dim = ((expansion_factor * weight_row) - weight_row,
-                                  (expansion_factor * weight_col))  # Rest of layers
-                    zero_dim = (weight_row, (expansion_factor * weight_col - weight_col))
+            for index, layer_key in enumerate(source_model._module_layers):
+                for layer in prolonged_model._module_layers[layer_key]:
 
-                    # First hidden layer:
-                    if index == 0:
+                    # Check if linear layer
+                    if hasattr(layer, 'weight'):
+                        # Get weight matrix dimensions
+                        weight_row = layer.weight.size()[0]
+                        weight_col = layer.weight.size()[1]
 
-                        # Generate noise matrix E_21.
-                        seed_tensor = torch.rand(noise1_dim)
-                        noise_matrix = nn.init.kaiming_uniform_(seed_tensor, nonlinearity='relu')
+                        # Block matrices dimensions
+                        bias_dim = expansion_factor * weight_row - weight_row
+                        noise1_dim = ((expansion_factor * weight_row) - weight_row, weight_col)  # First layer
+                        noise2_dim = ((expansion_factor * weight_row) - weight_row,
+                                      (expansion_factor * weight_col))  # Rest of layers
+                        zero_dim = (weight_row, (expansion_factor * weight_col - weight_col))
 
-                        # Generate bias noise  E_1.
-                        bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
+                        # First hidden layer:
+                        if index == 0:
 
-                        # Update parameters.
-                        with torch.no_grad():
-                            layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
-                            layer.bias.data = torch.cat((layer.bias.data, bias_noise))
+                            # Generate noise matrix E_21.
+                            seed_tensor = torch.rand(noise1_dim)
+                            noise_matrix = nn.init.kaiming_uniform_(seed_tensor, nonlinearity='relu')
 
-                    # For rest of hidden layers:
-                    elif index > 0:
+                            # Generate bias noise  E_1.
+                            bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
 
-                        # Generate bias noise  E_1.
-                        bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
+                            # Update parameters.
+                            with torch.no_grad():
+                                layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
+                                layer.bias.data = torch.cat((layer.bias.data, bias_noise))
 
-                        # Generate concatenated noise matrix E_21 + E_22.
-                        seed_tensor = torch.rand(noise2_dim)
-                        noise_matrix = nn.init.kaiming_uniform_(seed_tensor, nonlinearity='relu')
+                        # For rest of hidden layers:
+                        elif index > 0:
 
-                        # Generate zero matrix.
-                        zero_matrix = nn.init.zeros_(torch.empty(zero_dim))
+                            # Generate bias noise  E_1.
+                            bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
 
-                        with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
+                            # Generate concatenated noise matrix E_21 + E_22.
+                            seed_tensor = torch.rand(noise2_dim)
+                            noise_matrix = nn.init.kaiming_uniform_(seed_tensor, nonlinearity='relu')
 
-                            layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
-                            layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
-                            layer.bias.data = torch.cat((layer.bias.data, bias_noise))
+                            # Generate zero matrix.
+                            zero_matrix = nn.init.zeros_(torch.empty(zero_dim))
 
-        return prolonged_model
+                            with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
+
+                                layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
+                                layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
+                                layer.bias.data = torch.cat((layer.bias.data, bias_noise))
+
+            return prolonged_model
+
 
 
 class RandomSplitOperator:
