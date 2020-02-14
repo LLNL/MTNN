@@ -10,7 +10,6 @@ import inspect
 ################################################
 # Global Variables for config_generator.py
 ################################################
-
 # Set config file directory paths
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_CONFIG_DIR = os.path.abspath(ROOT_DIR + "/tests/config/")
@@ -57,10 +56,9 @@ CONFIG_DIR = os.path.abspath(ROOT_DIR + "/config")
 DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
 
 ################################################
-# Global Variables for hello_model_sklearn.py
+# Helper functions and Global Variables for hello_model_sklearn.py
 ################################################
-
-
+# TODO: Refactor: move to pathfinder?
 def get_caller_filename():
     """
     Gets previous caller's filepath.

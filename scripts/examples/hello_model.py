@@ -24,9 +24,8 @@ from torch.utils.tensorboard import SummaryWriter
 # local source
 import MTNN
 from MTNN import mtnn_defaults
-from MTNN import builder
+from MTNN import path
 from MTNN import logger
-
 
 
 # Set-up logger.
@@ -251,7 +250,7 @@ print("*****************************")
 
 # Set-up.
 # TODO: mtnn_defaults: search for specified yaml file in current directory
-model_config = builder.find_config("hello_model.yaml")
+model_config = path.find_config(os.getcwd(), "hello_model.yaml")
 mtnnmodel = MTNN.Model(tensorboard=False, debug=True)
 mtnnmodel.set_config(model_config)
 
