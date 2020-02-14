@@ -15,8 +15,7 @@ import torch.optim as optim
 # local source
 import MTNN
 import MTNN.config_reader as reader
-import torch_builtins as torchconsts
-import mtnn_defaults
+import torch_constants as torchconsts
 
 
 def build_model(confpath: str, debug=False):
@@ -33,12 +32,12 @@ def build_model(confpath: str, debug=False):
     conf = reader.YamlConfig(confpath)
     model = MTNN.Model(config = conf, tensorboard = False, debug = True)
 
-    # Set model parameters.
+    # Set model attributes.
     model.set_model_type(conf.model_type)
     model.set_input_size(conf.input_size)
     model.set_layer_config(conf.layers)
     model.set_hyperparameters(conf.hyperparameters)
-    model.set_objective(conf.objective)
+    model.set_objective(torchconsts.LOSS[conf.objective])
 
     # Process and set layers.
     layer_dict = nn.ModuleDict()

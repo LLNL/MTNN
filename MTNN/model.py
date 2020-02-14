@@ -24,7 +24,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN.mtnn_defaults as mtnnconsts
-import MTNN.torch_builtins as torchconsts
+import MTNN.torch_constants as torchconsts
 
 # TODO: Logger INI file
 
@@ -82,6 +82,7 @@ class Model(nn.Module):
 
 
     def set_config(self, config=mtnnconsts.DEFAULT_CONFIG):
+        # TODO: Remove. Moved to Builder.py
         """
         Sets MTNN Model attributes from the YAML configuration file.
         Args:
@@ -397,12 +398,12 @@ class Model(nn.Module):
     def set_hyperparameters(self, hyperparameters: list):
         self._hyperparameters = hyperparameters
 
-    def set_objective(self, objective_fn):
-        # TODO: Python type
+    def set_objective(self, objective_fn: 'Expects <class torch.nn Loss function>'):
+        # TODO: Check type
         self._objective_fn = objective_fn
 
-    def set_optimizer(self, optimizer):
-        # TODO: Python type
+    def set_optimizer(self, optimizer: 'Expects <class torch.optim>'):
+        # TODO: Check type
         self._optimizer = optimizer
 
 
