@@ -1,6 +1,7 @@
 # To-Do
 ## High priority
 - [x] Refactor: Model/Set configuration file
+- [ ] Hello_model script with 1, 2, and 3 layers
 - [ ] Debug Hello_model.py
 - [ ] Refactor: Fix broken scripts
 - [ ] Script using MTNN multigrid on MNIST (WIP)

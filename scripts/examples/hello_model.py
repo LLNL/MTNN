@@ -248,9 +248,11 @@ print("Using MTNN Model")
 print("*****************************")
 
 # Set-up.
-model_config = os.path.join(mtnn_defaults.CONFIG_DIR + "/hello_model.yaml")
+# TODO: mtnn_defaults: search for specified yaml file in current directory
+model_config = mtnn_defaults.find_config("hello_model.yaml")
 mtnnmodel = MTNN.Model(tensorboard=False, debug=True)
 mtnnmodel.set_config(model_config)
+
 model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
 

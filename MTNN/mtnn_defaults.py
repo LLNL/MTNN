@@ -2,6 +2,7 @@
 Global default variables for MTNN package
 """
 import os
+import sys
 import re
 import datetime
 import inspect
@@ -106,11 +107,24 @@ EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_f
                                         + datetime.datetime.today().strftime("%A"))
 
 
+# Used in hello_model.py
+def find_config(filename):
+    cwd = os.getcwd()
+    results = []
+    for root, dirs, files in os.walk(cwd):
+        if filename in files:
+            path = os.path.join(root, filename)
+            results.append(path)
+            return path
+    if not results:
+        print(f"Unable to find {filename} in current directory.")
+        sys.exit(1)
+
 ##################################################
 # Set training hyper-parameters
 ##################################################
 # Used for examples/hello_model.py
-# TODO: Refactor. Take hyper-parameters from configuration file
+# TODO: Refactor to use Builder.py & take hyper-parameters from yaml
 # Set for MNIST
 N_EPOCHS = 2  # Set for testing
 BATCH_SIZE_TRAIN = 100  # Set for testing
