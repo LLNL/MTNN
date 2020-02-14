@@ -28,6 +28,7 @@ import MTNN.torch_constants as torchconsts
 
 # TODO: Logger INI file
 
+logging.basicConfig(level = logging.DEBUG)
 
 class Model(nn.Module):
     """
@@ -77,8 +78,6 @@ class Model(nn.Module):
         # For debugging
         self.tensorboard = tensorboard
         self.debug = debug
-        if self.debug:
-            logging.basicConfig(level = logging.DEBUG)
 
 
     def set_config(self, config=mtnnconsts.DEFAULT_CONFIG):
@@ -138,19 +137,19 @@ class Model(nn.Module):
 
         # Logging
         if self.debug:
-            logging.debug("\n*****************************************************"
-                          "SETTING MODEL CONFIGURATION"
-                         "********************************************************")
-            logging.debug(f"\nMODEL TYPE: {self._model_type}")
-            logging.debug(f"\nEXPECTED INPUT SIZE: {self._input_size}")
-            logging.debug(f"\nLAYERS: {self._module_layers}")
-            logging.debug("\nMODEL PARAMETERS:")
+            logging.debug(f"\n*****************************************************\
+                        SETTING MODEL CONFIGURATION\
+                        ********************************************************\
+                        \nMODEL TYPE: {self._model_type}\
+                        \nEXPECTED INPUT SIZE: {self._input_size}\
+                        \nLAYERS: {self._module_layers}\
+                        \nMODEL PARAMETERS:")
             for layer_idx in self._module_layers:
-                logging.debug(f"\n\tLAYER: {layer_idx}")
-                logging.debug(f"\n\tWEIGHT: {self._module_layers[layer_idx][0].weight}")
-                logging.debug(f"\n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}")
-                logging.debug(f"\n\tBIAS: {self._module_layers[layer_idx][0].bias}")
-                logging.debug(f"\n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
+                logging.debug(f"\n\tLAYER: {layer_idx} \
+                              \n\tWEIGHT: {self._module_layers[layer_idx][0].weight}\
+                              \n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}\
+                              \n\tBIAS: {self._module_layers[layer_idx][0].bias}\
+                              \n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
 
     def set_training_parameters(self, objective=None, optimizer=None):
         """
@@ -196,17 +195,17 @@ class Model(nn.Module):
                 model_input = activation(model_input)
 
             if self.debug:
-                logging.debug(f"FORWARD PASS LAYER #: {module_indx} ")
-                logging.debug(f"\nINPUT: {model_input}")
+                logging.debug(f"FORWARD PASS LAYER #: {module_indx}\
+                                \nINPUT: {model_input}")
                 model_input = layer(model_input)
                 model_input = activation(model_input)
-                logging.debug(f"\n\tLAYER: {layer}")
-                logging.debug(f"\n\t\tWEIGHTS:\n\t\t {layer.weight}")
-                logging.debug(f"\n\t\tWEIGHT SHAPE:\n\t\t{layer.weight.size()}") #Tracerwarning
-                logging.debug(f"\n\t\tBIAS: \n\t\t{layer.bias}")
-                logging.debug(f"\n\t\tBIAS SHAPE: \n\t\t{layer.bias.size()}") #Tracerwarning
-                logging.debug(f"\n\t\tWEIGHTS GRADIENTS: \n\t\t {layer.weight.grad}")
-                logging.debug(f"\n\t\tBIAS GRADIENTS:\n\t\t {layer.bias.grad}")
+                logging.debug(f"\n\tLAYER: {layer}\
+                        \n\t\tWEIGHTS:\n\t\t {layer.weight}\
+                        \n\t\tWEIGHT SHAPE:\n\t\t{layer.weight.size()}\
+                        \n\t\tBIAS: \n\t\t{layer.bias}\
+                        \n\t\tBIAS SHAPE: \n\t\t{layer.bias.size()}\
+                        \n\t\tWEIGHTS GRADIENTS: \n\t\t {layer.weight.grad}\
+                        \n\t\tBIAS GRADIENTS:\n\t\t {layer.bias.grad}")
 
             # TODO: Clear Logdir from previous runs
             # TODO: Disable asynchronous logging?
@@ -276,12 +275,13 @@ class Model(nn.Module):
                 # Train with logging
                 else:
                     batch_total = len(dataloader)
-                    logging.debug(f"\nEPOCH: {epoch} BATCH: {batch_idx}")
-                    logging.debug(f"INPUT: {input_data}")
-                    logging.debug(f"TARGET: {target_data}")
+                    logging.debug(f"\nEPOCH: {epoch}\
+                                \nBATCH: {batch_idx}\
+                                \nINPUT: {input_data}\
+                                \nTARGET: {target_data}\
+                                \n\tFORWARD PASS...\
+                                \n\tBATCH [{batch_idx}/{batch_total}]")
 
-                    logging.debug("FORWARD PASS...")
-                    logging.debug(f"BATCH [{batch_idx}/{batch_total}]")
                     prediction = self.forward(input_data)
 
                     logging.debug(f"PREDICTION: {prediction}")
@@ -296,8 +296,8 @@ class Model(nn.Module):
                     logging.debug("UPDATED GRADIENTS")
                     # TODO: Add logging of weights after update?
 
-                logging.debug(f"FINISHED BATCH {batch_idx}")
-                logging.debug("*************************************************")
+                    logging.debug(f"FINISHED BATCH {batch_idx}")
+                    logging.debug("*************************************************")
 
                 # Print statistics.
                 if not self.debug:
