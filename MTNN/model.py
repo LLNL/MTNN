@@ -398,12 +398,14 @@ class Model(nn.Module):
     def set_hyperparameters(self, hyperparameters: list):
         self._hyperparameters = hyperparameters
 
-    def set_objective(self, objective_fn: 'Expects <class torch.nn Loss function>'):
-        # TODO: Check type
-        self._objective_fn = objective_fn
+    def set_objective(self, objective_fn: '<class torch.nn.modules.loss>'):
+        # Check type
+        if issubclass(objective_fn.__class__, torch.nn.modules.loss._Loss().__class__):
+            self._objective_fn = objective_fn
 
-    def set_optimizer(self, optimizer: 'Expects <class torch.optim>'):
+    def set_optimizer(self, optimizer: '<class torch.optim>'):
         # TODO: Check type
+        #if issubclass(optimizer.__class__, torch.optim.Optimizer().__class__):
         self._optimizer = optimizer
 
 
