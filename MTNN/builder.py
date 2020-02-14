@@ -30,7 +30,7 @@ def build_model(confpath: str, debug=False):
 
     """
     conf = reader.YamlConfig(confpath)
-    model = MTNN.Model(config = conf, tensorboard = False, debug = True)
+    model = MTNN.Model(config=conf, tensorboard= False, debug=debug)
 
     # Set model attributes.
     model.set_model_type(conf.model_type)
@@ -38,6 +38,7 @@ def build_model(confpath: str, debug=False):
     model.set_layer_config(conf.layers)
     model.set_hyperparameters(conf.hyperparameters)
     model.set_objective(torchconsts.LOSS[conf.objective])
+
 
     # Process and set layers.
     layer_dict = nn.ModuleDict()

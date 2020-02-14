@@ -28,7 +28,11 @@ import MTNN.torch_constants as torchconsts
 
 # TODO: Logger INI file
 
-logging.basicConfig(level = logging.DEBUG)
+logging.basicConfig(filename=(mtnnconsts.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
+                    filemode='w',
+                    format='%(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
 
 class Model(nn.Module):
     """
