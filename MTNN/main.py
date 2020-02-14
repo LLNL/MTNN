@@ -12,6 +12,7 @@ from os import path
 
 # local source
 from MTNN import path
+from MTNN import logger
 
 
 def parse_args() -> list:
@@ -63,7 +64,7 @@ def check_paths(filepath: str) -> str:
         print(exc)
 
     # Return absolute path
-    if not path.isabs(filepath):
+    if not os.path.isabs(filepath):
         clean_filepath = filepath.strip("./")
         abs_filepath = path.join(path.abspath('.'), clean_filepath)
 
@@ -79,13 +80,12 @@ def check_config(filepath: str) -> bool:
         filepath (str) Full path to the YAML configuration file
     Returns: bool
     """
-    # TODO: Validate YAML config file. Use Python confuse API?
+    # TODO: Fill in. Validate YAML config file. Use Python confuse API?
     try:
         pass
     except ValueError:
         print("Configuration file is not well-formed.")
         sys.exit(1)
-
 
 
 if __name__ == "__main__":
@@ -94,18 +94,21 @@ if __name__ == "__main__":
     script_path = check_paths(args.script[0])
     config_file = args.configuration[0]
 
-   # Absolute/relative path
+    # Absolute/relative path
     if os.path.exists(config_file):
         print("path", config_file)
         config_path = check_paths(args.configuration[0])
 
     # Filename only
     else:
-        dir = os.path.dirname(script_path)
-        config_path = path.find_config(dir, config_file)
+        config_dir = os.path.dirname(script_path)
+        config_path = path.find_config(config_dir, config_file)
 
     # Validate YAML configuration file
     check_config(config_path)
+
+    # Set logger
+    logger.set_fileout_name(config_path)
 
     # Execute the script
     with open(script_path) as f:

@@ -92,13 +92,13 @@ def get_caller_filepath():
     return clean_caller_filepath
 
 
+# TODO: Refactor: Redirect to the /runs to the directory of the script caller.
+#  Currently if calling a script from main, creates /run in MTNN/
 EXPERIMENT_LOGS_DIR = os.path.abspath(os.path.join(get_caller_filepath() + "runs/logs/"))
 
 if not os.path.exists(EXPERIMENT_LOGS_DIR):
-    # TODO: Sanitize file path
     os.makedirs(EXPERIMENT_LOGS_DIR)
 
-# TODO: Get file caller id and not this file.
 EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_filename() + "_"
                                         + datetime.datetime.today().strftime("%m%d%Y") + "_"
                                         + datetime.datetime.now().strftime("%H:%M:%S") + "_"

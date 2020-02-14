@@ -1,6 +1,12 @@
+# 2 Layer fully connected model
 model_type: fully-connected
 input_size: 2
 layers:
+  - layer:
+      type: linear
+      neurons: 1
+      activation: relu
+      dropout: None
   - layer:
       type: linear
       neurons: 1
@@ -12,4 +18,5 @@ hyperparameters:
   learning-rate: 0.01
   momentum: 0.5
   optimization: SGD
+
 

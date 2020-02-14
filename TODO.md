@@ -1,17 +1,17 @@
 # To-Do
 ## High priority
 - [x] Refactor: Model/Set configuration file
-- [ ] Hello_model script with 1, 2, and 3 layers
-- [ ] Debug Hello_model.py
-- [ ] Refactor: Fix broken scripts
+- [ ] Spot-check Hello_model script with 1, 2, and 3 layers
+- [ ] Debug Hello_model.py?
 - [ ] Script using MTNN multigrid on MNIST (WIP)
 - [ ] Add CNN layers to Model class
 - [ ] Add other prolongation operators
 
-## Data
-- [ ] Find sample problems to apply to
+## Refactor:
+- [ ] Fix log filepaths when called from Main (Hello_model, mtnn_defaults)
+- [ ] Clean mtnn_defaults
 
-## Tests
+## Regression Tests
 - [x] Generated configuration test cases
 - [x] Pytest framework
 - [ ] Write tests for each module
@@ -23,4 +23,6 @@
 - [ ] Add plotting functionality
 - [ ] Refactor Logger
 - [ ] Add support for JSON configuration format
+- [ ] Find sample problems to apply to
+
 
