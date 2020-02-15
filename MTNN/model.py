@@ -64,7 +64,11 @@ class Model(nn.Module):
 
     def __init__(self, config=None, tensorboard=None, debug=False):
         super(Model, self).__init__()
-        self.config_file = config
+        # Public
+        self.config_file = config # Todo: Remove
+        self.num_layers = None
+
+        # Protected
         self._model_type = None
         self._input_size = None
         self._layer_config = None
@@ -398,6 +402,12 @@ class Model(nn.Module):
 
     def set_layer_config(self, layer_config: list):
         self._layer_config = layer_config
+
+    def set_num_layers(self, num_layers: int):
+        self.num_layers = num_layers
+
+    def set_module_layers(self, module_dict: '<class nn.ModuleDict()>'):
+        self._module_layers = module_dict
 
     def set_hyperparameters(self, hyperparameters: list):
         self._hyperparameters = hyperparameters

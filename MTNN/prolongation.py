@@ -86,7 +86,6 @@ class LowerTriangleOperator:
 
         else:
             prolonged_model = copy.deepcopy(source_model)
-
             print("\nAPPLYING BLOCK LOWER TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K =", expansion_factor)
 
             for index, layer_key in enumerate(source_model._module_layers):
@@ -103,9 +102,10 @@ class LowerTriangleOperator:
                         noise1_dim = ((expansion_factor * weight_row) - weight_row, weight_col)  # First layer
                         noise2_dim = ((expansion_factor * weight_row) - weight_row,
                                       (expansion_factor * weight_col))  # Rest of layers
-                        zero_dim = (weight_row, (expansion_factor * weight_col - weight_col))
+                        zero_dim = (weight_row, ((expansion_factor * weight_col) - weight_col))
+                        last_layer_zero_dim = (weight_row, ((expansion_factor * weight_col) - weight_row))
 
-                        # First hidden layer:
+                        # First hidden layer(weight matrix and bias vector):
                         if index == 0:
 
                             # Generate noise matrix E_21.
@@ -116,12 +116,12 @@ class LowerTriangleOperator:
                             bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
 
                             # Update parameters.
-                            with torch.no_grad():
+                            with torch.no_grad(): # note: disable torch.grad else this update modifies the gradient
                                 layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
                                 layer.bias.data = torch.cat((layer.bias.data, bias_noise))
 
-                        # For rest of hidden layers:
-                        elif index > 0:
+                        # For rest of hidden layers(weight matrix and bias vector):
+                        elif index > 0 and index !=(prolonged_model.num_layers - 1):
 
                             # Generate bias noise  E_1.
                             bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
@@ -138,6 +138,17 @@ class LowerTriangleOperator:
                                 layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
                                 layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
                                 layer.bias.data = torch.cat((layer.bias.data, bias_noise))
+
+                        # For last hidden layer(weight matrix and bias vector):
+
+                        else:
+                            # weight matrix [ W 0]
+                            zero_matrix = nn.init.zeros_(torch.empty(last_layer_zero_dim))
+                            with torch.no_grad(): # note: disable torch.grad else this update modifies the gradient
+                                layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
+                                # bias dim stays the same
+
+
 
             return prolonged_model
 

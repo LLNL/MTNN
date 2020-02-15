@@ -36,11 +36,11 @@ def build_model(confpath: str, debug=False):
     model.set_hyperparameters(conf.hyperparameters)
     model.set_objective(torchconsts.LOSS[conf.objective])
 
-
     # Process and set layers.
     layer_dict = nn.ModuleDict()
+    layer_count = 0
     for n_layer in range(len(model._layer_config)):
-        layer_list = nn.ModuleList()
+        layer_module = nn.ModuleList()
         this_layer = model._layer_config[n_layer]["layer"]
         prev_layer = model._layer_config[n_layer - 1]["layer"]
         layer_input = this_layer["neurons"]
@@ -51,13 +51,13 @@ def build_model(confpath: str, debug=False):
         # Append hidden layer
         if n_layer == 0:  # First layer
             if this_layer["type"] == "linear":
-                layer_list.append(nn.Linear(model._input_size, layer_input))
+                layer_module.append(nn.Linear(model._input_size, layer_input))
         else:
-            layer_list.append(nn.Linear(prev_layer["neurons"], layer_input))
+            layer_module.append(nn.Linear(prev_layer["neurons"], layer_input))
 
         # Append activation layer
         try:
-            layer_list.append(torchconsts.ACTIVATIONS[activation_type])
+            layer_module.append(torchconsts.ACTIVATIONS[activation_type])
         except KeyError:
             print(KeyError,str(activation_type) + " is not a valid torch.nn.activation function.")
 
@@ -65,25 +65,28 @@ def build_model(confpath: str, debug=False):
         # TODO: Add support for dropout layers
         # TODO: Add Support for a CNN
 
+        print("in Builder", layer_module)
         # Update Layer dict
-        layer_dict["layer" + str(n_layer)] = layer_list
-        model._module_layers = layer_dict
+        layer_dict["layer" + str(n_layer)] = layer_module
 
-        # Logging
-        if debug:
-            logging.debug("\n*****************************************************"
-                          "SETTING MODEL CONFIGURATION"
-                          "********************************************************")
-            logging.debug(f"\nMODEL TYPE: {model._model_type}")
-            logging.debug(f"\nEXPECTED INPUT SIZE: {model._input_size}")
-            logging.debug(f"\nLAYERS: {model._module_layers}")
-            logging.debug("\nMODEL PARAMETERS:")
-            for layer_idx in model._module_layers:
-                logging.debug(f"\n\tLAYER: {layer_idx}")
-                logging.debug(f"\n\tWEIGHT: {model._module_layers[layer_idx][0].weight}")
-                logging.debug(f"\n\tWEIGHT GRADIENTS: {model._module_layers[layer_idx][0].weight.grad}")
-                logging.debug(f"\n\tBIAS: {model._module_layers[layer_idx][0].bias}")
-                logging.debug(f"\n\tBIAS GRADIENT: {model._module_layers[layer_idx][0].bias.grad}")
+    model.set_num_layers(len(layer_dict))
+    model._module_layers = layer_dict
+
+    # Logging
+    if debug:
+        logging.debug(f"\n*****************************************************\
+                    SETTING MODEL CONFIGURATION\
+                    ********************************************************\
+                    \nMODEL TYPE: {model._model_type}\
+                    \nEXPECTED INPUT SIZE: {model._input_size}\
+                    \nLAYERS: {model._module_layers}\
+                    \nMODEL PARAMETERS:")
+        for layer_idx in model._module_layers:
+            logging.debug(f"\n\tLAYER: {layer_idx} \
+                          \n\tWEIGHT: {model._module_layers[layer_idx][0].weight}\
+                          \n\tWEIGHT GRADIENTS: {model._module_layers[layer_idx][0].weight.grad}\
+                          \n\tBIAS: {model._module_layers[layer_idx][0].bias}\
+                          \n\tBIAS GRADIENT: {model._module_layers[layer_idx][0].bias.grad}")
 
     return model
 
