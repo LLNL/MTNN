@@ -4,13 +4,10 @@ Reads and Builds Model from YAML configuration files
 # TODO: Get tensorboard and debug settings from commandline
 """
 # standard
-import os
-import sys
 import logging
 
 # pytorch
 import torch.nn as nn
-import torch.optim as optim
 
 # local source
 import MTNN

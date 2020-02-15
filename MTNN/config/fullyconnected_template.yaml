@@ -1,8 +1,9 @@
 # Specifies the layers of a fully connected neural network model
 # Using MNIST data
+# Configuration file for mnist_mgbase.py
 model_type: fully-connected
 input_size: 784  # 28 * 28 pixels
-number_of_layers: 3 # Todo: Remove. Redundant
+#number_of_layers: 3 # Todo: Remove. Redundant
 layers:
   - layer:
       type: linear

@@ -7,6 +7,8 @@ import re
 import datetime
 import inspect
 
+
+# TODO: Move variables to mtnn_var
 ################################################
 # Global Variables for config_generator.py
 ################################################
@@ -53,7 +55,7 @@ TEST_FN_PARAMETERS = {'n_samples': 10,
 # Global Variables for model.py
 ################################################
 CONFIG_DIR = os.path.abspath(ROOT_DIR + "/config")
-DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected.yaml")
+DEFAULT_CONFIG = os.path.abspath(CONFIG_DIR + "/fullyconnected_template.yaml")
 
 ################################################
 # Helper functions and Global Variables for hello_model_sklearn.py
@@ -106,16 +108,4 @@ EXPERIMENT_LOGS_FILENAME = os.path.join(EXPERIMENT_LOGS_DIR + "/" + get_caller_f
 
 
 
-##################################################
-# Set training hyper-parameters
-##################################################
-# Used for examples/hello_model.py
-# TODO: Refactor to use Builder.py & take hyper-parameters from yaml
-# Set for MNIST
-N_EPOCHS = 2  # Set for testing
-BATCH_SIZE_TRAIN = 100  # Set for testing
-BATCH_SIZE_TEST = 500  # Set for testing
-LEARNING_RATE = 0.01
-MOMENTUM = 0.5
-LOG_INTERVAL = 10  # Set for testing
 
