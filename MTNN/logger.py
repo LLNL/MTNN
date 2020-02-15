@@ -30,7 +30,6 @@ def set_fileout_name(config_path: str) -> str:
               + datetime.datetime.now().strftime("%H:%M:%S") + "_" \
               + datetime.datetime.today().strftime("%A") \
               + ".stdout.txt"
-    print(FILEOUT)
     return FILEOUT
 
 

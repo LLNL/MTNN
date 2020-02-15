@@ -49,7 +49,6 @@ def find_config(config_dir: str, filename: str) -> str:
 
     """
     cwd = os.path.dirname(config_dir)
-    print(cwd)
     results = []
     for root, dirs, files in os.walk(cwd):
         if filename in files:

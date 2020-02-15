@@ -25,13 +25,12 @@ if __name__ == "__main__":
     mtnn_var.set_script_path(methods.check_path(script_path_arg))
 
     # Validate YAML configuration file
-    methods.check_config(config_path_arg) #TODO
+    methods.check_config(config_path_arg) #TODO: fill in
 
     # Configuration file path
     # Absolute/relative path given
     if os.path.exists(config_path_arg):
         mtnn_var.set_config_path = methods.check_path(config_path_arg)
-        print("if", mtnn_var.CONFIG_PATH)
 
     # Filename given
     else:
