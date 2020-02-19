@@ -1,5 +1,5 @@
 """
-MTNN/methods.py
+MTNN/mtnn_utils.py
 Static helper methods
 """
 # standard
