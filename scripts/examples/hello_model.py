@@ -5,10 +5,10 @@ Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native To
 - without MTNN framework
 """
 # standard
-import os
 import datetime
-import logging
 import sys
+import random
+import copy
 
 # third-party
 import sklearn.datasets as skdata
@@ -23,35 +23,41 @@ from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN
-from MTNN import mtnn_defaults
-from MTNN import path
+from MTNN import builder
+from MTNN import trainer
+from MTNN import mtnn_var
+from MTNN import config_reader
+from MTNN import mtnn_utils
 from MTNN import logger
 
-
-# Set-up logger.
-logging.basicConfig(filename=(mtnn_defaults.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
-                    filemode='w',
-                    format='%(message)s',
-                    datefmt='%H:%M:%S',
-                    level=logging.DEBUG)
-
-# Redirecting stdout to file in MTNN/examples/runs/logs
-"""
-FILEOUT = open(mtnn_defaults.EXPERIMENT_LOGS_DIR
-               + "/" + mtnn_defaults.get_caller_filename() + "_"
-               + datetime.datetime.today().strftime("%A") + "_"
-               + datetime.datetime.today().strftime("%m%d%Y") + "_"
-               + datetime.datetime.now().strftime("%H:%M:%S")
-               + ".stdout.txt", "w")
-
-#sys.stdout = FILEOUT
-"""
+#############################################
+# Set-up logging stdout to file
+#############################################
 sys.stdout = logger.StreamLogger()
+
+##############################################
+# Read from YAML Configuration File
+##############################################
+
+# If called from main()
+try:
+    CONFIG_PATH = locals()['config_path']
+
+except KeyError:
+    # Prompt for configuration file
+    config_path = input("Specify configuration file:")
+    config_path = mtnn_utils.check_path(config_path)
+    mtnn_var.set_config_path(config_path)
+    print(config_path)
+
+conf = config_reader.YamlConfig(mtnn_var.CONFIG_PATH)
+BATCH_SIZE_TRAIN = conf.get_property('batch_size_train')
+BATCH_SIZE_TEST = conf.get_property('batch_size_test')
+
 
 ##################################################
 # Simple fully-connected network
 ##################################################
-
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -65,10 +71,10 @@ class Net(nn.Module):
         x = F.relu(x)
         return x
 
+
 ####################################################
 # Helper functions.
 ######################################################
-
 def visualize(model, input, loss, epoch):
     """ Records control and data flow graph to Pytorch TensorboardX.
     See MTNN/README.md on how to use TensorboardX
@@ -125,11 +131,10 @@ def print_prediction(model, input_value: tuple):
     print(prediction, prediction.size())
 
 
-
 #########################################################
 # Preparing Training Data
 #########################################################
-def regression_training_data(num_samples: int, num_features: int, noise_level:float) -> list:
+def get_regression_training_data(num_samples: int, num_features: int, noise_level: float) -> list:
     """
     Returns a list of tuples a tuple of tensor training input and output data
     from a randomly generated regression problem.
@@ -152,9 +157,8 @@ def regression_training_data(num_samples: int, num_features: int, noise_level:fl
         training_data_input = Variable(torch.FloatTensor(x), requires_grad = True)
         training_data_output = Variable(torch.FloatTensor(x))
         regression_data.append((training_data_input, training_data_output))
-
-    #print(regression_data)
     return regression_data
+
 
 def tensorize_data(training_data: list):
     """Tensorizes data and load into a Pytorch DataLoader.
@@ -171,28 +175,34 @@ def tensorize_data(training_data: list):
         XY, Z = iter(data)
 
         # Convert list to float tensor
-        input = Variable(torch.FloatTensor(XY), requires_grad = False)  # Note: torch.Floattensor expects a list
+        input = torch.tensor(XY, dtype=torch.float,  requires_grad=True)
         Z = torch.FloatTensor([Z])
 
         tensor_data.append((input, Z))
-
     dataloader = torch.utils.data.DataLoader(tensor_data, shuffle = False, batch_size = 1)
 
     return dataloader
 
 
 def gen_data(linear_function):
-    generated_data = []
+    training_data = []
+    input_data = []
     for i in range(10):
-        input_data = ((i, i), linear_function(i, i))
-        generated_data.append(input_data)
-    return generated_data
+        x = random.randint(0, 3)
+        y = random.randint(0, 3)
+        training_datum = ((x, y), linear_function(x, y))
+        input_data.append((x, y))
+        training_data.append(training_datum)
+    return input_data, training_data
 
 # Generate Data.
 linear_function = lambda x, y: 3 * x + 2 * y
-training_data = gen_data(linear_function)
+input_data, training_data = gen_data(linear_function)
 
+
+#TODO: Train on SKlearn regression data
 tensor_training_data = tensorize_data(training_data)
+
 #########################################################
 # Using Simple net class
 #########################################################
@@ -202,7 +212,6 @@ print("*****************************")
 
 net = Net()
 print("\nNET Parameters", list(net.parameters()))
-
 optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
 # TODO: Clean
@@ -236,36 +245,44 @@ for epoch in range(10):
 
 
 # Predict.
-#print_prediction(net, (2, 2)) #should be 5
 print("NET MODEL PARAMETERS")
 for param in net.parameters():
     print(param.data)
 
 ###########################################################
-# Using MTNN Model
+# Using MTNN Model with Builder
 ##########################################################
 print("\n\n*****************************")
 print("Using MTNN Model")
 print("*****************************")
 
-# Set-up.
-# TODO: mtnn_defaults: search for specified yaml file in current directory
-model_config = path.find_config(os.getcwd(), "hello_model.yaml")
-mtnnmodel = MTNN.Model(tensorboard=False, debug=True)
-mtnnmodel.set_config(model_config)
+#CONFIG_PATH = methods.find_config(os.getcwd(), "hello_model.yaml")
+#print("Using the configuration:", CONFIG_PATH)
+print("CONFIG", mtnn_var.CONFIG_PATH)
+mtnnmodel = builder.build_model(mtnn_var.CONFIG_PATH, visualize=False, debug=True)
 
-model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
-mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
+
+# Build Optimizer.
+optimizer = trainer.build_optimizer(mtnn_var.CONFIG_PATH, mtnnmodel.parameters())
+
+# Set Optimizer.
+mtnnmodel.set_optimizer(optimizer)
+mtnnmodel.view_properties()
+
+print("\nUNTRAINED MTNN MODEL PARAMETERS")
+mtnnmodel.print_parameters()
 
 # Train.
 mtnnmodel.fit(dataloader=tensor_training_data, num_epochs=10, log_interval=10)
 
-# View parameters.
+print("\nTRAINED MTNN MODEL PARAMETERS")
 mtnnmodel.print_parameters()
 
-# Predict.
-#print_prediction(mtnnmodel, (2,2)) # should be 5
-
+"""
+print("\n Exporting trace to ONNX file...")
+input_data = torch.randn(10, 1, 2, requires_grad=True)
+torch.onnx.export(mtnnmodel, input_data, "MTNNmodel.onnx", export_params= True)
+"""
 #########################################################
 # Using Prolonged Model
 #########################################################
@@ -274,8 +291,13 @@ print("USING PROLONGED MTNN MODEL")
 print("*****************************")
 # Applying Lower Triangular Operator
 prolongation_operator = MTNN.LowerTriangleOperator()
-prolonged_model = prolongation_operator.apply(mtnnmodel, expansion_factor=3)
-prolonged_model.set_debug(True)
+prolonged_model = prolongation_operator.apply(mtnnmodel, exp_factor =3)
+
+
+print("\nUNTRAINED PROLONGED MTNN MODEL PARAMETERS: \n")
+prolonged_model_copy = copy.deepcopy(prolonged_model)
+prolonged_model.view_properties()
+prolonged_model.print_parameters()
 
 # Set-up.
 prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, momentum = 0.5)
@@ -284,11 +306,12 @@ prolonged_model.set_training_parameters(objective=nn.MSELoss(), optimizer=prolon
 # Train.
 prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 10, log_interval = 10)
 
+
 # View Parameters.
+print("\nTRAINED PROLONGED MTNN MODEL PARAMETERS: \n")
+prolonged_model.view_properties()
 prolonged_model.print_parameters()
 
-# Predict.
-#print_prediction(prolonged_model, (2, 2)) # should be 5
 
 ############################################################
 # Evaluate Results
@@ -297,16 +320,22 @@ print("\n\n*****************************")
 print("EVALUATION")
 print("*****************************")
 print("FUNCTION 3x + 2y")
+
 print("NET MODEL PARAMETERS")
 for param in net.parameters():
     print(param.data)
 evaluator = MTNN.BasicEvaluator()
 print("\nNet")
 evaluator.evaluate_output(model=net, dataset=tensor_training_data)
-print("\nMTNN Model")
+
+print("\nMTNN MODEL")
 mtnnmodel.print_parameters()
 evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
-print("\nProlonged Model")
+
+print("\nUNTRAINED PROLONGED MODEL")
+prolonged_model.print_parameters()
+evaluator.evaluate_output(model=prolonged_model_copy, dataset=tensor_training_data)
+
+print("\nTRAINED PROLONGED MODEL")
 prolonged_model.print_parameters()
 evaluator.evaluate_output(model=prolonged_model, dataset=tensor_training_data)
-
