@@ -39,7 +39,7 @@ class Model(nn.Module):
     Instantiates a neural network
     Args:
         config (str): The path to the YAML configuration file
-        tensorboard (bool): Sets tensorboard visualization of the training
+        visualize (bool): Sets tensorboard visualization of the training
         debug (bool): Sets logging during the the training.
             Logs are generated to the filepath specified in mtnn_defaults.py
     Attributes:
@@ -54,15 +54,14 @@ class Model(nn.Module):
         objective_fn (torch.nn.*Loss): A torch.nn Loss function. See https://pytorch.org/docs/stable/nn.html#loss-functions
         optimizer (torch.optim): An instantiated torch.optim.optimizer object specified by the YAML configuration file.
                 Expected to be built with builder.build_optimizer. See https://pytorch.org/docs/stable/optim.html#
-        tensorboard (bool): Sets data and control flow tracking through the optimizer to create a tensorboard visualization.
+        visualize (bool): Sets data and control flow tracking through the optimizer to create a tensorboard visualization.
                 See README.md for additional instructions on how to run Tensorboard.
         debug(bool): Sets additional logging to be collected when Model.fit is called.
     """
     # Tensorboard Writer
     WRITER = SummaryWriter('./runs/model/' + str(datetime.datetime.now()))  # Default is ./runs/model
 
-
-    def __init__(self, config=None, tensorboard=None, debug=False):
+    def __init__(self, config=None, visualize=None, debug=False):
         super(Model, self).__init__()
         # Public
         self.config_file = config # Todo: Remove
@@ -84,7 +83,7 @@ class Model(nn.Module):
         self._batch = 0
 
         # For debugging
-        self.tensorboard = tensorboard
+        self.visualize = visualize
         self.debug = debug
 
 
@@ -142,13 +141,12 @@ class Model(nn.Module):
             # Set model hyper-parameters
             self._hyperparameters = self.config_file["hyperparameters"]
 
-
         # Logging
         if self.debug:
-            logging.debug(f"\n*****************************************************\
-                        SETTING MODEL CONFIGURATION\
-                        ********************************************************\
-                        \nMODEL TYPE: {self._model_type}\
+            logging.debug("\n*****************************************************"
+                          "SETTING MODEL CONFIGURATION"
+                          "********************************************************")
+            logging.debug(f"\nMODEL TYPE: {self._model_type}\
                         \nEXPECTED INPUT SIZE: {self._input_size}\
                         \nLAYERS: {self._module_layers}\
                         \nMODEL PARAMETERS:")
@@ -156,27 +154,8 @@ class Model(nn.Module):
                 logging.debug(f"\n\tLAYER: {layer_idx} \
                               \n\tWEIGHT: {self._module_layers[layer_idx][0].weight}\
                               \n\tWEIGHT GRADIENTS: {self._module_layers[layer_idx][0].weight.grad}\
-                              \n\tBIAS: {self._module_layers[layer_idx][0].bias}\
+                              \n\n\tBIAS: {self._module_layers[layer_idx][0].bias}\
                               \n\tBIAS GRADIENT: {self._module_layers[layer_idx][0].bias.grad}")
-
-    def set_training_parameters(self, objective=None, optimizer=None):
-        """
-        Args:
-            obj_fn <torch.nn.modules.loss>
-            opt <torch.optim>
-
-        Returns: Null
-
-        """
-        self._objective_fn = objective
-        self._optimizer = optimizer
-
-    def visualize(self, epoch=None, batch_num=None, log_interval=None, model_input=None, loss=None):
-        self.WRITER.add_scalar('Train/Loss', loss, epoch)
-
-        # Write to computation graph
-        self.WRITER.add_graph(self, model_input)
-        self.WRITER.flush()
 
     def forward(self, model_input):
         """
@@ -192,35 +171,62 @@ class Model(nn.Module):
         # Note: Input has to be a leaf variable to maintain gradients; no intermediate variables
         model_input = model_input.view(model_input.size(0), -1)
 
-        for module_indx in range(len(self._module_layers)):
-            module_key = 'layer' + str(module_indx)
+        # Without logging
+        if not self.debug:
+            for module_indx in range(len(self._module_layers)):
+                module_key = 'layer' + str(module_indx)
 
-            layer = self._module_layers[module_key][0] # hard-coded. Assumes each module is one linear, one activation
-            activation = self._module_layers[module_key][1]
+                layer = self._module_layers[module_key][0] # hard-coded. Assumes each module is one linear, one activation
+                activation = self._module_layers[module_key][1]
 
-            if not self.debug:
                 model_input = layer(model_input)
                 model_input = activation(model_input)
 
-            if self.debug:
+        # With logging
+        if self.debug:
+            for module_indx in range(len(self._module_layers)):
+                module_key = 'layer' + str(module_indx)
+                """
+                layer = self._module_layers[module_key][0]  # hard-coded. Assumes each module is one linear, one activation
+                activation = self._module_layers[module_key][1]
+
+                logging.debug(f"Layer:{layer}")
+                logging.debug(f"Activation:{activation}")
+
                 logging.debug(f"FORWARD PASS LAYER #: {module_indx}\
-                                \nINPUT: {model_input}")
-                model_input = layer(model_input)
-                model_input = activation(model_input)
-                logging.debug(f"\n\tLAYER: {layer}\
-                        \n\t\tWEIGHTS:\n\t\t {layer.weight}\
-                        \n\t\tWEIGHT SHAPE:\n\t\t{layer.weight.size()}\
-                        \n\t\tBIAS: \n\t\t{layer.bias}\
-                        \n\t\tBIAS SHAPE: \n\t\t{layer.bias.size()}\
-                        \n\t\tWEIGHTS GRADIENTS: \n\t\t {layer.weight.grad}\
-                        \n\t\tBIAS GRADIENTS:\n\t\t {layer.bias.grad}")
+                                               \n\tINPUT: {model_input}")
 
-            # TODO: Clear Logdir from previous runs
-            # TODO: Disable asynchronous logging?
+                
+                model_input = layer(model_input)
+                logging.debug(f"\tMODEL OUTPUT before ACTIVATION: {model_input}")
+
+                #model_input = activation(model_input)
+                logging.debug(f"\tMODEL OUTPUT after ACTIVATION: {model_input}")
+
+                logging.debug(f"MODULE INDEX:{module_indx, module_key}")
+                logging.debug(f"Module layer: {self._module_layers[module_key]}")
+                """
+
+                for layer in self._module_layers[module_key]:
+                    logging.debug(f"\tLayer: {layer}")
+                    logging.debug(f"\t\tLAYER INPUT: {model_input}")
+                    model_input = layer(model_input)
+                    logging.debug(f"\t\tLAYER OUTPUT: {model_input}")
+
+                    # TODO:FIX. Non-leaf/intermediate variables gradients can only be accessed via hooks.
+                    if hasattr(layer, "weight"):
+                        logging.debug(f"\n\t\tLAYER: {layer}\
+                                               \n\t\t\tWEIGHTS:\n\t\t\t\t\t{layer.weight}\
+                                               \n\t\t\tWEIGHT SHAPE:\n\t\t\t\t{layer.weight.size()}\
+                                               \n\t\t\tBIAS:\n\t\t\t\t{layer.bias}\
+                                               \n\t\t\tBIAS SHAPE: \n\t\t\t\t{layer.bias.size()}\
+                                               \n\t\t\tWEIGHTS GRADIENTS:\n\t\t\t\t{layer.weight.grad}\
+                                               \n\t\t\tBIAS GRADIENTS:\n\t\t\t\t{layer.bias.grad}")
+
 
         # Visualize
-        #TODO: FIX
-        if self.tensorboard:
+        if self.visualize:
+            """
             # Visualize weights
             for i, (layer, activation) in enumerate(self._module_layers.values()):
                 for w_i, w in enumerate(layer.weight[0]):
@@ -232,15 +238,17 @@ class Model(nn.Module):
             # This value will be treated as a constant in the future and not be recorded as part of the data flow graph.
             for i in range(1, num_outputs):
                 self.WRITER.add_scalar('Train/Output_' + str(i), model_output.data[0][i], self._epoch)
+            """
+            #TODO: Add forward hooks
+            pass
 
         self._train_count += 1
-
 
         return model_input
 
     def fit(self, dataloader, num_epochs, log_interval=1, checkpoint=False):
         """
-        Train model.
+        Train model given dataloader. Calls Forward pass.
         Args:
             dataloader <torch.utils.data.DataLoader>
             num_epochs <int>
@@ -256,21 +264,66 @@ class Model(nn.Module):
         # Set children modules to training mode
         self.train()
 
+        # Add hooks to collect plotting data
+        if self.visualize:
+            print("\nVISUALIZTION")
+            #print(self._modules.items())
+
+        # Train with Logging.
         if self.debug:
             logging.debug("\n*********************************************************"
                           "STARTING TRAINING"
                           "***********************************************************")
+            for epoch in range(1, num_epochs + 1):
+                for batch_idx, (input_data, target_data) in enumerate(dataloader):
+                    # Reset weight/bias gradients
+                    self._optimizer.zero_grad()
 
-        for epoch in range(1, num_epochs + 1):
+                    batch_total = len(dataloader)
+                    logging.debug(f"\nEPOCH: {epoch}\
+                                                   \nBATCH: {batch_idx}\
+                                                   \nINPUT: {input_data}\
+                                                   \nTARGET: {target_data}\
+                                                   \n\tFORWARD PASS...\
+                                                   \n\tBATCH [{batch_idx}/{batch_total}]")
 
-            for batch_idx, (input_data, target_data) in enumerate(dataloader):
+                    prediction = self.forward(input_data)
+                    logging.debug(f"PREDICTION: {prediction}")
 
-                # Reset weight/bias gradients
-                self._optimizer.zero_grad()
+                    loss = self._objective_fn(prediction, target_data)
+                    logging.debug(f"LOSS: {loss}")
+                    loss.backward(retain_graph = True)
 
-                # TODO: Check and Reshape target size? Will be broadcasted if both tensors are broadcastable.
+                    self._optimizer.step()
 
-                if not self.debug:
+                    logging.debug("UPDATED GRADIENTS")
+                    # TODO: Add logging of weights after update?
+                    logging.debug("")
+
+                    logging.debug(f"FINISHED BATCH {batch_idx}")
+                    logging.debug("*************************************************")
+                    print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch, batch_idx * len(input_data), len(dataloader.dataset),
+                               100. * batch_idx / len(dataloader), loss.item()))
+                    train_losses.append(loss.item())
+                    train_counter.append(
+                        (batch_idx * 64) + ((epoch - 1) * len(dataloader.dataset)))
+                    # Save parameters.
+                    if checkpoint:
+                        self.checkpoint()
+                    self._batch += 1
+                self._epoch += 1
+            self.WRITER.close()
+
+        # Train without Logging
+        if not self.debug:
+            for epoch in range(1, num_epochs + 1):
+                for batch_idx, (input_data, target_data) in enumerate(dataloader):
+
+                    # Reset weight/bias gradients
+                    self._optimizer.zero_grad()
+
+                    # TODO: Check and Reshape target size? Will be broadcasted if both tensors are broadcastable.
 
                     # Forward pass
                     prediction = self.forward(input_data)
@@ -280,35 +333,7 @@ class Model(nn.Module):
                     # Optimize pass - update weights with gradients
                     self._optimizer.step()
 
-                # Train with logging
-                else:
-                    batch_total = len(dataloader)
-                    logging.debug(f"\nEPOCH: {epoch}\
-                                \nBATCH: {batch_idx}\
-                                \nINPUT: {input_data}\
-                                \nTARGET: {target_data}\
-                                \n\tFORWARD PASS...\
-                                \n\tBATCH [{batch_idx}/{batch_total}]")
-
-                    prediction = self.forward(input_data)
-
-                    logging.debug(f"PREDICTION: {prediction}")
-
-                    loss = self._objective_fn(prediction, target_data)
-
-                    logging.debug(f"LOSS: {loss}")
-                    loss.backward(retain_graph = True)
-
-                    self._optimizer.step()
-
-                    logging.debug("UPDATED GRADIENTS")
-                    # TODO: Add logging of weights after update?
-
-                    logging.debug(f"FINISHED BATCH {batch_idx}")
-                    logging.debug("*************************************************")
-
-                # Print statistics.
-                if not self.debug:
+                    # Print statistics.
                     if batch_idx % (log_interval - 1) == 0 and batch_idx != 0:
                         print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                             epoch, batch_idx * len(input_data), len(dataloader.dataset),
@@ -317,25 +342,19 @@ class Model(nn.Module):
                         train_counter.append(
                             (batch_idx * 64) + ((epoch - 1) * len(dataloader.dataset)))
 
-                else:
-                    print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, batch_idx * len(input_data), len(dataloader.dataset),
-                               100. * batch_idx / len(dataloader), loss.item()))
-                    train_losses.append(loss.item())
-                    train_counter.append(
-                        (batch_idx * 64) + ((epoch - 1) * len(dataloader.dataset)))
+                    # Save parameters.
+                    if checkpoint:
+                        self.checkpoint()
+                    self._batch += 1
+                self._epoch += 1
 
-                # Visualize.
-                if self.tensorboard:
-                    self.visualize(epoch=epoch, batch_num=batch_idx, model_input=input_data, loss=loss)
+    def visualize(self, epoch=None, batch_num=None, log_interval=None, model_input=None, loss=None):
+        # TODO: Remove. Dead code for Tensorboard
+        self.WRITER.add_scalar('Train/Loss', loss, epoch)
 
-                # Save parameters.
-                if checkpoint:
-                    self.checkpoint()
-                self._batch += 1
-
-            self._epoch += 1
-        self.WRITER.close()
+        # Write to computation graph
+        self.WRITER.add_graph(self, model_input)
+        self.WRITER.flush()
 
     def checkpoint(self):
         print('Saving model')
@@ -372,7 +391,7 @@ class Model(nn.Module):
             print("\n\tLayer: ", i,
                   "\n\tWeight: ", self._module_layers[i][0].weight,
                   "\n\tWeight Gradient", self._module_layers[i][0].weight.grad,
-                  "\n\tBias: ", self._module_layers[i][0].bias,
+                  "\n\n\tBias: ", self._module_layers[i][0].bias,
                   "\n\tBias Gradient:", self._module_layers[i][0].bias.grad)
 
     # Accessor methods.
@@ -389,6 +408,8 @@ class Model(nn.Module):
                            f'\n OPTIMIZATION: {self._optimizer}'
         print(model_properties)
         return
+
+
 
     # Mutator Methods.
     def set_debug(self, debug: bool):
@@ -420,6 +441,18 @@ class Model(nn.Module):
     def set_optimizer(self, optimizer: '<class torch.optim>'):
         # TODO: Check type
         #if issubclass(optimizer.__class__, torch.optim.Optimizer().__class__):
+        self._optimizer = optimizer
+
+    def set_training_parameters(self, objective=None, optimizer=None):
+        """
+        Args:
+            obj_fn <torch.nn.modules.loss>
+            opt <torch.optim>
+
+        Returns: Null
+
+        """
+        self._objective_fn = objective
         self._optimizer = optimizer
 
 
