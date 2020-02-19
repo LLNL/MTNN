@@ -15,11 +15,12 @@ import MTNN.config_reader as reader
 import torch_constants as torchconsts
 
 
-def build_model(confpath: str, debug=False):
+def build_model(confpath: str, visualize=False , debug=False):
     """
     Same functionality as MTNN.Model.set_config. Creates Layer_dict and sets model._module_layers
     Args:
         confpath: <str> Absolute file path of the model configuration file
+        visualize: <bool> Used to set parameter collection for visualization
         debug: <bool> Used to set debugging logs to pring to console
 
     Returns:
@@ -27,7 +28,7 @@ def build_model(confpath: str, debug=False):
 
     """
     conf = reader.YamlConfig(confpath)
-    model = MTNN.Model(config=conf, tensorboard= False, debug=debug)
+    model = MTNN.Model(config=conf, visualize=visualize, debug=debug)
 
     # Set model attributes.
     model.set_model_type(conf.model_type)
@@ -65,7 +66,6 @@ def build_model(confpath: str, debug=False):
         # TODO: Add support for dropout layers
         # TODO: Add Support for a CNN
 
-        print("in Builder", layer_module)
         # Update Layer dict
         layer_dict["layer" + str(n_layer)] = layer_module
 
@@ -74,13 +74,13 @@ def build_model(confpath: str, debug=False):
 
     # Logging
     if debug:
-        logging.debug(f"\n*****************************************************\
-                    SETTING MODEL CONFIGURATION\
-                    ********************************************************\
-                    \nMODEL TYPE: {model._model_type}\
-                    \nEXPECTED INPUT SIZE: {model._input_size}\
-                    \nLAYERS: {model._module_layers}\
-                    \nMODEL PARAMETERS:")
+        logging.debug(f"\n*****************************************************"
+                    "SETTING MODEL CONFIGURATION"
+                    "********************************************************")
+        logging.debug(f"\nMODEL TYPE: {model._model_type}\
+                        \nEXPECTED INPUT SIZE: {model._input_size}\
+                        \nLAYERS: {model._module_layers}\
+                        \nMODEL PARAMETERS:")
         for layer_idx in model._module_layers:
             logging.debug(f"\n\tLAYER: {layer_idx} \
                           \n\tWEIGHT: {model._module_layers[layer_idx][0].weight}\

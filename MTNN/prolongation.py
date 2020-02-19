@@ -70,7 +70,7 @@ class LowerTriangleOperator:
     def __init__(self):
         pass
 
-    def apply(self, source_model, expansion_factor):
+    def apply(self, source_model, exp_factor):
         """
         Takes a sourcemodel. Copies and updates weights/biases of each layer of sourcemodel into a new model with
         new block lower triangular weight matrix and augmented bias vector according to some expansion factor.
@@ -86,7 +86,8 @@ class LowerTriangleOperator:
 
         else:
             prolonged_model = copy.deepcopy(source_model)
-            print("\nAPPLYING BLOCK LOWER TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K =", expansion_factor)
+            p_lastlayer_indx = prolonged_model.num_layers - 1
+            print("\nAPPLYING BLOCK LOWER TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K =", exp_factor)
 
             for index, layer_key in enumerate(source_model._module_layers):
                 for layer in prolonged_model._module_layers[layer_key]:
@@ -98,12 +99,12 @@ class LowerTriangleOperator:
                         weight_col = layer.weight.size()[1]
 
                         # Block matrices dimensions
-                        bias_dim = expansion_factor * weight_row - weight_row
-                        noise1_dim = ((expansion_factor * weight_row) - weight_row, weight_col)  # First layer
-                        noise2_dim = ((expansion_factor * weight_row) - weight_row,
-                                      (expansion_factor * weight_col))  # Rest of layers
-                        zero_dim = (weight_row, ((expansion_factor * weight_col) - weight_col))
-                        last_layer_zero_dim = (weight_row, ((expansion_factor * weight_col) - weight_row))
+                        bias_dim = exp_factor * weight_row - weight_row
+                        noise1_dim = ((exp_factor * weight_row) - weight_row, weight_col)  # First layer
+                        noise2_dim = ((exp_factor * weight_row) - weight_row,
+                                      (exp_factor * weight_col))  # Rest of layers
+                        zero_dim = (weight_row, ((exp_factor * weight_col) - weight_col))
+                        last_layer_zero_dim = (weight_row, ((exp_factor * weight_col) - weight_row))
 
                         # First hidden layer(weight matrix and bias vector):
                         if index == 0:
@@ -121,7 +122,7 @@ class LowerTriangleOperator:
                                 layer.bias.data = torch.cat((layer.bias.data, bias_noise))
 
                         # For rest of hidden layers(weight matrix and bias vector):
-                        elif index > 0 and index !=(prolonged_model.num_layers - 1):
+                        elif index > 0 and index != p_lastlayer_indx:
 
                             # Generate bias noise  E_1.
                             bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
@@ -144,14 +145,11 @@ class LowerTriangleOperator:
                         else:
                             # weight matrix [ W 0]
                             zero_matrix = nn.init.zeros_(torch.empty(last_layer_zero_dim))
-                            with torch.no_grad(): # note: disable torch.grad else this update modifies the gradient
+                            with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
                                 layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
                                 # bias dim stays the same
 
-
-
             return prolonged_model
-
 
 
 class RandomSplitOperator:

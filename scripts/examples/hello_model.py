@@ -38,7 +38,6 @@ sys.stdout = logger.StreamLogger()
 ##############################################
 # Read from YAML Configuration File
 ##############################################
-
 # If called from main()
 try:
     CONFIG_PATH = locals()['config_path']
@@ -214,17 +213,14 @@ net = Net()
 print("\nNET Parameters", list(net.parameters()))
 optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
-# TODO: Clean
 # Train.
 for epoch in range(10):
     for batch_idx, data in enumerate(training_data):
         XY, Z = iter(data)
 
         # Convert list to float tensor
-        # Note: Variable is deprecated
-        input = torch.FloatTensor(XY) #torch.Floattensor expects a list
+        input = torch.FloatTensor(XY)
         Z = torch.FloatTensor([Z]) # For output, set requires_grad to False
-
 
         #TODO: FIX Z ValueError: only one element tensors can be converted to python scalars
         optimizer.zero_grad()
@@ -243,7 +239,6 @@ for epoch in range(10):
         #if batch_idx % (len(training_data) - 1) == 0 and batch_idx != 0:
         print("Epoch {} - loss: {}".format(epoch, loss.item ()))
 
-
 # Predict.
 print("NET MODEL PARAMETERS")
 for param in net.parameters():
@@ -256,11 +251,8 @@ print("\n\n*****************************")
 print("Using MTNN Model")
 print("*****************************")
 
-#CONFIG_PATH = methods.find_config(os.getcwd(), "hello_model.yaml")
-#print("Using the configuration:", CONFIG_PATH)
 print("CONFIG", mtnn_var.CONFIG_PATH)
 mtnnmodel = builder.build_model(mtnn_var.CONFIG_PATH, visualize=False, debug=True)
-
 
 # Build Optimizer.
 optimizer = trainer.build_optimizer(mtnn_var.CONFIG_PATH, mtnnmodel.parameters())
