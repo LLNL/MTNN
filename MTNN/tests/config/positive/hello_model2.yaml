@@ -1,0 +1,27 @@
+# Configuration file for hello_model.py
+# 2 Layer fully connected model
+model_type: fully-connected
+input_size: 2
+layers:
+  - layer:
+      type: linear
+      neurons: 1
+      activation: relu
+      dropout: None
+  - layer:
+      type: linear
+      neurons: 1
+      activation: relu
+      dropout: None
+hyperparameters:
+# The output of each layer is implicit; set from inputs of next layer
+  log_interval: 10 # set for testing
+  num_epochs: 10
+  batch_size_train: 10 # set for testing
+  batch_size_test: 10 # set for testing
+  objective: mseloss
+  learning_rate: 0.01
+  momentum: 0.5
+  optimization: SGD
+
+
