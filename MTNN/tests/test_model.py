@@ -179,9 +179,11 @@ def test_model_weights(my_model):
     """
     Tests for weights using fixed seeds for Torch's random number generator.
     """
-    for s in range(50):
+    for s in range(1000):
 
+        # Set for deterministic results
         torch.manual_seed(s)
+        torch.backends.cudnn.deterministic = True
 
         for config_file in os.listdir(CONFIG_DIR):
             # Build Model
@@ -196,16 +198,10 @@ def test_model_weights(my_model):
 
             # Apply prolongation operator
             expansion_factor = 3 # Fix this.
-            lowtri_op = prolongation.LowerTriangleOperator()
-            prolonged_model = lowtri_op.apply(source_model=my_model, exp_factor=expansion_factor)
+            low_tri_op = prolongation.LowerTriangleOperator()
+            prolonged_model = low_tri_op.apply(source_model=my_model, exp_factor=expansion_factor)
 
-            """"
-            print("MTNN model")
-            my_model.print_parameters()
-            print("Prolonged MTNN model")
-            prolonged_model.print_parameters()
-            """
-            #print("CHECKING WEIGHTS, BIASES, AND DIMENSIONS...")
+            error_msg = "Prolonged copied weights are incorrect."
             for module_index in range(len(prolonged_model._module_layers)):
                 mod_key = 'layer' + str(module_index)
 
@@ -220,36 +216,21 @@ def test_model_weights(my_model):
                         if module_index == 0:
                             for row in range(o_mod_layer.weight.size()[0]):
                                 assert torch.all(torch.eq(p_mod_layer.weight.data[0], o_mod_layer.weight.data[row])),\
-                                    "Prolonged copied weights are incorrect."
+                                    error_msg
 
                         # Middle hidden layers
                         elif 0 < module_index < (len(prolonged_model._module_layers) - 1):
-                            #print("HIDDEN LAYER", p_mod_layer.weight.data[0])
                             for row in range(o_mod_layer.weight.size()[0]):
                                 for p_element, o_element in zip(p_mod_layer.weight.data[row],
                                                                 o_mod_layer.weight.data[row]):
                                     assert torch.all(torch.eq(p_element, o_element)),\
-                                        "Prolonged copied weights are incorrect. "
-                                    print(f"Elements: {p_element} {o_element}")
+                                        error_msg
+
                         # Last hidden layer
                         else:
-                            #TODO
+                            for p_element, o_element in zip(p_mod_layer.weight.data[-1], o_mod_layer.weight.data[-1]):
+                                assert torch.all(torch.eq(p_element, o_element)), error_msg
                             pass
-
-def test_torch_seed():
-    for s in range(1):
-        torch.manual_seed(s)
-        print(torch.seed())
-        count = 0
-        rand_set = set()
-        while count != 10:
-            rand = torch.rand(2)
-            if rand not in rand_set:
-                rand_set.add(rand)
-                print(rand)
-            else:
-                print("New random num")
-            count += 1
 
 
 def test_input(regression_training_data):
