@@ -25,8 +25,8 @@ def generate_data(lambda_fn):
     z = lambda_fn
     input_list = permutations(range(0,3), 2)
     for x, y in input_list:
-        input = torch.FloatTensor([x,y])
-        output = torch.FloatTensor([z(x,y)])
+        input = torch.FloatTensor([x, y])
+        output = torch.FloatTensor([z(x, y)])
         tensor_data.append((input, output))
     return tensor_data
 

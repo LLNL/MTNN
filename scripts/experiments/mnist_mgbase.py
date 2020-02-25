@@ -7,14 +7,6 @@
 
 # standard
 import os
-import sys
-import datetime
-import argparse
-import time
-
-# third-party
-import yaml
-import inspect  # For testing.
 
 # pytorch
 import torch
@@ -23,14 +15,14 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils as utils
 from torchvision import datasets, transforms
-from torch.utils.tensorboard import SummaryWriter
+
 
 # local source
 import MTNN
-import MTNN.builder as builder
-import MTNN.trainer as trainer
-import MTNN.config_reader as reader
-import MTNN.mtnn_defaults as mtnnconsts
+from MTNN import builder
+from MTNN import  trainer
+from MTNN import config_reader
+from MTNN import mtnn_defaults
 
 
 ######################################
@@ -42,9 +34,9 @@ try:
 
 except KeyError:
     # Else use default MNIST_mgbase.yaml
-    CONFIG_PATH = os.path.abspath(os.path.join(mtnnconsts.CONFIG_DIR, 'mnist_mgbase.yaml'))
+    CONFIG_PATH = os.path.abspath(os.path.join(mtnn_defaults.CONFIG_DIR, 'mnist_mgbase.yaml'))
 
-conf = reader.YamlConfig(CONFIG_PATH)
+conf = config_reader.YamlConfig(CONFIG_PATH)
 BATCH_SIZE_TRAIN = conf.get_property('batch_size_train')
 BATCH_SIZE_TEST = conf.get_property('batch_size_test')
 

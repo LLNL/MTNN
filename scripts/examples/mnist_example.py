@@ -139,7 +139,7 @@ with open(config_file, "r") as file_stream:
         print("Setting up the network.")
 
         model_config = yaml.load(file_stream, Loader = yaml.SafeLoader)
-        model = mf.Model(tensorboard = True, debug = True)
+        model = mf.Model(visualize = True, debug = True)
         model.set_config(model_config)
         print(model)
         optimizer = optim.SGD(model.parameters(), lr = LEARNING_RATE, momentum = MOMENTUM)

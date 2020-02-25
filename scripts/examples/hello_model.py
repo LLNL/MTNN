@@ -186,12 +186,11 @@ def tensorize_data(training_data: list):
 def gen_data(linear_function):
     training_data = []
     input_data = []
-    for i in range(10):
-        x = random.randint(0, 3)
-        y = random.randint(0, 3)
-        training_datum = ((x, y), linear_function(x, y))
-        input_data.append((x, y))
-        training_data.append(training_datum)
+    for x in range(3):
+        for y in range(3):
+            training_datum = ((x, y), linear_function(x, y))
+            input_data.append((x, y))
+            training_data.append(training_datum)
     return input_data, training_data
 
 # Generate Data.
@@ -261,7 +260,7 @@ optimizer = trainer.build_optimizer(mtnn_var.CONFIG_PATH, mtnnmodel.parameters()
 mtnnmodel.set_optimizer(optimizer)
 mtnnmodel.view_properties()
 
-print("\nUNTRAINED MTNN MODEL PARAMETERS")
+print("\n MTNN MODEL PARAMETERS BEFORE TRAINING")
 mtnnmodel.print_parameters()
 
 # Train.
@@ -288,7 +287,7 @@ prolonged_model = prolongation_operator.apply(mtnnmodel, exp_factor =3)
 
 print("\nUNTRAINED PROLONGED MTNN MODEL PARAMETERS: \n")
 prolonged_model_copy = copy.deepcopy(prolonged_model)
-prolonged_model.view_properties()
+prolonged_model.print_properties()
 prolonged_model.print_parameters()
 
 # Set-up.
@@ -301,7 +300,7 @@ prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 10, log_interv
 
 # View Parameters.
 print("\nTRAINED PROLONGED MTNN MODEL PARAMETERS: \n")
-prolonged_model.view_properties()
+prolonged_model.print_properties()
 prolonged_model.print_parameters()
 
 
@@ -325,7 +324,7 @@ mtnnmodel.print_parameters()
 evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
 
 print("\nUNTRAINED PROLONGED MODEL")
-prolonged_model.print_parameters()
+prolonged_model_copy.print_parameters()
 evaluator.evaluate_output(model=prolonged_model_copy, dataset=tensor_training_data)
 
 print("\nTRAINED PROLONGED MODEL")

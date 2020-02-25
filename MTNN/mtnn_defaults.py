@@ -1,4 +1,5 @@
-""" MTNN/mtnn_defaults.py
+"""
+MTNN/mtnn_defaults.py
 Global default variables for MTNN package
 """
 import os
@@ -8,7 +9,7 @@ import datetime
 import inspect
 
 
-# TODO: Move variables to mtnn_var
+# TODO: Clean
 ################################################
 # Global Variables for config_generator.py
 ################################################
@@ -20,6 +21,11 @@ POSITIVE_TEST_DIR = os.path.abspath(TEST_CONFIG_DIR + "/positive")
 if not os.path.exists(POSITIVE_TEST_DIR):
     # TODO: Sanitize file path
     os.makedirs(POSITIVE_TEST_DIR)
+
+TEST_CONFIG_MODEL_TYPE = {
+    "model_type": "fully-connected",
+    "input_size": 2
+}
 
 # Edit this.
 TEST_CONFIG_HYPERPARAMETERS = {
@@ -36,8 +42,13 @@ TEST_CONFIG_LAYER_PARAMETERS = {
 }
 
 # Edit this.
-TEST_CONFIG_MODEL_PARAMETERS = {
-    "model_type": "fully-connected",
+TEST_CONFIG_MODEL_HYPERPARAMETERS = {
+    "log_interval": 10,
+    "num_epochs": 10,
+    "batch_size_train": 10,
+    "batch_size_test": 10,
+    "learning_rate": 0.01,
+    "momentum": 0.5,
     "objective_function": "mseloss",
     "optimization_method": "SGD"
 }

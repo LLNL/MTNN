@@ -38,4 +38,5 @@ clean-logs:
 	@echo "     remove *.txt files from scripts/examples/runs/logs/"
 
 	find ../scripts/examples/runs/logs/ -type f -name "*.txt" -exec rm -f {} \;
+	find runs/logs/ -type f -name "*.txt" -exec rm -f {} \;
 

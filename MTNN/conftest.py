@@ -18,13 +18,14 @@ from torch.autograd import Variable
 import sklearn.datasets as skdata
 
 # local package
-import tests_var as gv
+from MTNN import mtnn_defaults
 from MTNN import model as mtnnmodel
 from MTNN import config_generator
 
 # Logging set-up
 # TODO: Configure Logger
 # TODO: Clean print statements -> logger
+
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -33,7 +34,7 @@ pp = pprint.PrettyPrinter(indent=4)
 ##################################################
 
 # Generate YAML configuration files.
-@pytest.fixture(autouse=True, scope='session')
+@pytest.fixture(autouse=False, scope='session') # TODO: Change to True
 def gen_configs():
     """
     Generates YAML configuration files.
@@ -65,9 +66,9 @@ def make_models():
     print("\nSETUP: Collection_of_models")
 
     collection_of_models = []
-    for yaml_file in os.listdir(gv.POSITIVE_TEST_DIR):
+    for yaml_file in os.listdir(mtnn_defaults.POSITIVE_TEST_DIR):
 
-        yaml_file_path = gv.POSITIVE_TEST_DIR + "/" + yaml_file
+        yaml_file_path = mtnn_defaults.POSITIVE_TEST_DIR + "/" + yaml_file
 
         config = yaml.load(open(yaml_file_path, 'r'), Loader = yaml.SafeLoader)
         model = mtnnmodel.Model(config)
@@ -95,9 +96,9 @@ def regression_training_data():
 
     """
     print("\nSETUP: Generating regression training data")
-    x, y = skdata.make_regression(n_samples=gv.TEST_FN_PARAMETERS['n_samples'],
-                                  n_features=gv.TEST_FN_PARAMETERS['n_features'],
-                                  noise=gv.TEST_FN_PARAMETERS['noise'])
+    x, y = skdata.make_regression(n_samples=mtnn_defaults.TEST_FN_PARAMETERS['n_samples'],
+                                  n_features=mtnn_defaults.TEST_FN_PARAMETERS['n_features'],
+                                  noise=mtnn_defaults.TEST_FN_PARAMETERS['noise'])
     # Reshape.
     y.shape = x.shape
 

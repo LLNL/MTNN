@@ -233,7 +233,7 @@ print("*****************************")
 
 # Set-up.
 model_config = os.path.join(tests_var.CONFIG_DIR + "/hello_model.yaml")
-mtnnmodel = MTNN.Model(tensorboard=False, debug=True)
+mtnnmodel = MTNN.Model(visualize =False, debug=True)
 mtnnmodel.set_config(model_config)
 model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
@@ -255,7 +255,7 @@ print("USING PROLONGED MTNN MODEL")
 print("*****************************")
 # Applying Lower Triangular Operator
 prolongation_operator = MTNN.LowerTriangleOperator()
-prolonged_model = prolongation_operator.apply(mtnnmodel, expansion_factor=3)
+prolonged_model = prolongation_operator.apply(mtnnmodel, exp_factor =3)
 prolonged_model.set_debug(True)
 
 # Set-up.

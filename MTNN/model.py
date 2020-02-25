@@ -1,7 +1,6 @@
 """ MTNN/model.py
 Defines the interface for creating extended torch.nn model
-# TODO:
-    * Logging: Change to literal string interpolation format (Python 3.6+)
+# TODO: Logger INI file
 """
 # Public API.
 __all__ = ["Model"]
@@ -26,13 +25,17 @@ from torch.utils.tensorboard import SummaryWriter
 import MTNN.mtnn_defaults as mtnnconsts
 import MTNN.torch_constants as torchconsts
 
-# TODO: Logger INI file
+# Debugging
+#torch.manual_seed(1)
 
+# Set-up logging
+pp = pprint.PrettyPrinter(indent=4)
 logging.basicConfig(filename=(mtnnconsts.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
                     filemode='w',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
+
 
 class Model(nn.Module):
     """
@@ -108,10 +111,10 @@ class Model(nn.Module):
         # Process and set Layers.
         layer_dict = nn.ModuleDict()
         for n_layer in range(len(self._layer_config)):
-            layer_list = nn.ModuleList()
+            module_list = nn.ModuleList()
             this_layer = self._layer_config[n_layer]["layer"]
             prev_layer = self._layer_config[n_layer - 1]["layer"]
-            layer_input = this_layer["neurons"]
+            layer_output_size = this_layer["neurons"]
             activation_type = this_layer["activation"]
             dropout = this_layer["dropout"]
 
@@ -119,13 +122,13 @@ class Model(nn.Module):
             # Append hidden layer
             if n_layer == 0:  # First layer
                 if this_layer["type"] == "linear":
-                    layer_list.append(nn.Linear(self._input_size, layer_input))
+                    module_list.append(nn.Linear(self._input_size, layer_output_size))
             else:
-                layer_list.append(nn.Linear(prev_layer["neurons"], layer_input))
+                module_list.append(nn.Linear(prev_layer["neurons"], layer_output_size))
 
             # Append activation layer
             try:
-                layer_list.append(torchconsts.ACTIVATIONS[activation_type])
+                module_list.append(torchconsts.ACTIVATIONS[activation_type])
             except KeyError:
                 print(str(activation_type) + " is not a valid torch.nn.activation function.")
                 sys.exit(1)
@@ -134,8 +137,10 @@ class Model(nn.Module):
             # TODO: Add dropout layers
             # TODO: Add support for a CNN
 
+
+
             # Update Layer dict
-            layer_dict["layer" + str(n_layer)] = layer_list
+            layer_dict["layer" + str(n_layer)] = module_list
             self._module_layers = layer_dict
 
             # Set model hyper-parameters
@@ -186,39 +191,19 @@ class Model(nn.Module):
         if self.debug:
             for module_indx in range(len(self._module_layers)):
                 module_key = 'layer' + str(module_indx)
-                """
-                layer = self._module_layers[module_key][0]  # hard-coded. Assumes each module is one linear, one activation
-                activation = self._module_layers[module_key][1]
-
-                logging.debug(f"Layer:{layer}")
-                logging.debug(f"Activation:{activation}")
-
-                logging.debug(f"FORWARD PASS LAYER #: {module_indx}\
-                                               \n\tINPUT: {model_input}")
-
-                
-                model_input = layer(model_input)
-                logging.debug(f"\tMODEL OUTPUT before ACTIVATION: {model_input}")
-
-                #model_input = activation(model_input)
-                logging.debug(f"\tMODEL OUTPUT after ACTIVATION: {model_input}")
-
-                logging.debug(f"MODULE INDEX:{module_indx, module_key}")
-                logging.debug(f"Module layer: {self._module_layers[module_key]}")
-                """
 
                 for layer in self._module_layers[module_key]:
                     logging.debug(f"\tLayer: {layer}")
-                    logging.debug(f"\t\tLAYER INPUT: {model_input}")
+                    logging.debug(f"\t\tINPUT: {model_input}")
                     model_input = layer(model_input)
-                    logging.debug(f"\t\tLAYER OUTPUT: {model_input}")
+                    logging.debug(f"\t\tOUTPUT: {model_input}")
 
                     # TODO:FIX. Non-leaf/intermediate variables gradients can only be accessed via hooks.
                     if hasattr(layer, "weight"):
                         logging.debug(f"\n\t\tLAYER: {layer}\
-                                               \n\t\t\tWEIGHTS:\n\t\t\t\t\t{layer.weight}\
+                                               \n\t\t\tWEIGHTS:\n\t\t\t\t\t{layer.weight.data} {layer.weight.requires_grad}\
                                                \n\t\t\tWEIGHT SHAPE:\n\t\t\t\t{layer.weight.size()}\
-                                               \n\t\t\tBIAS:\n\t\t\t\t{layer.bias}\
+                                               \n\t\t\tBIAS:\n\t\t\t\t{layer.bias.data} {layer.bias.requires_grad}\
                                                \n\t\t\tBIAS SHAPE: \n\t\t\t\t{layer.bias.size()}\
                                                \n\t\t\tWEIGHTS GRADIENTS:\n\t\t\t\t{layer.weight.grad}\
                                                \n\t\t\tBIAS GRADIENTS:\n\t\t\t\t{layer.bias.grad}")
@@ -227,6 +212,7 @@ class Model(nn.Module):
         # Visualize
         if self.visualize:
             """
+            # For Tensorboard Visualization
             # Visualize weights
             for i, (layer, activation) in enumerate(self._module_layers.values()):
                 for w_i, w in enumerate(layer.weight[0]):
@@ -288,15 +274,40 @@ class Model(nn.Module):
                                                    \n\tBATCH [{batch_idx}/{batch_total}]")
 
                     prediction = self.forward(input_data)
-                    logging.debug(f"PREDICTION: {prediction}")
+                    logging.debug(f"\nPREDICTION: {prediction}")
 
+                    # Back propagation
                     loss = self._objective_fn(prediction, target_data)
-                    logging.debug(f"LOSS: {loss}")
-                    loss.backward(retain_graph = True)
+                    loss.backward(retain_graph = True) # Compute gradients wrt to parameters in loss
+                    logging.debug(f"\nLOSS: {loss}")
 
-                    self._optimizer.step()
+                    # Gradient Descent
 
-                    logging.debug("UPDATED GRADIENTS")
+                    logging.debug(f"\nOPTIMIZER STATE # of PARAMS: {len(self._optimizer.state)}")
+
+                    for k, v in enumerate(self._optimizer.state):
+                        logging.debug(f"\t\tKEY: {k} VALUE: {v}")
+
+                    logging.debug("\n\tOPTIMIZER PARAMETERS)")
+                    for p in self._optimizer.param_groups[0]["params"]:
+                        logging.debug(f"\t {p.data} \trequires_grad={p.requires_grad}")
+
+                    self._optimizer.step()# Update parameters
+
+                    logging.debug("\nUPDATED WEIGHTS AND BIASES..")
+                    for module_indx in range(len(self._module_layers)):
+                        module_key = 'layer' + str(module_indx)
+                        for layer in self._module_layers[module_key]:
+                            # TODO:FIX. Non-leaf/intermediate variables gradients can only be accessed via hooks.
+                            if hasattr(layer, "weight"):
+                                logging.debug(f"\n\t\tLAYER: {layer}\
+                                                                  \n\t\t\tWEIGHTS:\n\t\t\t\t\t{layer.weight.data} {layer.weight.requires_grad}\
+                                                                  \n\t\t\tWEIGHT SHAPE:\n\t\t\t\t{layer.weight.size()}\
+                                                                  \n\t\t\tBIAS:\n\t\t\t\t{layer.bias.data} {layer.bias.requires_grad}\
+                                                                  \n\t\t\tBIAS SHAPE: \n\t\t\t\t{layer.bias.size()}\
+                                                                  \n\t\t\tWEIGHTS GRADIENTS:\n\t\t\t\t{layer.weight.grad}\
+                                                                  \n\t\t\tBIAS GRADIENTS:\n\t\t\t\t{layer.bias.grad}")
+
                     # TODO: Add logging of weights after update?
                     logging.debug("")
 
@@ -388,14 +399,14 @@ class Model(nn.Module):
         """
         print("\n MODEL PARAMETERS:")
         for i in self._module_layers:
-            print("\n\tLayer: ", i,
-                  "\n\tWeight: ", self._module_layers[i][0].weight,
-                  "\n\tWeight Gradient", self._module_layers[i][0].weight.grad,
-                  "\n\n\tBias: ", self._module_layers[i][0].bias,
-                  "\n\tBias Gradient:", self._module_layers[i][0].bias.grad)
+            print("\n\tLAYER: ", i,
+                  "\n\tWEIGHT:\n\t", self._module_layers[i][0].weight.data,
+                  "\n\tWEIGHT GRADIENT", self._module_layers[i][0].weight.grad,
+                  "\n\n\tBIAS:\n\t", self._module_layers[i][0].bias.data,
+                  "\n\tBIAS GRADIENT:", self._module_layers[i][0].bias.grad)
 
     # Accessor methods.
-    def view_properties(self) -> list:
+    def print_properties(self) -> list:
         """
         Returns model configuration
         Returns: None

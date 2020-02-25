@@ -41,10 +41,10 @@ def build_model(confpath: str, visualize=False , debug=False):
     layer_dict = nn.ModuleDict()
     layer_count = 0
     for n_layer in range(len(model._layer_config)):
-        layer_module = nn.ModuleList()
+        module_list = nn.ModuleList()
         this_layer = model._layer_config[n_layer]["layer"]
         prev_layer = model._layer_config[n_layer - 1]["layer"]
-        layer_input = this_layer["neurons"]
+        layer_output_size = this_layer["neurons"]
         activation_type = this_layer["activation"]
         dropout = this_layer["dropout"]
 
@@ -52,13 +52,17 @@ def build_model(confpath: str, visualize=False , debug=False):
         # Append hidden layer
         if n_layer == 0:  # First layer
             if this_layer["type"] == "linear":
-                layer_module.append(nn.Linear(model._input_size, layer_input))
+                first_linear_layer = nn.Linear(model._input_size, layer_output_size)
+                logging.debug(f"Layer:  {first_linear_layer.weight} {first_linear_layer.bias}")
+                module_list.append(first_linear_layer)
         else:
-            layer_module.append(nn.Linear(prev_layer["neurons"], layer_input))
+            linear_layer = nn.Linear(prev_layer["neurons"], layer_output_size)
+            logging.debug(f"Layer: {linear_layer.weight} {linear_layer.bias}")
+            module_list.append(linear_layer)
 
         # Append activation layer
         try:
-            layer_module.append(torchconsts.ACTIVATIONS[activation_type])
+            module_list.append(torchconsts.ACTIVATIONS[activation_type])
         except KeyError:
             print(KeyError,str(activation_type) + " is not a valid torch.nn.activation function.")
 
@@ -66,9 +70,10 @@ def build_model(confpath: str, visualize=False , debug=False):
         # TODO: Add support for dropout layers
         # TODO: Add Support for a CNN
 
-        # Update Layer dict
-        layer_dict["layer" + str(n_layer)] = layer_module
+        # Add to Layer dict 
+        layer_dict["layer" + str(n_layer)] = module_list
 
+    # Update Model attributes
     model.set_num_layers(len(layer_dict))
     model._module_layers = layer_dict
 

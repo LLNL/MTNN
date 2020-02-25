@@ -13,6 +13,11 @@ layers:
       neurons: 1
       activation: relu
       dropout: None
+  - layer:
+      type: linear
+      neurons: 1
+      activation: relu
+      dropout: None
 hyperparameters:
 # The output of each layer is implicit; set from inputs of next layer
   log_interval: 10 # set for testing

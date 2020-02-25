@@ -67,7 +67,7 @@ class YAMLModel:
 
     Used to set the model parameters.
     """
-    def __init__(self, modeltype: str, inputsize: int, numlayers: int, layerlist: list,
+    def __init__(self, modeltype: str, inputsize: int, numlayers: int, layerlist: list, hyperparameters: list,
                  objective_fn: str, optimization_method: str):
         """
         Model yaml template
@@ -81,6 +81,7 @@ class YAMLModel:
         self.input_size = inputsize
         self.number_of_layers = numlayers
         self.layers = layerlist
+        self.hyper_parameters = hyperparameters
         self.objective = objective_fn
         self.optimization = optimization_method
 
@@ -96,6 +97,9 @@ class YAMLModel:
 
     def append_layer(self, layer: Layer):
         self.layers.append(layer)
+
+    def set_hyperparameters(self, hyperparameters: list):
+        self.hyper_parameters = hyperparameters
 
     def set_objective(self, objective_fn: str):
         self.objective = objective_fn
@@ -199,15 +203,16 @@ def gen_config(parameters: dict, product: bool):
                 layer_data = get_layer_data(list_of_layers)
 
                 # Create/overwrite Model Instance.
-                a_model = YAMLModel(modeltype=mtnn_defaults.TEST_CONFIG_MODEL_PARAMETERS["model_type"],
+                model_config = YAMLModel(modeltype=mtnn_defaults.TEST_CONFIG_MODEL_TYPE["model_type"],
                                     inputsize=model_input,
                                     numlayers=num_layer,
                                     layerlist=layer_data,
-                                    objective_fn=mtnn_defaults.TEST_CONFIG_MODEL_PARAMETERS["objective_function"],
-                                    optimization_method=mtnn_defaults.TEST_CONFIG_MODEL_PARAMETERS["optimization_method"])
+                                    hyperparameters = list(mtnn_defaults.TEST_CONFIG_MODEL_HYPERPARAMETERS),
+                                    objective_fn=mtnn_defaults.TEST_CONFIG_MODEL_HYPERPARAMETERS["objective_function"],
+                                    optimization_method=mtnn_defaults.TEST_CONFIG_MODEL_HYPERPARAMETERS["optimization_method"])
 
                 # Format data as string
-                data = a_model.write_as_yaml()
+                data = model_config.write_as_yaml()
 
                 # Write to file.
                 write_to_file(file_name, data)
@@ -247,15 +252,16 @@ def gen_config(parameters: dict, product: bool):
                         # Create the model.
                         for model_input in range(input_min, input_max + 1):
 
-                            a_model = YAMLModel(modeltype=mtnn_defaults.TEST_CONFIG_MODEL_PARAMETERS["model_type"],
+                            model_config = YAMLModel(modeltype=mtnn_defaults.TEST_CONFIG_MODEL_TYPE["model_type"],
                                                 inputsize=model_input,
                                                 numlayers=num_layer,
                                                 layerlist=layer_data,
-                                                objective_fn=mtnn_defaults.TEST_CONFIG_MODEL_PARAMETERS["objective_function"],
-                                                optimization_method=mtnn_defaults.TEST_CONFIG_MODEL_PARAMETERS["optimization_method"])
+                                                hyperparameters = list(mtnn_defaults.TEST_CONFIG_MODEL_HYPERPARAMETERS),
+                                                objective_fn=mtnn_defaults.TEST_CONFIG_MODEL_HYPERPARAMETERS["objective_function"],
+                                                optimization_method=mtnn_defaults.TEST_CONFIG_MODEL_HYPERPARAMETERS["optimization_method"])
 
                             # Format model data to string.
-                            data = a_model.write_as_yaml()
+                            data = model_config.write_as_yaml()
 
                             # Write to file.
                             file_name = (mtnn_defaults.POSITIVE_TEST_DIR + "/test" + str(num_layer) + str(num_neuron)
