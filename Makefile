@@ -1,18 +1,21 @@
-.PHONY: init req
+.PHONY: help setup init req clean-tests clean-logs
 
 TESTPATH = ./tests/
 
 help:
-	@echo "Please use \'make <target>' where <target> is one of these options" 
+	@echo "Usage: make [TARGET]"
+	@echo "Targets:" 
+	@echo "setup		Build developer environment: creates conda environment and run in developer mode" 
 	@echo "init 		Install package dependencies and run in developer mode" 
 	@echo "req      	Write source code dependencies to requirements.txt"
 	@echo "clean-tests      Clean tests/ folder of generated tests cases"
 	@echo "clean-logs       Clean log files from scripts/experiments/examples/runs/logs/"
 
+
 init:
 	@echo "init"
 	@echo "     installing package dependencies"
-	python ../setup.py develop
+	python setup.py develop
 
 req:
 	@echo "requirements" 
@@ -35,8 +38,7 @@ clean-tests:
 
 clean-logs:
 	@echo " clean-logs"
-	@echo "     remove *.txt files from scripts/examples/runs/logs/"
+	@echo "     clear runs/ directory of logs, checkpoints, tensorboard event files, etc."
 
-	find ../scripts/examples/runs/logs/ -type f -name "*.txt" -exec rm -f {} \;
-	find runs/logs/ -type f -name "*.txt" -exec rm -f {} \;
-
+	#find /scripts/examples/runs/logs/ -type f -name "*.txt" -exec rm -rf {} \; # Generated debugging logs
+	find . -type d -name runs* -exec rm -rf {} \; # Model run logs
