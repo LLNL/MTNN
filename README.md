@@ -14,20 +14,26 @@ MTNN is a PyTorch framework to develop and test the application of multigrid alg
 * **Unit tests** are in `MTNN/tests`
     * Positive test cases (where tests should *not* fail) are in `MTNN/tests/positives`
     * Negative test cases (where tests should fail) are in `MTNN/tests/negative`
-* **Example scripts** using MTNN modules & framework are in `examples/`
+* **Example scripts** using MTNN modules & framework are in `MTNN/scripts/examples/`
 
+# Workflow 
+* To run a script with a YAML configuration file: 
+```bash
+python runner.py <path to script> <path to YAML configuration file>
+```
 
-# Environment Set-up
-How to set-up environment and package dependencies on LC machines.
-The following was tested on Pascal. 
+# Developer
+## Environment Set-up
+* How to set-up environment and package dependencies on LC machines.
+* The following was tested on the folRlowing LC systems: Pascal. 
 
 Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.llnl.gov/confluence/display/LC/PyTorch+in+LC)
 
-## With Conda 
+### Recommended: With Conda 
 **The following assumes Bash shell and that Anaconda is already installed on the system.** 
 * To-do: Make this into a shell script/makefile
 
-Pre-step: Update your Conda repository
+Pre-steps: Install and Update your Conda repository
 
 ```bash
 conda update --all
@@ -58,10 +64,12 @@ conda update --all
     conda activate mtnnenv
     ```
 
-4. a. **Developer Mode** Install Python dependencies with `setup.py`. Setup.py adds the source code to the (virtualenv) Python path. Develop mode creates a symbolic link from the deployment directory `/home/user/.conda/envs/mtnnenv/lib/python3.7/site-packages/` to this source code directory `/home/user/mtnnpython/` instead of copying the source code directly. 
-
+4. a. **Developer Mode** Install Python dependencies with `setup.py`. Setup.py adds the source code to the (virtualenv) Python path. 
+Develop mode creates a symbolic link from the deployment directory `/home/user/.conda/envs/mtnnenv/lib/python3.7/site-packages/` 
+to this source code directory `/home/user/mtnnpython/` instead of copying the source code directly. You can call `python setup.py develop` using the Makefile target `init`.
+    
     ```bash
-    python setup.py develop
+    make init
     ```
 
     To clean up distribution packages symbolic links:
@@ -70,9 +78,9 @@ conda update --all
     python setup.py develop --uninstall
     ```
 
-    b. **Safest method**  `Setup.py` might pull the latest (incomptaible) package versions, whereas `pip install` will search the local project directory for dependencies. 
+    b. **Safest method**  `Setup.py` might pull the latest (incomptaible) package versions. So it's safe to use `pip install` will search the local project directory for dependencies. 
 
-    Development mode:
+    **Development mode:**
 
     ```bash
     pip install -e .
@@ -92,7 +100,8 @@ conda update --all
     python scripts/examples/hello_model.py
     ```
 
-## With Virtualenv
+
+### With Virtualenv
 
 ```bash
     cd mtnnpython/mtnn
@@ -102,22 +111,23 @@ conda update --all
     pip install -r requirements.txt
 ```
 
-## How to export dependencies to requirements.txt
+### How to export dependencies to requirements.txt
 
 * Do a clean install of your conda/virtualenv (see Environment Set-up/With Conda steps 1-3)
 * Test run code (e.g. examples/) and ensure all dependencies are imported 
 * `$pip freeze > requirements.txt`
 
 
-# Model Configuration 
+## Model Configuration 
 The neural network architecture can be specified by a YAML configuration file. These are stored in `MTNN/config`.
 
-## With Yaml Files
+### With Yaml Files
 
-* To-do: Make a template example yaml file
+* TODO: Make a template example yaml file
+### Generating YAML files 
+ * TODO
 
-
-# Testing
+## Testing
 
 * In `mtnnconstants.py`, edit the `TEST_CONFIG_*` parameters to modify the range of parameters you want to
  create for testing yaml configuration files
@@ -127,7 +137,7 @@ The neural network architecture can be specified by a YAML configuration file. T
 
 # Generating Sphinx Documentation 
 
- * To-do
+ * TODO: Generate Sphinx documentation 
 
 # Debugging 
 
@@ -135,7 +145,10 @@ The neural network architecture can be specified by a YAML configuration file. T
 * For a MTNN Model object, set `Model.debug` to `True` to enable logging
 * Logs will be stored in  `source folder/logs/`
 
-## Visualization With  Tensorboard
+## Visualization
+### With ONYXX 
+ * TODO 
+### With Tensorboard
 1. Initialize or set Model.Tensorboard to True
 1.5 Remove Previous logs:
 

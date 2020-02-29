@@ -30,7 +30,7 @@ hyperparameters:
   momentum: 0.5
   log_interval: 10 # Set for testing
   objective: mseloss
-  optimization: CrossEntropyLoss
+  optimization: SGD
 
 
 

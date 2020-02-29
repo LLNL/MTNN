@@ -23,7 +23,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN.mtnn_defaults as mtnnconsts
-import MTNN.torch_constants as torchconsts
+import MTNN.torch_consts as torchconsts
 
 # Debugging
 #torch.manual_seed(1)

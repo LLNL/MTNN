@@ -1,4 +1,4 @@
-# !/usr/bin/env/ python
+# !/usr/bin/env/ python3
 """ scripts/examples/hello_model.py
 Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native Torch model
 - using generated linear regression data 3x + 2y
@@ -7,7 +7,6 @@ Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native To
 # standard
 import datetime
 import sys
-import random
 import copy
 
 # third-party
@@ -38,16 +37,6 @@ sys.stdout = logger.StreamLogger()
 ##############################################
 # Read from YAML Configuration File
 ##############################################
-# If called from main()
-try:
-    CONFIG_PATH = locals()['config_path']
-
-except KeyError:
-    # Prompt for configuration file
-    config_path = input("Specify configuration file:")
-    config_path = mtnn_utils.check_path(config_path)
-    mtnn_var.set_config_path(config_path)
-    print(config_path)
 
 conf = config_reader.YamlConfig(mtnn_var.CONFIG_PATH)
 BATCH_SIZE_TRAIN = conf.get_property('batch_size_train')
@@ -258,7 +247,7 @@ optimizer = trainer.build_optimizer(mtnn_var.CONFIG_PATH, mtnnmodel.parameters()
 
 # Set Optimizer.
 mtnnmodel.set_optimizer(optimizer)
-mtnnmodel.view_properties()
+mtnnmodel.print_properties()
 
 print("\n MTNN MODEL PARAMETERS BEFORE TRAINING")
 mtnnmodel.print_parameters()

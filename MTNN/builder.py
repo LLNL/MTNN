@@ -12,7 +12,7 @@ import torch.nn as nn
 # local source
 import MTNN
 import MTNN.config_reader as reader
-import torch_constants as torchconsts
+import MTNN.torch_consts as torchconsts
 
 
 def build_model(confpath: str, visualize=False , debug=False):
@@ -94,4 +94,3 @@ def build_model(confpath: str, visualize=False , debug=False):
                           \n\tBIAS GRADIENT: {model._module_layers[layer_idx][0].bias.grad}")
 
     return model
-

@@ -14,7 +14,7 @@ def parse_args() -> list:
     Returns:
         commandline_args <list>
     """
-    parser = argparse.ArgumentParser(description = "Runs MTNN test script with a YAML config file")
+    parser = argparse.ArgumentParser(description = "Runs MTNN script with a YAML config file")
     # Option for experiment script
     parser.add_argument("script",
                         nargs = 1,
@@ -49,6 +49,7 @@ def find_config(config_dir: str, filename: str) -> str:
 
     """
     cwd = os.path.dirname(config_dir)
+    print(cwd)
     results = []
     for root, dirs, files in os.walk(cwd):
         if filename in files:

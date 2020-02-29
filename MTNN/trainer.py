@@ -1,59 +1,10 @@
 """ MTNN/trainer.py
 Reads from YAML configuration file and returns a PyTorch optimization object
 """
-# pytorch
-import torch.optim as optim
-
 # local source
 import MTNN.config_reader as reader
+import torch_consts
 
-######################################
-# Optimization functions
-######################################
-# TODO: Fill in as needed
-def Adadelta():
-    pass
-
-
-def Adagrad():
-    pass
-
-
-def Adam():
-    pass
-
-
-def AdamW():
-    pass
-
-
-def SparseAdam():
-    pass
-
-
-def Adamax():
-    pass
-
-
-def ASGD():
-    pass
-
-
-def LBFGS():
-    pass
-
-
-def RMSprop():
-    pass
-
-
-def Rprop():
-    pass
-
-
-def SGD(model_parameters, learning_rate, momentum):
-    opt = optim.SGD(model_parameters, lr = learning_rate, momentum = momentum)
-    return opt
 
 
 def build_optimizer(confpath: str, model_parameters):
@@ -72,17 +23,17 @@ def build_optimizer(confpath: str, model_parameters):
     momentum = conf.momentum
 
     optimization_dispatch_table = {
-        "Adadelta": Adadelta(),
-        "Adagrad": Adagrad(),
-        "Adam": Adam(),
-        "AdamW": AdamW(),
-        "SparseAdam": SparseAdam(),
-        "Adamax": Adamax(),
-        "ASGD": ASGD(),
-        "LBFGS": LBFGS(),
-        "RMSprop": RMSprop(),
-        "Rprop": Rprop(),
-        "SGD": SGD(model_parameters, learning_rate, momentum)
+        "Adadelta": torch_consts.Adadelta(),
+        "Adagrad": torch_consts.Adagrad(),
+        "Adam": torch_consts.Adam(),
+        "AdamW": torch_consts.AdamW(),
+        "SparseAdam": torch_consts.SparseAdam(),
+        "Adamax": torch_consts.Adamax(),
+        "ASGD": torch_consts.ASGD(),
+        "LBFGS": torch_consts.LBFGS(),
+        "RMSprop": torch_consts.RMSprop(),
+        "Rprop": torch_consts.Rprop(),
+        "SGD": torch_consts.SGD(model_parameters, learning_rate, momentum)
     }
 
     optimizer = optimization_dispatch_table[optimization]
