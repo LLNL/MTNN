@@ -10,7 +10,7 @@ import torch.optim as optim
 
 
 ######################################
-# Optimization functions
+# Optimization Function Dispatch Table
 ######################################
 # See documentation for optimizers here:https://pytorch.org/docs/stable/optim.html
 # TODO: Fill in as needed
@@ -55,9 +55,11 @@ def Rprop():
 
 
 def SGD(model_parameters, learning_rate, momentum):
-    opt = optim.SGD(model_parameters, lr = learning_rate, momentum = momentum)
+    opt = optim.SGD(model_parameters, lr=learning_rate, momentum=momentum)
     return opt
-
+######################################
+# Loss Function Dispatch Table
+######################################
 LOSS = {
     # See documentation for these functions here: https://pytorch.org/docs/stable/nn.html#loss-functions
     "l1loss": nn.L1Loss(),
@@ -80,6 +82,9 @@ LOSS = {
     "tripletmarginloss": nn.TripletMarginLoss(),
 }
 
+######################################
+# Activation Function Dispatch Table
+######################################
 ACTIVATIONS = {
     "relu": nn.ReLU(),
     "tanh": nn.Tanh(),

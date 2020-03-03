@@ -7,24 +7,27 @@ import os
 import datetime
 
 # local source
-from MTNN import mtnn_defaults
+import MTNN.mtnn_defaults as mtnn_defaults
+import MTNN.mtnn_utils as mtnn_utils
 
 # TODO: Clean
-
-FILEOUT = mtnn_defaults.EXPERIMENT_LOGS_DIR \
-              + "/" + mtnn_defaults.get_caller_filename() + "_" \
-              + datetime.datetime.today().strftime("%m%d%Y") + "_" \
-              + datetime.datetime.now().strftime("%H:%M:%S") + "_" \
-              + datetime.datetime.today().strftime("%A") \
-              + ".stdout.txt"
 
 
 # Called from Main
 def set_fileout_name(config_path: str) -> str:
+    """
+    Formats the log filename given by config_path.
+    Args:
+        config_path: <str>
+
+    Returns:
+        FILEOUT: <str>
+
+    """
     config_base_name = os.path.basename(config_path)
     global FILEOUT
     FILEOUT = mtnn_defaults.EXPERIMENT_LOGS_DIR \
-              + "/" + mtnn_defaults.get_caller_filename() + "_" \
+              + "/" + mtnn_utils.get_caller_filename() + "_" \
               + config_base_name + "_" \
               + datetime.datetime.today().strftime("%m%d%Y") + "_" \
               + datetime.datetime.now().strftime("%H:%M:%S") + "_" \

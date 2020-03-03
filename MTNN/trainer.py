@@ -3,8 +3,7 @@ Reads from YAML configuration file and returns a PyTorch optimization object
 """
 # local source
 import MTNN.config_reader as reader
-import torch_consts
-
+import MTNN.torch_consts as torch_consts
 
 
 def build_optimizer(confpath: str, model_parameters):

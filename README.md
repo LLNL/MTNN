@@ -19,7 +19,7 @@ MTNN is a PyTorch framework to develop and test the application of multigrid alg
 # Workflow 
 * To run a script with a YAML configuration file: 
 ```bash
-python runner.py <path to script> <path to YAML configuration file>
+python run.py <relative path to script> <relative path to YAML configuration file>
 ```
 
 # Developer

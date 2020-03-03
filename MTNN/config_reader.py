@@ -10,26 +10,29 @@ class YamlConfig:
     Reads YAML files and returns parameters
     """
     def __init__(self, conf_path: str):
-        yaml_conf = yaml.load(open(conf_path, "r"), Loader = yaml.SafeLoader)
+        try:
+            yaml_conf = yaml.load(open(conf_path, "r"), Loader = yaml.SafeLoader)
 
-        conf = {
-            'model_type': yaml_conf['model_type'],
-            'input_size': yaml_conf['input_size'],
-            'layers': yaml_conf['layers'],
-            'hyperparameters': yaml_conf['hyperparameters'],
-            'num_epochs': yaml_conf['hyperparameters']['num_epochs'],
-            'log_interval': yaml_conf['hyperparameters']['log_interval'],
-            'batch_size_train': yaml_conf['hyperparameters']['batch_size_train'],
-            'batch_size_test': yaml_conf['hyperparameters']['batch_size_test'],
-            'objective': yaml_conf['hyperparameters']['objective'],
-            'learning_rate': yaml_conf['hyperparameters']['learning_rate'],
-            'momentum': yaml_conf['hyperparameters']['momentum'],
-            'optimization': yaml_conf['hyperparameters']['optimization']
-        }
-        self._config = conf
+            conf = {
+                'model_type': yaml_conf['model_type'],
+                'input_size': yaml_conf['input_size'],
+                'layers': yaml_conf['layers'],
+                'hyperparameters': yaml_conf['hyperparameters'],
+                'num_epochs': yaml_conf['hyperparameters']['num_epochs'],
+                'log_interval': yaml_conf['hyperparameters']['log_interval'],
+                'batch_size_train': yaml_conf['hyperparameters']['batch_size_train'],
+                'batch_size_test': yaml_conf['hyperparameters']['batch_size_test'],
+                'objective': yaml_conf['hyperparameters']['objective'],
+                'learning_rate': yaml_conf['hyperparameters']['learning_rate'],
+                'momentum': yaml_conf['hyperparameters']['momentum'],
+                'optimization': yaml_conf['hyperparameters']['optimization']
+            }
+            self._config = conf
+        except FileNotFoundError as exc:
+            print(exc)
+
 
     def get_property(self, property_name):
-
         if property_name not in self._config.keys():
             print(KeyError)
         return self._config[property_name]
