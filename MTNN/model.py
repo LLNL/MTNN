@@ -22,7 +22,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 # local source
-import MTNN.mtnn_defaults as mtnnconsts
+import MTNN.mtnn_defaults as mtnn_defaults
 import MTNN.torch_consts as torchconsts
 
 # Debugging
@@ -30,7 +30,7 @@ import MTNN.torch_consts as torchconsts
 
 # Set-up logging
 pp = pprint.PrettyPrinter(indent=4)
-logging.basicConfig(filename=(mtnnconsts.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
+logging.basicConfig(filename=(mtnn_defaults.EXPERIMENT_LOGS_FILENAME + ".log.txt"),
                     filemode='w',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
@@ -90,7 +90,7 @@ class Model(nn.Module):
         self.debug = debug
 
 
-    def set_config(self, config=mtnnconsts.DEFAULT_CONFIG):
+    def set_config(self, config=mtnn_defaults.DEFAULT_CONFIG):
         # TODO: Remove. Moved to Builder.py
         """
         Sets MTNN Model attributes from the YAML configuration file.

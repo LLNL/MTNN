@@ -7,6 +7,8 @@ import sys
 import os
 import pathlib
 import argparse
+import inspect
+import re
 
 
 def parse_args() -> list:
@@ -29,9 +31,16 @@ def parse_args() -> list:
                         action = "store",
                         default = sys.stdin,
                         help = "Specify path to a YAML configuration file")
+    # Option for debugging
+    parser.add_argument("-d", "--debug",
+                        default = sys.stdin,
+                        action = "store_true",
+                        help = "Sets the flag for debug logs")
     # TODO: Option for directory of yaml files
     # TODO: Option for checkpointing
     # TODO: Option for tensorboard visualization
+
+    # Parse commandline arguments
     commandline_args = parser.parse_args()
 
     return commandline_args
@@ -49,7 +58,6 @@ def find_config(config_dir: str, filename: str) -> str:
 
     """
     cwd = os.path.dirname(config_dir)
-    print(cwd)
     results = []
     for root, dirs, files in os.walk(cwd):
         if filename in files:
@@ -57,8 +65,8 @@ def find_config(config_dir: str, filename: str) -> str:
             results.append(path)
             return path
     if not results:
-        print(f"Unable to find {filename} in current directory.")
-        sys.exit(1)
+        print(f"No such file  {filename} in current directory: {cwd}")
+        raise FileNotFoundError
 
 
 def check_path(filepath: str) -> str:
@@ -104,5 +112,42 @@ def check_config(filepath: str) -> bool:
     except ValueError:
         print("Configuration file is not well-formed.")
         sys.exit(1)
+
+
+def get_caller_filename():
+    """
+    Gets previous caller's filepath.
+    Returns:
+        prev_caller_filepath <str>: Previous caller's filename
+
+    """
+    # Get the previous caller's stack frame and extract its file path
+    last_frame_info = inspect.stack()[-1]
+    caller_filepath = last_frame_info[1]  # in python 3.5+, you can use frame_info.filename
+    del last_frame_info  # drop the reference to the stack frame to avoid reference cycles
+
+    prev_caller_filename = os.path.basename(caller_filepath).strip(".py")
+    return prev_caller_filename
+
+
+def get_caller_filepath():
+    """
+    Gets previous caller's filepath.
+    Returns:
+        clean_caller_filepath <str>: Previous caller's absolute file path
+
+    """
+    # Get the previous caller's stack frame and extract its file path.
+    last_frame_info = inspect.stack()[-1]
+    caller_filepath = last_frame_info[1]  # in python 3.5+, you can use frame_info.filename
+    del last_frame_info  # drop the reference to the stack frame to avoid reference cycles
+
+    # Use regex to get the base filepath.
+    filename_match = re.search( "\w*.py$", caller_filepath)
+
+    if type(filename_match) is not None:
+        match = filename_match.group()
+        clean_caller_filepath = (caller_filepath).strip(match)
+    return clean_caller_filepath
 
 

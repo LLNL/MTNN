@@ -13,14 +13,21 @@ from MTNN import mtnn_var
 
 
 if __name__ == "__main__":
+    #######################################
     # Parse command line arguments
+    #######################################
     args = mtnn_utils.parse_args()
 
+    # Paths
     script_path_arg = args.script[0]
     config_path_arg = args.configuration[0]
-    # TODO: Add debug option
 
+    # Flags
+    debug_arg = args.debug
+
+    #######################################
     # Set MTNN Global variables
+    ######################################
     # Script path
     mtnn_var.set_script_path(mtnn_utils.check_path(script_path_arg))
 
@@ -39,10 +46,14 @@ if __name__ == "__main__":
         config_path = mtnn_utils.find_config(config_dir, config_path_arg)
         mtnn_var.set_config_path(config_path)
 
+    ######################################
     # Set logger
+    ######################################
     logger.set_fileout_name(mtnn_var.CONFIG_PATH)
 
+    ######################################
     # Execute the script
+    #####################################
     with open(mtnn_var.SCRIPT_PATH) as f:
         code = compile(f.read(), mtnn_var.SCRIPT_PATH, 'exec')
         exec(code, locals())
