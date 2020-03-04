@@ -1,23 +1,32 @@
-.PHONY: help setup init req clean-tests clean-logsrun  test 
+.PHONY: help setup init req clean-tests clean-logs run  test docs 
 
 TESTPATH = ./tests/
 
 help:
 	@echo "Usage: make [TARGET]"
-	@echo "Targets:" 
-	@echo "setup		Build developer environment: creates conda environment and run in developer mode" 
-	@echo "init 		Install package dependencies and run in developer mode" 
-	@echo "req      	Write source code dependencies to requirements.txt"
+	@echo "\nUSER TARGETS:" 
+	@echo "setup			Build developer environment: creates conda environment and run in developer mode" 
+	@echo "init 			Install package dependencies and run in developer mode" 
+	@echo "\nDEVELOPER TARGETS:"
+	@echo "baseline		Runs baseline script /scripts/examples/hello_world"
+	@echo "req			Write source code dependencies to requirements.txt"
+	@echo "run			Run work-in-progress script with configuration file"
 	@echo "test			Run Pytests in test/"
-	@echo "run			Run script with config file"
-	@echo "clean-tests      Clean tests/ folder of generated tests cases"
-	@echo "clean-logs       Clean log files from scripts/experiments/examples/runs/logs/"
+	@echo "docs			Generates Doxygen documentation to mtnnpython/Doxygen using Doxyfile"
+	@echo "clean-tests		Clean tests/ folder of generated tests cases"
+	@echo "clean-logs		Clean log files from scripts/experiments/examples/runs/logs/"
 
 
 init:
 	@echo "init"
 	@echo "     installing package dependencies"
 	python setup.py develop
+
+
+###########################################################
+# Developer 
+##########################################################
+
 
 req:
 	@echo "requirements" 
@@ -32,9 +41,6 @@ req:
 #	conda deactivate
 #	conda remove --name mtnn_dependencies --all
 
-###########################################################
-# Developer 
-##########################################################
 baseline: 
 	python MTNN/run.py MTNN/scripts/examples/hello_model.py MTNN/config/hello_model.yaml --debug --log
 
@@ -64,5 +70,9 @@ test_model:
 	pytest tests/test_model.py
 
 
-
+# Documentation 
+docs: 
+	@echo "docs"
+	@echo "		Generates doxygen documentation to mtnnpython/doxygen"
+	doxygen Doxyfile
 

@@ -1,4 +1,4 @@
-MTNN LDRD
+About
 ==============================================
 # Purpose 
 MTNN is a PyTorch framework to develop and test the application of multigrid algorithms to various neural network architectures.
@@ -135,9 +135,16 @@ The neural network architecture can be specified by a YAML configuration file. T
     * This will generate test configuration files to `MTNN/tests/config/positive by default`
 * Run tests in `MTNN/tests`
 
-# Generating Sphinx Documentation 
+# Generating Documentation 
+Documentation can be generated from commented source code using Doxygen. 
 
- * TODO: Generate Sphinx documentation 
+* Install [Doxygen](http://www.doxygen.nl/manual/install.html)
+* In the commandline run `doxygen -g` to create an initial Doxyfile configuration file or use existing `mtnnpython/Doxyfile`
+* Modify the `Doxyfile` configuration file  
+* Run with Make:
+     ```bash 
+    make docs 
+     ```
 
 # Debugging 
 
