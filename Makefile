@@ -1,4 +1,4 @@
-.PHONY: help setup init req clean-tests clean-logs run  test docs 
+.PHONY: help setup init req clean-tests clean-logs baseline run test docs 
 
 TESTPATH = ./tests/
 
@@ -52,7 +52,7 @@ clean-tests:
 	@echo " clean-tests" 
 	@echo "		remove YAML files from tests/config/positives/ "
 
-	 find ./tests/config/positive -maxdepth 1 -type f -name "*.yaml" -exec rm -f {} \;
+	 find MTNN/tests/config/positive -maxdepth 1 -type f -name "*.yaml" -exec rm -f {} \;
 
 clean-logs:
 	@echo " clean-logs"
