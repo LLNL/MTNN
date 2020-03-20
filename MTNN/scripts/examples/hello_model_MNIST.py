@@ -1,7 +1,7 @@
 # !/usr/bin/env/ python
-""" mtnnpython/MTNN/hello_model.py
-Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native Torch model
-- using generated linear regression data
+""" mtnnpython/examples/hello_model_MNIST.py
+Code to compare 1 layer  fully-cnnected layer MTNN.Model object with a simple native Torch model
+- using MNIST data
 - without MTNN core
 """
 # standard
@@ -19,27 +19,30 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.utils as utils
+from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN
-from MTNN import tests_var
-
+from scratches.codebase import constants
 
 # Set-up logger.
-logging.basicConfig(filename=tests_var.EXPERIMENT_LOGS_DIR + "/" + tests_var.get_caller_filepath()
-                            + "_"
-                            + datetime.datetime.now().strftime("%H:%M:%S")
-                            + ".log.txt",
+logging.basicConfig(filename= constants.EXPERIMENT_LOGS_DIR + "/" + constants.get_caller_filepath() + "_"
+                              + datetime.datetime.today().strftime("%A") + "_"
+                              + datetime.datetime.today().strftime("%m%d%Y") + "_"
+                              + datetime.datetime.now().strftime("%H:%M:%S")
+                              + ".log.txt",
                     filemode='w',
                     format='%(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
 
 # Redirecting stdout to file in MTNN/examples/runs/logs
-FILEOUT = open(tests_var.EXPERIMENT_LOGS_DIR
-               + "/" + tests_var.get_caller_filepath()
-               + "_"
+FILEOUT = open(constants.EXPERIMENT_LOGS_DIR
+               + "/" + constants.get_caller_filepath() + "_"
+               + datetime.datetime.today().strftime("%A") + "_"
+               + datetime.datetime.today().strftime("%m%d%Y") + "_"
                + datetime.datetime.now().strftime("%H:%M:%S")
                + ".stdout.txt", "w")
 
@@ -48,17 +51,18 @@ sys.stdout = FILEOUT
 ##################################################
 # Simple fully-connected network
 ##################################################
-
+input_size = 784
+hidden_layer_size = 1
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         # By default, bias is true
-        self.fc1 = nn.Linear(2, 1) # row, column # input, output
-        #self.fc2 = nn.Linear(1, 1)
+        self.fc1 = nn.Linear(input_size, hidden_layer_size) # row, column # input, output
+
+
 
     def forward(self, x):
         x = self.fc1(x)
-        #x = self.fc2(x)
         x = F.relu(x)
         return x
 
@@ -110,8 +114,9 @@ def print_prediction(model, input:tuple):
 
 
 #########################################################
-# Preparing Training Data
+# Training Data
 #########################################################
+#sklearn linear function generate - regression training data
 def regression_training_data(num_samples: int, num_features: int, noise_level:float) -> list:
     """
     Returns a list of tuples a tuple of tensor training input and output data
@@ -164,6 +169,7 @@ def tensorize_data(training_data: list):
     return dataloader
 
 
+# lambda generated function
 def gen_data(linear_function):
     generated_data = []
     for i in range(10):
@@ -174,9 +180,38 @@ def gen_data(linear_function):
 # Generate Data.
 linear_function = lambda x, y: 3 * x + 2 * y
 training_data = gen_data(linear_function)
-
-regression_data = regression_training_data(10, 2, 0.5)
 tensor_training_data = tensorize_data(training_data)
+
+######################################################
+# MNIST training data
+#####################################################
+# Load and transform data
+TRANSFORM_FN = transforms.Compose(
+    [transforms.Resize((28, 28)), # flatten images
+     transforms.ToTensor(),  # convert image to a PyTorch tensor
+     transforms.Normalize((0.1307,), (0.3081,))])  # normalize with mean (tuple), standard deviation (tuple)
+
+# Training data
+TRAIN_DATASET = datasets.MNIST(root = './datasets',
+                               train = True,
+                               download = True,
+                               transform = TRANSFORM_FN)
+
+print(TRAIN_DATASET)
+TRAINLOADER = utils.data.DataLoader(TRAIN_DATASET,
+                                    batch_size = constants.BATCH_SIZE_TRAIN,
+                                    shuffle = True,
+                                    num_workers = 2)  # multi-process data loading
+
+# Testing data
+TEST_DATASET = datasets.MNIST(root = './datasets',
+                              train = False,
+                              download = True,
+                              transform = TRANSFORM_FN)
+TESTLOADER = utils.data.DataLoader(TEST_DATASET,
+                                   batch_size = constants.BATCH_SIZE_TEST,
+                                   shuffle = False,
+                                   num_workers = 2)
 
 
 #########################################################
@@ -186,29 +221,35 @@ print("\n\n*****************************")
 print("Using Simple net Class")
 print("*****************************")
 
+# Set-up
 net = Net()
 print("\nNET Parameters", list(net.parameters()))
 
-optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
+optimizer = optim.SGD(net.parameters(), lr= constants.LEARNING_RATE, momentum= constants.MOMENTUM)
 
-# TODO: Clean
+
 # Train.
-for epoch in range(10):
-    for batch_idx, data in enumerate(training_data):
-        XY, Z = iter(data)
+total_step = len(TRAINLOADER)
+for epoch in range(constants.N_EPOCHS): #TODO: account for this in MTNN Model training
+    for batch_idx, data in enumerate(TRAINLOADER, 0):
+        inputs, targets = data
 
-        # Convert list to float tensor
-        # Note: Variable is deprecated
-        input = torch.FloatTensor(XY) #torch.Floattensor expects a list
-        Z = torch.FloatTensor([Z]) # For output, set requires_grad to False
+        print("inputs", inputs.size())
+        print(inputs)
 
+        #targets = targets.squeeze(1)
+        print("labels", targets.size())
+        print(targets)
 
-        #TODO: FIX Z ValueError: only one element tensors can be converted to python scalars
         optimizer.zero_grad()
-        outputs = net(input)  # outputs is predicted Y
-        loss = F.mse_loss(outputs, Z)
+        outputs = net(inputs)  # outputs is predicted Y
 
-        visualize(net, input, loss, epoch)
+        print("predicted outputs", outputs)
+        print("labels", targets)
+        loss = F.cross_entropy(outputs, targets)
+
+        # Tensorboard
+        visualize(net, inputs, loss, epoch)
 
         loss.backward() # loss.backward() equivalent to loss.backward(torch.Tensor([1]))
                          # only valid if tensor contains a single element/scalar
@@ -219,6 +260,34 @@ for epoch in range(10):
         # Print out
         #if batch_idx % (len(training_data) - 1) == 0 and batch_idx != 0:
         print("Epoch {} - loss: {}".format(epoch, loss.item ()))
+        if (batch_idx + 1) % 100 == 0:
+            print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
+                  .format(epoch + 1, constants.N_EPOCHS, batch_idx + 1, total_step, loss.item()))
+
+        """
+        for epoch in range(2):  # loop over the dataset multiple times
+
+            running_loss = 0.0
+            for i, data in enumerate(trainloader, 0):
+                # get the inputs; data is a list of [inputs, labels]
+                inputs, labels = data
+
+                # zero the parameter gradients
+                optimizer.zero_grad()
+
+                # forward + backward + optimize
+                outputs = net(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+                # print statistics
+                running_loss += loss.item()
+                if i % 2000 == 1999:  # print every 2000 mini-batches
+                    print('[%d, %5d] loss: %.3f' %
+                          (epoch + 1, i + 1, running_loss / 2000))
+                    running_loss = 0.
+        """
 
 
 # Predict.
@@ -232,17 +301,17 @@ print("Using MTNN Model")
 print("*****************************")
 
 # Set-up.
-model_config = os.path.join(tests_var.CONFIG_DIR + "/hello_model.yaml")
+model_config = os.path.join(constants.CONFIG_DIR + "/hello_model_mnist.yaml")
 mtnnmodel = MTNN.Model(visualize =False, debug=True)
 mtnnmodel.set_config(model_config)
-model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = 0.01, momentum = 0.5)
+model_optimizer = optim.SGD(mtnnmodel.parameters(), lr = constants.LEARNING_RATE, momentum = constants.MOMENTUM)
 mtnnmodel.set_training_parameters(objective=nn.MSELoss(), optimizer=model_optimizer)
 
 # View parameters.
 mtnnmodel.print_parameters()
 
 # Train.
-mtnnmodel.fit(dataloader=tensor_training_data, num_epochs=10, log_interval=10)
+mtnnmodel.fit(dataloader=TRAINLOADER, num_epochs=10, log_interval=10)
 
 # Predict.
 print_prediction(mtnnmodel, (2,2)) # should be 5
@@ -259,14 +328,15 @@ prolonged_model = prolongation_operator.apply(mtnnmodel, exp_factor =3)
 prolonged_model.set_debug(True)
 
 # Set-up.
-prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = 0.01, momentum = 0.5)
+prolonged_model_optimizer = optim.SGD(prolonged_model.parameters(), lr = constants.LEARNING_RATE, momentum = constants.M
+                                      )
 prolonged_model.set_training_parameters( objective=nn.MSELoss(), optimizer=prolonged_model_optimizer)
 
 # View Parameters.
 prolonged_model.print_parameters()
 
 # Train.
-prolonged_model.fit(dataloader=tensor_training_data, num_epochs = 10, log_interval = 10)
+prolonged_model.fit(dataloader=TRAINLOADER, num_epochs = 10, log_interval = 10)
 
 # Predict.
 print_prediction(prolonged_model, (2,2)) # should be 5
@@ -277,13 +347,13 @@ print_prediction(prolonged_model, (2,2)) # should be 5
 print("\n\n*****************************")
 print("EVALUATION")
 print("*****************************")
-print("FUNCTION:  3x+2y")
+print("FUNCTION 3x + 2y")
 evaluator = MTNN.BasicEvaluator()
 print("Net")
-evaluator.evaluate_output(model=net, dataset=tensor_training_data)
+evaluator.evaluate_output(model=net, dataset=TEST_DATASET)
 print("MTNN Model")
-evaluator.evaluate_output(model=mtnnmodel, dataset=tensor_training_data)
+evaluator.evaluate_output(model=mtnnmodel, dataset=TEST_DATASET)
 print("Prolonged Model")
-evaluator.evaluate_output(model=prolonged_model, dataset=tensor_training_data)
+evaluator.evaluate_output(model=prolonged_model, dataset=TEST_DATASET)
 
 FILEOUT.close()

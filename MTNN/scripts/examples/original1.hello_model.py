@@ -2,7 +2,7 @@
 """ scripts/examples/hello_model.py
 Code to compare 1 fully-cnnected layer MTNN.Model object with a simple native Torch model
 - using generated linear regression data 3x + 2y
-- without MTNN core
+- without MTNN framework
 """
 # standard
 import datetime
@@ -22,11 +22,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 # local source
 import MTNN
-from core import build
-from logging import logger
-from scratches.codebase import trainer
-from cli import env_var
-from configuration import reader
+from MTNN import builder
+from MTNN import trainer
+from MTNN import mtnn_var
+from MTNN import config_reader
+from MTNN import mtnn_utils
+from MTNN import logger
 
 #############################################
 # Set-up logging stdout to file
@@ -37,7 +38,7 @@ sys.stdout = logger.StreamLogger()
 # Read from YAML Configuration File
 ##############################################
 
-conf = reader.YamlConfig(env_var.CONFIG_PATH)
+conf = config_reader.YamlConfig(mtnn_var.CONFIG_PATH)
 BATCH_SIZE_TRAIN = conf.get_property('batch_size_train')
 BATCH_SIZE_TEST = conf.get_property('batch_size_test')
 
@@ -238,11 +239,11 @@ print("\n\n*****************************")
 print("Using MTNN Model")
 print("*****************************")
 
-print("CONFIG", env_var.CONFIG_PATH)
-mtnnmodel = build.build_model(env_var.CONFIG_PATH, visualize=False, debug=True)
+print("CONFIG", mtnn_var.CONFIG_PATH)
+mtnnmodel = builder.build_model(mtnn_var.CONFIG_PATH, visualize=False, debug=True)
 
 # Build Optimizer.
-optimizer = trainer.build_optimizer(env_var.CONFIG_PATH, mtnnmodel.parameters())
+optimizer = trainer.build_optimizer(mtnn_var.CONFIG_PATH, mtnnmodel.parameters())
 
 # Set Optimizer.
 mtnnmodel.set_optimizer(optimizer)
@@ -257,7 +258,11 @@ mtnnmodel.fit(dataloader=tensor_training_data, num_epochs=10, log_interval=10)
 print("\nTRAINED MTNN MODEL PARAMETERS")
 mtnnmodel.print_parameters()
 
-
+"""
+print("\n Exporting trace to ONNX file...")
+input_data = torch.randn(10, 1, 2, requires_grad=True)
+torch.onnx.export(mtnnmodel, input_data, "MTNNmodel.onnx", export_params= True)
+"""
 #########################################################
 # Using Prolonged Model
 #########################################################

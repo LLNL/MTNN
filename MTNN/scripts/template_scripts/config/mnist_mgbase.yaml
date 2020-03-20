@@ -1,0 +1,35 @@
+# Specifies the layers of a fully connected neural network model
+# Using MNIST data
+model_type: fully-connected
+input_size: 784  # 28 * 28 pixels
+layers:
+  - layer:
+      type: linear
+      neurons: 500
+      activation: relu
+      dropout: none
+  - layer:
+      type: linear
+      neurons: 256
+      activation: sigmoid
+      dropout: none
+  - layer:
+      type: linear
+      neurons: 10
+      activation: relu
+      dropout: none
+
+# Hyperparameters taken from mnist_experiment.py
+hyperparameters:
+  num_epochs: 2 # Set for testing.
+  batch_size_train: 100 # Set for testing
+  batch_size_test: 500 # Set for testing
+  learning_rate: 0.01
+  momentum: 0.5
+  log_interval: 10 # Set for testing
+  objective: mseloss
+  optimization: SGD
+
+
+
+

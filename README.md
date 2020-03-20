@@ -33,7 +33,7 @@ Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.
 **The following assumes Bash shell and that Anaconda is already installed on the system.** 
 * To-do: Make this into a shell script/makefile
 
-Pre-steps: Install and Update your Conda repository
+Pre-steps: Install Conda and Update your Conda repository
 
 ```bash
 conda update --all
@@ -135,6 +135,7 @@ The neural network architecture can be specified by a YAML configuration file. T
     * This will generate test configuration files to `MTNN/tests/config/positive by default`
 * Run tests in `MTNN/tests`
 
+
 # Generating Documentation 
 Documentation can be generated from commented source code using Doxygen. 
 
@@ -149,8 +150,9 @@ Documentation can be generated from commented source code using Doxygen.
 # Debugging 
 
 ## With MTNN Model logs
-* For a MTNN Model object, set `Model.debug` to `True` to enable logging
-* Logs will be stored in  `source folder/logs/`
+* For  MTNN Model object, set `Model.debug` to `True` to enable logging
+* In the commandline: use the -d or --debug flag 
+* Logs will be stored in  `runs/logs/`
 
 ## Visualization
 ### With ONYXX 

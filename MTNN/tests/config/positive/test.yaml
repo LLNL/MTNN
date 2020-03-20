@@ -1,0 +1,25 @@
+model:
+  linear:
+    neurons: [1, 2, 3]
+    activation: [relu, relu, relu]
+    dropout: None
+    repeat: 2
+  cnn: #fill in
+logger:
+  epoch_intervals: 10
+  debug: True
+trainer:
+  num_epochs: 10
+  batch_size_test: 10
+  batch_size_train: 10
+  optimizer:
+    mtnn_cascadic:
+      num_of_levels: 4
+      smoother:
+        SGD:
+          learning_rate: 0.01
+          momentum: 0.5
+        loss_function: mseloss
+      prolongation:
+          lower_triangular:
+            expansion_factor: 7

@@ -3,7 +3,6 @@
 
 # Built-in packages
 import os
-import math
 
 # External packages
 import pytest
@@ -13,11 +12,9 @@ import torch
 from torch import nn
 
 # Local package
-from MTNN import model as mtnnmodel
-from MTNN import builder
-from MTNN import trainer
-from MTNN import mtnn_defaults
-from MTNN import prolongation
+from core import build, model as mtnnmodel
+from core.components.trainer.optimizer import prolongation
+from scratches.codebase import trainer, constants
 
 # TODO: Generate tests with diff layer/neuron combinations
 
@@ -39,7 +36,7 @@ test_fn = lambda x,y: 3 * x + 2 *y
 test_data = generate_data(test_fn)
 """
 
-CONFIG_DIR = mtnn_defaults.POSITIVE_TEST_DIR
+CONFIG_DIR = constants.POSITIVE_TEST_DIR
 
 @pytest.fixture
 def my_model():
@@ -56,9 +53,9 @@ def test_config(my_model):
     for config_file in os.listdir(CONFIG_DIR):
 
         # Build Model
-        config_file_path = mtnn_defaults.POSITIVE_TEST_DIR + "/" + config_file
+        config_file_path = constants.POSITIVE_TEST_DIR + "/" + config_file
         print("\n\nCONFIGURATION FILE", config_file_path)
-        my_model = builder.build_model(config_file_path)
+        my_model = build.build_model(config_file_path)
 
         # Test attributes
         assert len(my_model._model_type) != 0
@@ -83,9 +80,9 @@ def test_prolongation_lowertriangular(my_model):
     # TODO: test with multiple expansion factors
     for config_file in os.listdir(CONFIG_DIR):
         # Build Model
-        config_file_path = mtnn_defaults.POSITIVE_TEST_DIR + "/" + config_file
+        config_file_path = constants.POSITIVE_TEST_DIR + "/" + config_file
         print("\n\nCONFIGURATION FILE", config_file_path)
-        my_model = builder.build_model(config_file_path)
+        my_model = build.build_model(config_file_path)
 
         # Set Optimizer
         optimizer = trainer.build_optimizer(config_file_path, my_model.parameters())
@@ -187,10 +184,10 @@ def test_model_weights(my_model):
 
         for config_file in os.listdir(CONFIG_DIR):
             # Build Model
-            config_file_path = mtnn_defaults.POSITIVE_TEST_DIR + "/" + config_file
+            config_file_path = constants.POSITIVE_TEST_DIR + "/" + config_file
             print(f"\nCONFIGURATION FILE: {config_file_path}")
             print(f"USING TORCH SEED:{s}", torch.rand(1))
-            my_model = builder.build_model(config_file_path)
+            my_model = build.build_model(config_file_path)
 
             # Set Optimizer
             optimizer = trainer.build_optimizer(config_file_path, my_model.parameters())

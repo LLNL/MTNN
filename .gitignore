@@ -3,11 +3,18 @@
 .project
 *.o
 *.a
+
+# Project folders
+runs/
+datasets/
+scratches/
+doxygen/ 
+
 #Makefile
 #makefile
 
 # Building semi-out-of-source garbage
-build/
+#builder/
 
 # GNU Global
 GPATH

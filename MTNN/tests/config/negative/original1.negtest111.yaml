@@ -1,4 +1,4 @@
-# Bad configuration test case
+# Bad config test case
 # Missing objective, optimizer, and contains invalid input
 input_size: 0.5 # Should be int
 layers:

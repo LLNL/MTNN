@@ -1,4 +1,4 @@
-# This file demonstrates the interface to the MTNN core
+# This file demonstrates the interface to the MTNN framework
 #
 # The classifier is the toy problem at:
 #   https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html#sphx-glr-beginner-blitz-cifar10-tutorial-py
@@ -84,16 +84,16 @@ loss = nn.CrossEntropyLoss()
 
 print("Creating the training algorithm")
 
-smoother= MTNN.TrainingAlgSmoother(
-    alg= MTNN.SGDTrainingAlg(lr=0.001, momentum=0.9, doprint=True),
-    stopping= MTNN.SGDStoppingCriteria(num_epochs=1))
-interp= MTNN.IdentityInterpolator()
+smoother=MTNN.TrainingAlgSmoother(
+    alg=MTNN.SGDTrainingAlg(lr=0.001, momentum=0.9, doprint=True),
+    stopping=MTNN.SGDStoppingCriteria(num_epochs=1))
+interp=MTNN.IdentityInterpolator()
 
 # Another example might be:
 #interp = MTNN.LowerTriangular(refinement_factor=2)
 
 training_alg = MTNN.CascadicMG(smoother=smoother, prolongation=None, refinement=interp, num_levels=3)
-stopping = None; # Cascadic MG is a "one-shot smoother". The input is a
+stopping = None; # Cascadic MG is a "one-shot solver". The input is a
                  # coarse model and the output is a fine model.
 
 print('Starting Training')

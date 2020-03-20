@@ -45,7 +45,7 @@ baseline:
 	python MTNN/run.py MTNN/scripts/examples/hello_model.py MTNN/config/hello_model.yaml --debug --log
 
 run: 
-	python MTNN/run.py MTNN/scripts/experiments/find_overfit.py MTNN/config/mnist_mgbase.yaml --debug
+	python MTNN/cli/run.py MTNN/scripts/experiments/find_overfit.py MTNN/tests/config/positive/ --debug --log
 
 # Clean 
 clean-tests: 
@@ -74,5 +74,5 @@ test_model:
 docs: 
 	@echo "docs"
 	@echo "		Generates doxygen documentation to mtnnpython/doxygen"
-	doxygen Doxyfile
+	doxygen docs/Doxyfile
 

@@ -1,0 +1,101 @@
+# Template YAML configuration file
+# With all possible options
+
+model:
+  # option 1
+  linear:
+      type: linear
+      neurons: 10
+      activation: relu
+      dropout: none
+  linear:
+    type: linear
+    neurons: 20
+    activation: relu
+    dropout: none
+  linear:
+    type: linear
+    neurons: 30
+    activation: relu
+    dropout: none
+  # option 2
+  linear:
+    neurons: [10, 20, 30]
+    activation: [relu]
+    dropout: None
+    repeat: 2
+  # option 3: find Model architecture specification format
+  # Caffe prototxt?
+trainer:
+  batch_size_test: 10
+  batch_size_train: 10
+  # Enumeration of optimizers
+  optimizer:
+    # Traditional smoother
+    SGD:
+      learning_rate: 0.01
+      momentum: 0.5
+    # Multigrid Cascadic
+    multigrid_cascadic:
+      num_levels: 3
+      smoother:
+        SGD:
+          learning_rate: 0.01
+          momentum: 0.5
+        loss_function: mseloss
+      stopping_measure:
+        cascadic_stopping_measure <determined by % of work done>
+      coarse_grid_solver:
+        SGD:
+          learning_rate: 0.01
+          momentum: 0.5
+        loss_function: mseloss
+      prolongation:
+          lower_triangular:
+            expansion_factor: 7
+    # Multigrid V-Cycle
+    multigrid_vcycle:
+      num_levels: 3
+      presmoother:
+        SGD:
+        stopping_measure:
+          constant:
+            # option 1
+            num_epochs:
+            # option 2
+            num_batches:
+      postsmoother:
+        SGD:
+        stopping_measure:
+          constant:
+            num_epochs:
+      coarse_grid_solver:
+        SGD:
+          learning_rate: 0.01
+          momentum: 0.5
+        loss_function: mseloss
+        stopping_measure:
+          adaptive:
+            threshold: <int>
+      prolongation:
+        lower_triangular:
+          expansion_factor: 7
+      restriction: #fill in
+        a_restriction_operator:
+          restriction_param:
+      stopping_measure:
+        constant_measure:
+          num_epochs: 10
+          num_batch:
+        adaptive_measure:
+          threshold: 0.1
+    # Multigrid w-cycle
+    multigrid_wcycle:
+      # Fill in
+
+
+
+
+
+
+

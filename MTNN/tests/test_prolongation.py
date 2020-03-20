@@ -8,10 +8,10 @@ from itertools import permutations
 
 # Pytorch packages
 import torch
-from torch import nn
 
 # Local package
-from MTNN import model as mf
+from core import model as mf
+
 
 # Instantiate Model and generate data to test on
 @pytest.fixture

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages,find_namespace_packages
 
 setup(name="MTNN",
       version="0.1",
@@ -8,6 +8,7 @@ setup(name="MTNN",
       author="Christina Mao",
       author_email="mao6@llnl.gov",
       packages=find_packages(),
+      namespace_packages=find_namespace_packages(),
       package_dir={' ': 'MTNN'},
       install_requires=['PyYAML',
                         'torch',
