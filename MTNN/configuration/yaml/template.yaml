@@ -27,18 +27,17 @@ model:
   # option 3: find Model architecture specification format
   # Caffe prototxt?
 trainer:
-  batch_size_test: 10
-  batch_size_train: 10
+  train_batch_size: 10
   # Enumeration of optimizers
   optimizer:
-    # Traditional smoother
+    # 1. Traditional smoother
     SGD:
       learning_rate: 0.01
       momentum: 0.5
-    # Multigrid Cascadic
+    # 2. Multigrid Cascadic
     multigrid_cascadic:
       num_levels: 3
-      smoother:
+      postsmoother:
         SGD:
           learning_rate: 0.01
           momentum: 0.5
@@ -53,9 +52,9 @@ trainer:
       prolongation:
           lower_triangular:
             expansion_factor: 7
-    # Multigrid V-Cycle
+    # 3. Multigrid V-Cycle
     multigrid_vcycle:
-      num_levels: 3
+      num_levels: 3 # Vcycles are symmetric
       presmoother:
         SGD:
         stopping_measure:
@@ -89,10 +88,15 @@ trainer:
           num_batch:
         adaptive_measure:
           threshold: 0.1
-    # Multigrid w-cycle
+    # 4. Multigrid w-cycle
     multigrid_wcycle:
       # Fill in
+    # 5.Full Mutigrid Cycle
+    fmg:
+      # Fill in
 
+evaluator:
+  test_batch_size: 10
 
 
 

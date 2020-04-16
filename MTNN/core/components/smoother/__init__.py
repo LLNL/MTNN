@@ -1,3 +1,0 @@
-"""
-Multigrid smoother module
-"""
