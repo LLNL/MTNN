@@ -1,25 +1,56 @@
 """
 Holds Smoothers
 """
-class BaseAlgSmoother():
-    """Training Algorithm Smoother
-    
-    Applies a given training algorithm to the model.
+import torch.nn as nn
+import torch.optim as optim
 
-    Attributes:
-    alg_: Any object with a suitable "train" method
-    stopping_: A stopping criterion suitable for the algorithm
+
+class BaseSmoother:
+    """
+    Training Algorithm Smoother
     """
 
-    def __init__(self, alg, stopping):
-        self.alg_ = alg
-        self.stopping_ = stopping
-
-    def smooth(self, model, data, obj_func):
-        self.alg_.train(model, data, obj_func, self.stopping_)
+    def apply(self, model, data, stopping):
+        raise NotImplementedError
 
 
-class SGDSmoother(BaseAlgSmoother):
+class SGDSmoother(BaseSmoother):
 
-    def __init__(self):
-        pass
+    def __init__(self, model, loss, lr=0.01, momentum=0.9):
+        super(SGDSmoother, self).__init__()
+        self.loss = loss
+        self.optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+
+    def apply(self, model, data, stopper, stdout=False):
+        """
+        Apply forward pass and backward pass to the model until stopping criteria is met.
+        Args:
+            model:
+            data:
+            stopper: stopping criteria
+            stdout: Prints statistics/output to standard out
+
+        Returns:
+
+        """
+        inputs, labels = data
+
+        # TODO: Add stopping mechanism
+
+        # Zero the parameter gradients
+        self.optimizer.zero_grad()
+
+        # Forward
+        outputs = model(inputs)
+        loss = self.loss(outputs, labels)
+
+        # Backward
+        loss.backward()
+        self.optimizer.step()
+
+
+
+
+
+
+

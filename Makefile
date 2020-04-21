@@ -1,4 +1,4 @@
-.PHONY: help setup init req clean-tests clean-logs baseline run test docs 
+.PHONY: help setup init req clean-datasets clean-tests clean-logs baseline run test docs 
 
 TESTPATH = ./tests/
 
@@ -13,8 +13,9 @@ help:
 	@echo "run			Run work-in-progress script with configuration file"
 	@echo "test			Run Pytests in test/"
 	@echo "docs			Generates Doxygen documentation to mtnnpython/Doxygen using Doxyfile"
-	@echo "clean-tests		Clean tests/ folder of generated tests cases"
-	@echo "clean-logs		Clean log files from scripts/experiments/examples/runs/logs/"
+	@echo "clean-datasets		Remove datasets/ from project directory"
+	@echo "clean-tests		Remove tests/ folder of generated tests cases"
+	@echo "clean-logs		Remove log files from scripts/experiments/examples/runs/logs/"
 
 
 init:
@@ -48,6 +49,12 @@ run:
 	python MTNN/cli/run.py MTNN/scripts/experiments/find_overfit.py MTNN/tests/config/positive/ --debug --log
 
 # Clean 
+clean-datasets: 
+	@echo "clean-datasets" 
+	@echo "		remove datasets" 
+
+	find . -type d -name datasets* -exec rm -rf {} \;
+
 clean-tests: 
 	@echo " clean-tests" 
 	@echo "		remove YAML files from tests/config/positives/ "

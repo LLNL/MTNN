@@ -6,11 +6,12 @@ import copy
 import torch
 import torch.nn as nn
 
-# local
-import MTNN as mtnnconsts
 
-#__all__ = ['IdentityInterpolator',
-#           'LowerTriangleInterpolator']
+__all__ = ['IdentityInterpolator',
+           'LowerTriangleInterpolator',
+           'RandomSplitOperator',
+           'RandomPerturbationOperator']
+
 
 class IdentityInterpolator:
     """Identity Interpolation Operator
@@ -21,6 +22,7 @@ class IdentityInterpolator:
     def __init__(self):
         pass
 
+    @staticmethod
     def apply(self, source_model):
         return source_model
 
@@ -66,10 +68,11 @@ class LowerTriangleInterpolator:
         prolonged_model <MTNN.model>: a MTNN.model object
     """
     # TODO: Check doc string
-    def __init__(self):
-        pass
+    def __init__(self, expansion_factor: int):
+        self.expansion_factor = expansion_factor
 
-    def apply(self, source_model, exp_factor):
+
+    def apply(self, source_model):
         """
         Takes a sourcemodel. Copies and updates weights/biases of each layer of sourcemodel into a new model with
         new block lower triangular weight matrix and augmented bias vector according to some expansion factor.
@@ -79,96 +82,15 @@ class LowerTriangleInterpolator:
             prolonged_model <Model>
         """
         # 1 Layer case:
-        if len(source_model._module_layers) == 1:
+        """
+        if 
             print("SINGLE LAYER MODEL.  APPLYING IDENTITY OPERATOR...")
-            return IdentityInterpolator().apply(source_model)
-
+        return IdentityInterpolator().apply(source_model)
+        # 1+ Layer case
         else:
             prolonged_model = copy.deepcopy(source_model)
-            prolonged_lastlayer_indx = (prolonged_model.num_layers - 1)
-            logging.debug(f"APPLYING BLOCK TRIANGULAR OPERATOR WITH EXPANSION FACTOR of K ={exp_factor}")
-
-            for index, layer_key in enumerate(source_model._module_layers):
-                for layer in prolonged_model._module_layers[layer_key]:
-
-                    # Check if linear layer
-                    if hasattr(layer, 'weight'):
-                        # Get weight matrix dimensions
-                        weight_row = layer.weight.size()[0]
-                        weight_col = layer.weight.size()[1]
-
-                        # Block matrices dimensions
-                        bias_dim = exp_factor * weight_row - weight_row
-                        noise1_dim = ((exp_factor * weight_row) - weight_row, weight_col)  # First layer
-                        noise2_dim = ((exp_factor * weight_row) - weight_row,
-                                      (exp_factor * weight_col))  # Rest of layers
-                        zero_dim = (weight_row, ((exp_factor * weight_col) - weight_col))
-                        last_layer_zero_dim = (weight_row, ((exp_factor * weight_col) - weight_row))
-
-                        # First hidden layer(weight matrix and bias vector):
-                        if index == 0:
-
-                            # Generate noise matrix E_21.
-                            seed_tensor = torch.rand(noise1_dim, requires_grad=True)
-                            noise_matrix = nn.init.kaiming_uniform_(seed_tensor, nonlinearity='relu')
-
-                            # Generate bias noise  E_1.
-                            bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
-
-                            # Update parameters.
-                            with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
-                                logging.debug(f"ORIGINAL WEIGHT {layer.weight.data}")
-                                layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
-
-                                layer.bias.data = torch.cat((layer.bias.data, bias_noise))
-
-                                logging.debug(f"PROLONGED WEIGHTS {layer.weight.data}")
-                                logging.debug(f"PROLONGED BIAS {layer.bias.data}")
-
-                        # For middle hidden layers(weight matrix and bias vector):
-                        elif index > 0 and index != prolonged_lastlayer_indx:
-
-                            # Generate bias noise  E_1.
-                            bias_noise = nn.init.uniform_(torch.empty(bias_dim), a=-1.0, b=1.0)
-
-                            # Generate concatenated noise matrix E_21 + E_22.
-                            seed_tensor = torch.rand(noise2_dim, requires_grad=True)
-                            noise_matrix = nn.init.kaiming_uniform_(seed_tensor, nonlinearity='relu')
-
-                            # Generate zero matrix.
-                            zero_matrix = nn.init.zeros_(torch.empty(zero_dim))
-
-                            with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
-
-                                layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
-                                layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
-                                layer.bias.data = torch.cat((layer.bias.data, bias_noise))
-
-                        # For last hidden layer(weight matrix and bias vector):
-                        else:
-                            # weight matrix [ W 0]
-                            zero_matrix = nn.init.zeros_(torch.empty(last_layer_zero_dim))
-                            with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
-                                layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim=1)
-                                # bias dim stays the same
-
-            # Logging
-            if source_model.debug:
-                logging.debug("\n*****************************************************"
-                              "SETTING MODEL CONFIGURATION"
-                              "********************************************************")
-                logging.debug(f"\nMODEL TYPE: {source_model._model_type}\
-                               \nEXPECTED INPUT SIZE: {source_model._input_size}\
-                               \nLAYERS: {source_model._module_layers}\
-                               \nMODEL PARAMETERS:")
-                for layer_idx in source_model._module_layers:
-                    logging.debug(f"\n\tLAYER: {layer_idx} \
-                                     \n\tWEIGHT: {source_model._module_layers[layer_idx][0].weight}\
-                                     \n\tWEIGHT GRADIENTS: {source_model._module_layers[layer_idx][0].weight.grad}\
-                                     \n\n\tBIAS: {source_model._module_layers[layer_idx][0].bias}\
-                                     \n\tBIAS GRADIENT: {source_model._module_layers[layer_idx][0].bias.grad}")
-
-            return prolonged_model
+        return prolonged_model
+        """
 
 class RandomPerturbationOperator:
     def __init__(self):
@@ -176,7 +98,6 @@ class RandomPerturbationOperator:
 
     def apply(self, source_model):
         pass
-    # TODO: Fill i
 
 
 
@@ -186,4 +107,3 @@ class RandomSplitOperator:
 
     def apply(self, source_model):
         pass
-    # TODO: Fill in

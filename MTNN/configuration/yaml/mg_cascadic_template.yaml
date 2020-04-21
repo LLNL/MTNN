@@ -1,0 +1,27 @@
+trainer:
+  batch_size_test: 10
+  batch_size_train: 10
+  # Enumeration of optimizers
+  optimizer:
+    # Traditional smoother
+    SGD:
+      learning_rate: 0.01
+      momentum: 0.5
+    # Multigrid Cascadic
+    multigrid_cascadic:
+      num_levels: 3
+      smoother:
+        SGD:
+          learning_rate: 0.01
+          momentum: 0.5
+        loss_function: mseloss
+      stopping_measure:
+        cascadic_stopping_measure <determined by % of work done>
+      coarse_grid_solver:
+        SGD:
+          learning_rate: 0.01
+          momentum: 0.5
+        loss_function: mseloss
+      prolongation:
+          lower_triangular:
+            expansion_factor: 7
