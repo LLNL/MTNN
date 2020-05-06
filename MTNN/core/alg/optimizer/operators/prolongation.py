@@ -7,13 +7,13 @@ import torch
 import torch.nn as nn
 
 
-__all__ = ['IdentityInterpolator',
-           'LowerTriangleInterpolator',
+__all__ = ['IdentityProlongation',
+           'LowerTriangleProlongation',
            'RandomSplitOperator',
            'RandomPerturbationOperator']
 
 
-class IdentityInterpolator:
+class IdentityProlongation:
     """Identity Interpolation Operator
 
     Copy model weights.
@@ -23,11 +23,11 @@ class IdentityInterpolator:
         pass
 
     @staticmethod
-    def apply(self, source_model):
+    def apply(source_model, verbose):
         return source_model
 
 
-class LowerTriangleInterpolator:
+class LowerTriangleProlongation:
     """
     Transforms a model's weight matrix into a block lower triangular matrix.
     Let x be the model input with dimension N_1(row) x N_in(col)
@@ -71,8 +71,8 @@ class LowerTriangleInterpolator:
     def __init__(self, expansion_factor: int):
         self.expansion_factor = expansion_factor
 
-
-    def apply(self, source_model):
+    @staticmethod
+    def apply(source_model, verbose):
         """
         Takes a sourcemodel. Copies and updates weights/biases of each layer of sourcemodel into a new model with
         new block lower triangular weight matrix and augmented bias vector according to some expansion factor.

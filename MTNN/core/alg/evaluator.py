@@ -7,8 +7,9 @@ class BaseEvaluator:
     """
     Base Evaluator Attributes
     """
-    def __init__(self, test_batch_size):
-        self.test_batch_size = test_batch_size
+    @staticmethod
+    def evaluate(model, dataloader):
+        raise NotImplementedError
 
 
 class CategoricalEvaluator(BaseEvaluator):

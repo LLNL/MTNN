@@ -1,122 +1,157 @@
 """
 Holds Multigrid Schemes
-# TODO: Exception Handling/ Checks
+# TODO: Exception Handling/Checks
+# TODO: Add logging level. Change Verbose option to logs level?
 """
-import MTNN.core.alg.optimizer.operators.smoother as smoother
-import MTNN.core.alg.optimizer.operators.prolongation as prolongation
+import torch
+from abc import ABC, abstractmethod
 
 
 class Level:
-    """A level in an MG hierarchy"""
-    def __init__(self, presmoother=None, postsmoother=None, prolongation=None, refinement=None, coarse_solver=None):
+    """A level in an Multigrid hierarchy"""
+    def __init__(self, presmoother=None, postsmoother=None,
+                 prolongation=None, restriction=None,
+                 coarsegrid_solver=None, stopping_criteria=None):
+        """
+        Args:
+            num_epochs: <int>
+            presmoother: <core.alg.optimizer.operators.smoother>
+            postsmoother: <core.alg.optimizer.operators.smoother>
+            prolongation: <core.alg.optimizer.operators.prolongation>
+            restriction: <core.alg.optimizer.operators.restriction>
+            coarsegrid_solver: <core.alg.optimizer.operators.smoother>
+            stopping_criteria: <core.alg.optimizer.stopping>
+        """
         self.presmoother = presmoother
         self.postsmoother = postsmoother
+        self.coarsegrid_solver = coarsegrid_solver
         self.prolongation = prolongation
-        self.refinement = refinement
-        self.coarse_solver = coarse_solver
+        self.restrictrion = restriction
+        self.stopper = stopping_criteria
 
-class BaseMultigrid():
+    def presmooth(self, model, dataloader, verbose):
+        assert(hasattr(self, 'presmoother'))
+        self.presmoother.apply(model, dataloader, self.stopper, verbose)
+
+    def postsmooth(self, model, dataloader, verbose):
+        assert(hasattr(self, 'postsmoother'))
+        self.postsmoother.apply(model, dataloader, self.stopper,verbose)
+
+    def coarse_solve(self, model, dataloader, verbose):
+        assert(hasattr(self, 'coarsegrid_solver'))
+        self.coarsegrid_solver.apply(model, dataloader, self.stopper, verbose)
+
+    def prolong(self, model, verbose):
+        assert(hasattr(self, 'prolongation'))
+        self.prolongation.apply(model, verbose)
+
+    def restrict(self, model, verbose):
+        assert(hasattr(self, 'restriction'))
+        self.restriction.apply(model, verbose)
+
+    def view(self):
+        # TODO: print type
+        for atr in self.__dict__:
+            print(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__} ")
+
+
+class _BaseMultigridHierarchy(ABC):
     """
-    Base Multigrid Attributes
+    Base Multigrid Hierarchy
     """
-    def __init__(self, levels=0, presmoother=None , postsmoother=None, finegrid_solver=None, coarsegrid_solver=None,
-                 prolongation=None, restriction=None, stopping_criteria=None):
+    def __init__(self, levels=[]):
         """
 
         Args:
             levels:
-            presmoother: <smoother>
-            postsmoother: <smoother>
-            coarsegrid_solver:
-            prolongation: <prolongation>
-            restriction: <restriction>
-            stopping_criteria:
+
         """
-
         self.levels = levels
-        self.presmoother = presmoother
-        self.postsmoother = postsmoother
-        self.coarsegrid_solver = coarsegrid_solver
-        self.finegrid_solver = finegrid_solver
-        self.prolongation = prolongation
-        self.restriction = restriction
-        self.stopping_criteria = stopping_criteria
 
-    def presmooth(self, model):
+    @abstractmethod
+    def run(self):
         raise NotImplementedError
 
-    def restrict(self, model):
-        raise NotImplementedError
-
-    def coarse_solve(self, model, data, stopping):
-        raise NotImplementedError
-
-    def prolong(self, model):
-        raise NotImplementedError
-
-    def fineg_solve(self, model):
-        raise NotImplementedError
-
-    def postsmooth(self, model, data, stopping):
-        raise NotImplementedError
+    def get_num_levels(self):
+        return len(self.levels)
 
 
-class Cascadic(BaseMultigrid):
+class Cascadic(_BaseMultigridHierarchy):
     """
     Interface for Cascadic Multigrid Algorithm
     """
+    #def run(self, model, data, verbose:bool, save=False, path="./model"):
+    def run(self, model, trainer):
 
-    def presmooth(self, model):
-        pass
+        # Verbose
+        if trainer.verbose:
+            print(f"\nNumber  of levels: {self.get_num_levels()}")
+            for i, level in enumerate(self.levels):
+                print(f"Level {i}")
+                level.view()
 
-    def restrict(self, model):
-        pass
+        # Loading
+        if trainer.load:
+            print(f"\nLoading from {trainer.load_path}")
+            model = torch.load(trainer.load_path)
+            model.eval()
 
-    def coarse_solve(self, model, data, stopping):
-        # Apply SGD until stopping criteria
-        self.coarsegrid_solver.apply(model, data, stopping)
-        return model
+        # Training
+        """"
+        for level_idx, level in enumerate(self.levels):
+            # Coarse Solve
+            if level_idx == 0:
+                print(f"Level {level_idx}: Appying Coarse Solver")
+                level.coarse_solve(model, trainer.dataloader, trainer.verbose)
 
-    def prolong(self, model):
-        self.prolongation.apply(model)
-        return model
+            # Pre-Smooth
+            elif level_idx == (len(self.levels) - 1):
+                print(f"Level  {level_idx}: Applying Presmoother ")
+                level.presmooth(model, trainer.dataloader, trainer.verbose)
 
-    def fine_solve(self, model, data, stopping):
-        self.finegrid_solver.apply(model, data, stopping)
-        return model
+            # Prolongation/Interpolation
+            else:
+                print(f"Level {level_idx} :Applying Prolongation")
+                level.prolong(model, trainer.verbose)
 
-    def postsmooth(self, model, data, stopping):
-        self.postsmoother.apply(model, data, stopping)
-        return model
+        """
 
-    def run(self, model, data):
-         # Apply to each level
-        for level in range(self.levels):
-            model = self.coarse_solve(model, data, self.stopping_criteria)
-            model = self.prolong(model)
-            model = self.postsmooth(model, data, self.stopping_criteria)
+        for level_idx in range(len(self.levels)):
+            print(f"\nLevel  {level_idx}: Applying Presmoother ")
+            level.presmooth(model, trainer.dataloader, trainer.verbose)
 
-            # Save and Checkpoint
-            # TODO
+            print(f"\nLevel {level_idx} :Applying Prolongation")
+            level.prolong(model, trainer.verbose)
 
-        return model
+            print(f"\nLevel {level_idx}: Appying Coarse Solver")
+            level.coarse_solve(model, trainer.dataloader, trainer.verbose)
+
+            # Apply last layer smoothing
+            if level == self.levels[-1]:
+                print(f"\nLevel {level_idx}: Appying Postsmoother")
+                level.postsmooth(model, trainer.dataloader, trainer.verbose)
+
+        # Saving
+        if trainer.save:
+            print(f"\nSaving to ...{trainer.save_path}")
+            torch.save({'model_state_dict': model.state_dict()},
+                       trainer.save_path)
 
 
 
-
-class VCycle(BaseMultigrid):
+class VCycle(_BaseMultigridHierarchy):
     pass
     # TODO
 
-class WCycle(BaseMultigrid):
+class WCycle(_BaseMultigridHierarchy):
     pass
     # TODO
 
-class FMG(BaseMultigrid):
+class FMG(_BaseMultigridHierarchy):
     pass
     # TODO
 
-class FAS(BaseMultigrid):
+class FAS(_BaseMultigridHierarchy):
     pass
     # TODO
 

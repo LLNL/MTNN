@@ -1,32 +1,37 @@
 """
 Trainer
 """
+# standard
+from pathlib import Path, PurePath
 
 # local
 import MTNN.utils as utils
 
-SAVE_PATH = "./models.path"
+
+DEFAULT_SAVE_DIR = PurePath.joinpath(Path.cwd(), Path("./model/"))
+
 
 
 class MultigridTrainer:
     """
     Takes a model and applies some optimizer.
     """
-    def __init__(self, dataloader, train_batch_size: int, verbose=False):
+    def __init__(self, dataloader, verbose=False, save=False,
+                 save_path="", load=False, load_path=""):
         self.dataloader = dataloader
         self.verbose = verbose
+        self.save = save
+        self.save_path = utils.make_path(DEFAULT_SAVE_DIR, save_path)
+        self.load = load
+        self.load_path = load_path
 
-    def train(self, model, optimizer):
 
-        for i, data in enumerate(self.dataloader, 0):
-
-            # Show status bar
+    def train(self, model, optimizer, cycles):
+        for i in range(cycles):
             if self.verbose:
-                total_work = len(self.dataloader)
-                utils.progressbar(i, total_work, status="Training")
+                print(f"Cycle {i + 1}/{cycles}")
+            trained_model = optimizer.run(model, self)
 
-            model = optimizer.run(model, data)
-
-        return model
+        return trained_model
 
 
