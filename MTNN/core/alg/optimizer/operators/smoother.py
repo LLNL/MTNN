@@ -1,19 +1,18 @@
 """
-Holds Smoothers
+Holds Multigrid Smoothers
 """
 # PyTorch
 import torch.optim as optim
 # local
 import MTNN.utils as utils
 
-
-
 logger = utils.get_logger(__name__, create_file=True)
 
 
 class BaseSmoother:
     """
-    Training Algorithm Smoother
+    Base Training Algorithm Smoother
+    * Overwrite this.
     """
 
     def apply(self, model, data, stopper, verbose: bool):
@@ -23,7 +22,7 @@ class BaseSmoother:
 class SGDSmoother(BaseSmoother):
 
     def __init__(self, model, loss, lr=0.01, momentum=0.9, log_interval=0):
-        super(SGDSmoother, self).__init__()
+        super().__init__()
         self.loss = loss
         self.optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
         self.log_interval = log_interval
@@ -44,10 +43,11 @@ class SGDSmoother(BaseSmoother):
 
         # TODO: Check Stopper only has one mechanism/attribute "activated"
 
-        # By Number of Epochs
-        if stopper.NumEpochs:
-            for epoch in range(stopper.NumEpochs):
-                print(f"Epoch {epoch + 1}/{stopper.NumEpochs}")
+        #if stopper.NumEpochs
+
+        while not stopper.should_stop():
+            for epoch in range(stopper.epochs):
+                print(f"Epoch {epoch + 1}/{stopper.epochs}")
 
                 for batch_idx, data in enumerate(dataloader, 0):
                     # Show status bar
@@ -72,6 +72,9 @@ class SGDSmoother(BaseSmoother):
                         #print("Finished 10")
                         #print(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
                         logger.info(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
+
+                stopper.track()
+        stopper.reset()
 
 
 
