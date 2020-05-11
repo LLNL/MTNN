@@ -4,7 +4,7 @@ import os
 import sys
 import inspect
 import logging
-from pathlib import PurePath, Path
+from pathlib import PurePath, Path, PurePosixPath
 
 def progressbar(count, total, status=''):
     bar_len = 60
@@ -73,7 +73,7 @@ def get_logger(logger_name, create_file=False):
     #File Handler
     if create_file:
 
-        filepath = get_caller_filepath()  + "/log" + get_caller_filename() + ".log"
+        filepath = get_caller_filepath() + "/log" + get_caller_filename() + ".log"
         print(filepath)
         fh = logging.FileHandler(get_caller_filename() + ".log")
         fh.setLevel(level=logging.DEBUG)
@@ -90,20 +90,19 @@ def get_logger(logger_name, create_file=False):
 
 
 
-def make_path(dir, filename):
-    try:
-        # Check exists
-        if not Path(dir).exists():
-            Path(dir).mkdir()
+def make_path(dirname, filename):
+    if not Path(dirname).exists():
+        Path(dirname).mkdir()
 
-        if not Path(filename).exists():
-            cleanpath = Path(filename).resolve()
-            print(cleanpath)
+    if not Path(filename).exists():
+        if isinstance(filename, str):
 
-    except IOError or FileNotFoundError as exc:
-        print(exc)
+            filename = re.sub('[\\\/]', '', filename)
 
-    return cleanpath
+            ret_path = Path(dirname, filename)
+            ret_path.open(mode='w')
+
+    return ret_path
 
 
 

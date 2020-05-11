@@ -7,10 +7,8 @@ from pathlib import Path, PurePath
 # local
 import MTNN.utils as utils
 
-
+# TODO: Add default save path with filename + date
 DEFAULT_SAVE_DIR = PurePath.joinpath(Path.cwd(), Path("./model/"))
-
-
 
 class MultigridTrainer:
     """
@@ -24,7 +22,6 @@ class MultigridTrainer:
         self.save_path = utils.make_path(DEFAULT_SAVE_DIR, save_path)
         self.load = load
         self.load_path = load_path
-
 
     def train(self, model, optimizer, cycles):
         for i in range(cycles):
