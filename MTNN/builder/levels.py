@@ -1,4 +1,4 @@
-import MTNN.core.alg.optimizer.scheme.multigrid as mg
+import MTNN.core.optimizer.multigrid as mg
 
 
 def build_uniform(num_levels=0, presmoother=None, postsmoother=None,

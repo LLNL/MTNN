@@ -1,10 +1,12 @@
-import pathlib
 import re
 import os
 import sys
 import inspect
 import logging
-from pathlib import PurePath, Path, PurePosixPath
+from pathlib import Path, PurePath
+
+import torch
+
 
 def progressbar(count, total, status=''):
     bar_len = 60
@@ -59,23 +61,26 @@ def get_logger(logger_name, create_file=False):
     Set up logger for each module.
     Args:
         logger_name: Pass the module's __name__
-        create_file:
+        create_file : <bool>
 
     Returns:
+        logger
+
+    TODO: Log multiple modules to the same file (smoother, prolongation)
 
     """
     logger = logging.getLogger(logger_name)
     logger.setLevel(level=logging.INFO)  # Default
 
-    # Formatter
-    formatter = logging.Formatter()
+    # Set formatting
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    #File Handler
+    # File Handler
     if create_file:
+        filepath = get_caller_filepath() + "/log/" + get_caller_filename() + ".log"
+        filepath = make_fullpath(filepath)
 
-        filepath = get_caller_filepath() + "/log" + get_caller_filename() + ".log"
-        print(filepath)
-        fh = logging.FileHandler(get_caller_filename() + ".log")
+        fh = logging.FileHandler(filepath)
         fh.setLevel(level=logging.DEBUG)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
@@ -88,6 +93,30 @@ def get_logger(logger_name, create_file=False):
 
     return logger
 
+def make_fullpath(filepath):
+    """
+
+    Args:
+        filepath: <string>
+
+    Returns:
+        ret_path: <Path> Posix or Windows filepath
+
+    """
+    basedir = PurePath(filepath).parent
+    filename = PurePath(filepath).name
+
+    # Create base directory
+    if not Path(basedir).exists():
+        Path(basedir).mkdir(parents=True)
+
+    # Create file
+    ret_path = Path(basedir, filename)
+    ret_path.open(mode='w')
+
+    return ret_path
+
+
 
 
 def make_path(dirname, filename):
@@ -96,7 +125,7 @@ def make_path(dirname, filename):
 
     if not Path(filename).exists():
         if isinstance(filename, str):
-
+            # Sanitize filename
             filename = re.sub('[\\\/]', '', filename)
 
             ret_path = Path(dirname, filename)
@@ -105,6 +134,9 @@ def make_path(dirname, filename):
     return ret_path
 
 
+def enable_cuda():
+    # TODO
+    pass
 
 def plot():
     #TODO: Fill in

@@ -41,13 +41,12 @@ class SGDSmoother(BaseSmoother):
 
         """
 
-        # TODO: Check Stopper only has one mechanism/attribute "activated"
-
-        #if stopper.NumEpochs
+        # TODO: Check Stopper
+        # TODO: Fix logging
 
         while not stopper.should_stop():
-            for epoch in range(stopper.epochs):
-                print(f"Epoch {epoch + 1}/{stopper.epochs}")
+            for epoch in range(stopper.max_epochs):
+                print(f"Epoch {epoch + 1}/{stopper.max_epochs}")
 
                 for batch_idx, data in enumerate(dataloader, 0):
                     # Show status bar
@@ -71,7 +70,7 @@ class SGDSmoother(BaseSmoother):
                     if (batch_idx % self.log_interval) == 0:
                         #print("Finished 10")
                         #print(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
-                        logger.info(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
+                        logger.debug(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
 
                 stopper.track()
         stopper.reset()

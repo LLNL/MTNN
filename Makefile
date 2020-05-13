@@ -66,7 +66,7 @@ clean-logs:
 	@echo "     clear runs/ directory of logs, checkpoints, tensorboard event files, etc."
 
 	#find /scripts/examples/runs/logs/ -type f -name "*.txt" -exec rm -rf {} \; # Generated debugging logs
-	find . -type d -name runs* -exec rm -rf {} \; # Model run logs
+	find . -type d -name logs* -exec rm -rf {} \; # Model run logs
 
 
 # Tests
@@ -77,7 +77,7 @@ test_model:
 	pytest tests/test_model.py
 
 
-# Documentation 
+# Generate  Documentation 
 docs: 
 	@echo "docs"
 	@echo "		Generates doxygen documentation to mtnnpython/doxygen"

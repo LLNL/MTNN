@@ -12,44 +12,57 @@ class BaseStopper(ABC):
     """
 
     def __init__(self, epochs):
-        self.epochs = epochs
+        self.max_epochs = epochs
 
     @abstractmethod
     def should_stop(self, **kwargs) -> bool:
         """
         Returns True when the training should stop
-        Args:
-            **kwargs:
-
-        Returns:
-
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def reset(self):
         raise NotImplementedError
 
 
 class EpochStopper(BaseStopper):
+    """
+    Stops the training loop based on epoch count
+    """
     def __init__(self, epochs):
         super().__init__(epochs)
         self.epoch_count = 0
 
     def should_stop(self) -> bool:
-        if self.epochs == self.epoch_count:
+        if self.epoch_count == self.max_epochs:
             return True
 
     def track(self):
-        self.epoch_count = self.epoch_count + 1
+        self.epoch_count += 1
 
     def reset(self):
         self.epoch_count = 0
 
 
 class CycleStopper(BaseStopper):
+    """
+    Stops the training loop based on multigrid cycle count
+    """
     def __init__(self, epochs):
-        pass
+        super().__init__(epochs)
+        self.max_cycles = 0
+        self.cycle_count = 0
+
+    def track(self):
+        self.cycle_count += 1
 
     def should_stop(self):
-        pass
-        # TODO: Fill in
+        if self.cycle_count == self.max_cycles:
+            return True
+
+    def reset(self):
+        self.cycle_count = 0
 
 
 class TotalLossStopper(BaseStopper):
@@ -71,35 +84,3 @@ class RelativeLossStopper(BaseStopper):
         # TODO: Fill in
 
 
-
-
-"""
-class Stopper:
-
-    def __init__(self):
-        self.TotalLoss = None
-        self.RelativeLoss = None
-        self.NumCycles = None
-        self.NumEpochs = None
-
-
-def ByTotalLoss():
-    pass
-    # TODO: Fill in
-
-
-def ByRelativeLoss():
-    pass
-    # TODO: Fill in
-
-
-def ByNumIterations():
-    pass
-    # TODO: Fill in
-
-
-def ByNumEpochs(num=0):
-    stopper = Stopper()
-    stopper.NumEpochs = num
-    return stopper
-"""
