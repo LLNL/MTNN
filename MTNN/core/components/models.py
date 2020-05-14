@@ -6,7 +6,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = [""]
+__all__ = ["MultiLinearNet",
+           "BasicMnistModel",
+           "BasicCifarModel"]
 
 
 # API
@@ -31,33 +33,22 @@ class BaseModel(nn.Module):
             print(param.data)
         # TODO: Write to log
 
-
+############################################################################
 # Implementations
-class SingleFCNet(BaseModel):
+##########################################################################3
 
-    def __init__(self, dim_in, hidden, dim_out):
-        super().__init__()
-        # Bias is true by default
-        self.layers = nn.ModuleList([nn.Linear(dim_in, hidden),
-                                     nn.Linear(hidden, dim_out)])
-
-
-    def forward(self, x):
-        # Flatten Input
-        x = x.view(x.size(0), -1)
-
-        for idx, layer in enumerate(self.layers):
-            x = self.layers[idx](x)
-        x = F.relu(x)
-        return x
 
 class MultiLinearNet(BaseModel):
     def __init__(self, dim: list):
+        """
+        List of dimensions
+        Args:
+            dim:
+        """
         super().__init__()
         modules = nn.ModuleList()
 
         for x in range(len(dim) - 1):
-            print(x)
             modules.append(nn.Linear(dim[x], dim[x + 1]))
 
         self.layers = modules
@@ -71,20 +62,6 @@ class MultiLinearNet(BaseModel):
         x = F.relu(x)
         return x
 
-
-class SingleLayerNet(BaseModel):
-    def __init__(self, dim_in, hidden, dim_out):
-        super().__init__()
-        # By default, bias is true
-        self.fc1 = nn.Linear(dim_in, hidden) # row, column # input, output
-        self.fc2 = nn.Linear(hidden, dim_out)
-
-    def forward(self, x):
-        x = x.view(x.size(0), -1) # flatten
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = F.relu(x)
-        return x
 
 class BasicMnistModel(BaseModel):
     """A basic image classifier."""

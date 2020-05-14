@@ -75,46 +75,5 @@ class CIFAR10Data(BaseDataLoader):
                                                shuffle = True,
                                                num_workers = self.num_workers)
 
-# TESTING ONLY
-def gen_data(linear_function):
-    training_data = []
-    input_data = []
-    for x in range(3):
-        for y in range(3):
-            training_datum = ((x, y), linear_function(x, y))
-            input_data.append((x, y))
-            training_data.append(training_datum)
-    #return input_data, training_data
-    return training_data
-
-def tensorize_data(training_data: list):
-    """Tensorizes data and load into a Pytorch DataLoader.
-    Args:
-        training_data: <list> of tuples (input, output)
-
-    Returns:
-        dataloader: <torch.utils.data.DataLoader>
-
-    """
-    # Load Data_z into Pytorch dataloader
-    tensor_data = []
-    for i, data in enumerate(training_data):
-        XY, Z = iter(data)
-
-        # Convert list to float tensor
-        input = torch.tensor(XY, dtype = torch.float, requires_grad = True)
-        Z = torch.FloatTensor([Z])
-
-        tensor_data.append((input, Z))
-    dataloader = torch.utils.data.DataLoader(tensor_data, shuffle = False, batch_size = 1)
-
-    return dataloader
-
-
-class TestData:
-    def __init__(self, linear_function):
-        self.trainset = gen_data(linear_function)
-        self.trainloader = tensorize_data(self.trainset)
-
 
 
