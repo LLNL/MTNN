@@ -4,7 +4,7 @@ Holds Multigrid Smoothers
 # PyTorch
 import torch.optim as optim
 # local
-import MTNN.utils as utils
+import MTNN.core.utils as utils
 
 logger = utils.get_logger(__name__, create_file=True)
 

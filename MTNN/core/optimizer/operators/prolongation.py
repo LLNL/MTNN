@@ -8,7 +8,7 @@ import torch.nn as nn
 from abc import ABC, abstractmethod
 
 # local
-import MTNN.utils as utils
+import MTNN.core.utils as utils
 
 logger = utils.get_logger(__name__, create_file=True)
 
@@ -18,12 +18,15 @@ __all__ = ['IdentityProlongation',
            'RandomSplitOperator',
            'RandomPerturbationOperator']
 
-
+# API
 class BaseProlongation(ABC):
     @abstractmethod
     def apply(self, **kwargs):
         raise NotImplementedError
 
+###################################################################
+# Implementations
+####################################################################
 class IdentityProlongation(BaseProlongation):
     """Identity Interpolation Operator
 
@@ -174,7 +177,8 @@ class LowerTriangleProlongation(BaseProlongation):
                         layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim = 1)
                         # bias dim stays the same
 
-        return
+
+        return prolonged_model
 
 class RandomPerturbationOperator(BaseProlongation):
     def __init__(self):

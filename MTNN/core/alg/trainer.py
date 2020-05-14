@@ -2,7 +2,7 @@
 Trainer
 """
 # local
-import MTNN.utils as utils
+import MTNN.core.utils as utils
 
 default_save_path = utils.make_default_path(dir= "models", ext= ".pt")
 

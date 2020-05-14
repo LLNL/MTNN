@@ -14,7 +14,8 @@ __all__ = ["MultiLinearNet",
 # API
 class BaseModel(nn.Module):
     """
-    Class to Overwrite
+    Base Model class
+     * Overwrite this
     """
     def __init__(self):
         super().__init__()

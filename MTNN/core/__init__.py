@@ -1,4 +1,6 @@
 
 # Public
 __all__=['alg',
-         'components']
+         'components',
+         'optimizer',
+         'utils']
