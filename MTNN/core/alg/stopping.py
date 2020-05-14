@@ -37,6 +37,8 @@ class EpochStopper(BaseStopper):
     def should_stop(self) -> bool:
         if self.epoch_count == self.max_epochs:
             return True
+        else:
+            return False
 
     def track(self):
         self.epoch_count += 1
@@ -47,19 +49,24 @@ class EpochStopper(BaseStopper):
 
 class CycleStopper(BaseStopper):
     """
-    Stops the training loop based on multigrid cycle count
+    Stops the training loop based on number of iterations
     """
-    def __init__(self, epochs):
+    def __init__(self, epochs, cycles):
         super().__init__(epochs)
-        self.max_cycles = 0
+        self.max_cycles = cycles
         self.cycle_count = 0
 
     def track(self):
         self.cycle_count += 1
 
+
     def should_stop(self):
         if self.cycle_count == self.max_cycles:
+            print("Stopping...")
             return True
+        else:
+            return False
+
 
     def reset(self):
         self.cycle_count = 0

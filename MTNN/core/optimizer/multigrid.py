@@ -69,7 +69,7 @@ class _BaseMultigridHierarchy(ABC):
         self.levels = levels
 
     @abstractmethod
-    def run(self):
+    def run(self, **kawrgs):
         raise NotImplementedError
 
     def get_num_levels(self):
@@ -97,25 +97,6 @@ class Cascadic(_BaseMultigridHierarchy):
             model.eval()
 
         # Training
-        """"
-        for level_idx, level in enumerate(self.levels):
-            # Coarse Solve
-            if level_idx == 0:
-                print(f"Level {level_idx}: Appying Coarse Solver")
-                level.coarse_solve(model, trainer.dataloader, trainer.verbose)
-
-            # Pre-Smooth
-            elif level_idx == (len(self.levels) - 1):
-                print(f"Level  {level_idx}: Applying Presmoother ")
-                level.presmooth(model, trainer.dataloader, trainer.verbose)
-
-            # Prolongation/Interpolation
-            else:
-                print(f"Level {level_idx} :Applying Prolongation")
-                level.prolong(model, trainer.verbose)
-
-        """
-
         for level_idx in range(len(self.levels)):
             print(f"\nLevel  {level_idx}: Applying Presmoother ")
             level.presmooth(model, trainer.dataloader, trainer.verbose)
@@ -127,7 +108,8 @@ class Cascadic(_BaseMultigridHierarchy):
             level.coarse_solve(model, trainer.dataloader, trainer.verbose)
 
             # Apply last layer smoothing
-            if level == self.levels[-1]:
+
+            if level_idx == self.levels[-1]:
                 print(f"\nLevel {level_idx}: Appying Postsmoother")
                 level.postsmooth(model, trainer.dataloader, trainer.verbose)
 

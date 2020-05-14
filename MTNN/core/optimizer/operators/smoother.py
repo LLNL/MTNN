@@ -41,12 +41,16 @@ class SGDSmoother(BaseSmoother):
 
         """
 
-        # TODO: Check Stopper
+        # TODO: Check Stoppers
         # TODO: Fix logging
 
         while not stopper.should_stop():
             for epoch in range(stopper.max_epochs):
-                print(f"Epoch {epoch + 1}/{stopper.max_epochs}")
+
+                if verbose:
+                    if hasattr(stopper, 'cycle_count'):
+                        print(f"Cycle {stopper.cycle_count}/{stopper.max_cycles}")
+                    print(f"Epoch {epoch + 1}/{stopper.max_epochs}")
 
                 for batch_idx, data in enumerate(dataloader, 0):
                     # Show status bar
