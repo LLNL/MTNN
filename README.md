@@ -36,13 +36,13 @@ Pre-steps: Install Conda and Update your Conda repository
 conda update --all
 ```
 
-1. Log-in to an LC machine and HTTPS Git clone this repository. You'll be prompted to authenticate with your Active Directory Official Username (OUN) and RSA-OTP (One Time Password).
+1. Log-in to an LC machine and  clone this Git repository. You'll be prompted to authenticate with your Active Directory Official Username (OUN) and RSA-OTP (One Time Password).
 
     ```bash
-    git clone https://lc.llnl.gov/bitbucket/scm/mtnn/mtnnpython.git
+    git clone ssh://git@cz-bitbucket.llnl.gov:7999/mtnn/mtnnpython.git
     ```
 
-    Checkout this branch: refactor/mao6/rev1
+    Checkout this branch: dev/mao6 
 
     ```bash
     cd mtnnpython/

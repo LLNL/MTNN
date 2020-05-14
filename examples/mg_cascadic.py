@@ -17,9 +17,6 @@ import MTNN.builder.levels as levels
 
 # Load Data and Model
 data = data.MnistData(trainbatch_size=10, testbatch_size=10)
-#net = models.SingleLayerNet(dim_in=784, hidden=10, dim_out=10)
-#net = models.BasicMnistModel()
-#net = models.SingleFCNet(dim_in=784, hidden=25, dim_out=10)
 net = models.MultiLinearNet([784, 50, 25, 10])
 
 
@@ -33,7 +30,7 @@ prolongation_operator = prolongation.LowerTriangleProlongation(expansion_factor=
 stopping_measure = stopping.EpochStopper(1)
 #stopping_measure = stopping.CycleStopper(1, 3)
 
-mg_levels = levels.build_uniform(num_levels=2,
+mg_levels = levels.build_uniform(num_levels=1,
                                  presmoother=smoother,
                                  postsmoother=smoother,
                                  prolongation=prolongation_operator,
