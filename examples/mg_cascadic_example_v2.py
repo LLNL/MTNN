@@ -1,5 +1,5 @@
 """
-Example of cascadic multigrid with MTNNuto
+Example of cascadic multigrid with MTNN
 """
 import time
 
@@ -20,26 +20,20 @@ data = data.MnistData(trainbatch_size=10, testbatch_size=10)
 #net = models.SingleLayerNet(dim_in=784, hidden=10, dim_out=10)
 #net = models.BasicMnistModel()
 #net = models.SingleFCNet(dim_in=784, hidden=25, dim_out=10)
-net = models.MultiLinearNet([784, 100, 50, 10])
+net = models.MultiLinearNet([784, 50, 25, 10])
 
-
-
-# Test
-#fn = lambda x, y: 3 * x + 2 * y
-#data = data.TestData(fn)
-#net = models.Test()
 
 # Build Multigrid Hierarchy
-smoother = smoother.SGDSmoother(model=net, loss=nn.
-CrossEntropyLoss(),
+
+smoother = smoother.SGDSmoother(model=net, loss=nn.CrossEntropyLoss(),
                                 lr=0.01, momentum=0.09, log_interval=10)
 
 #prolongation_operator = prolongation.IdentityProlongation()
 prolongation_operator = prolongation.LowerTriangleProlongation(expansion_factor=2)
-#stopping_measure = stopping.EpochStopper(1)
-stopping_measure = stopping.CycleStopper(1)
+stopping_measure = stopping.EpochStopper(1)
+#stopping_measure = stopping.CycleStopper(1, 3)
 
-mg_levels = levels.build_uniform(num_levels=1,
+mg_levels = levels.build_uniform(num_levels=2,
                                  presmoother=smoother,
                                  postsmoother=smoother,
                                  prolongation=prolongation_operator,
@@ -50,9 +44,9 @@ mg_optimizer = mg.Cascadic(mg_levels)
 training_alg = trainer.MultigridTrainer(dataloader=data.trainloader,
                                         verbose=True,
                                         save=True,
-                                        save_path="\model.pt",
                                         load=False)
 evaluator = evaluator.CategoricalEvaluator()
+
 
 
 # Train
@@ -61,7 +55,8 @@ start = time.perf_counter()
 training_alg.train(model=net, optimizer=mg_optimizer, cycles=1)
 stop = time.perf_counter()
 print('Finished Training (%.3fs)' % (stop - start))
-"""
+
+
 # Test
 print('Starting Testing')
 start = time.perf_counter()
@@ -69,4 +64,4 @@ correct, total = evaluator.evaluate(model=net, dataloader=data.testloader)
 stop = time.perf_counter()
 print('Finished Testing (%.3f)' % (stop-start))
 print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
-"""
+
