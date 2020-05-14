@@ -1,26 +1,23 @@
 About
 ==============================================
 # Purpose 
-MTNN is a PyTorch framework to develop and test the application of multigrid algorithms to various neural network architectures.
+MTNN is a PyTorch framework to develop and test the application of multigrid algorithms 
+for various neural network architectures.
+
+Currently supports:
+- [ ] Cascadic
+    - [ ] Linear layers
+    - [ ] Convolution layers
+- [ ] V-Cycle
+- [ ] FAS
 
 ## Project Layout
 
-* **Source** is in `MTNN/`
-* **Documentation** is in `MTNN/docs`
-* **Dependencies** for environment set-up is in `MTNN/environment`
-* **Configuration files** to run MTNN are in `MTNN/config`
-  
-* **Test hyper-parameters and directory path for outputs** are in `MTNN/mtnnconstants.py`
-* **Unit tests** are in `MTNN/tests`
-    * Positive test cases (where tests should *not* fail) are in `MTNN/tests/positives`
-    * Negative test cases (where tests should fail) are in `MTNN/tests/negative`
-* **Example scripts** using MTNN modules & framework are in `MTNN/scripts/examples/`
-
-# Workflow 
-* To run a script with a YAML configuration file: 
-```bash
-python run.py <relative path to script> <relative path to YAML configuration file>
-```
+* **Source** is in `mtnnpython/MTNN/core`
+* **Documentation** is in `mtnnpython/docs`
+* **Dependencies** for environment set-up is in `mtnnpython/environment`
+* **Unit tests** are in `mtnnpython/MTNN/tests`
+* **Example scripts** using MTNN modules & framework are in `Mtnnpython/examples/`
 
 # Developer
 ## Environment Set-up
@@ -31,7 +28,7 @@ Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.
 
 ### Recommended: With Conda 
 **The following assumes Bash shell and that Anaconda is already installed on the system.** 
-* To-do: Make this into a shell script/makefile
+
 
 Pre-steps: Install Conda and Update your Conda repository
 
@@ -45,7 +42,7 @@ conda update --all
     git clone https://lc.llnl.gov/bitbucket/scm/mtnn/mtnnpython.git
     ```
 
-    Checkout this branch: dev/mao6
+    Checkout this branch: refactor/mao6/rev1
 
     ```bash
     cd mtnnpython/
@@ -118,25 +115,11 @@ to this source code directory `/home/user/mtnnpython/` instead of copying the so
 * `$pip freeze > requirements.txt`
 
 
-## Model Configuration 
-The neural network architecture can be specified by a YAML configuration file. These are stored in `MTNN/config`.
-
-### With Yaml Files
-
-* TODO: Make a template example yaml file
-### Generating YAML files 
- * TODO
 
 ## Testing
+* TODO
 
-* In `mtnnconstants.py`, edit the `TEST_CONFIG_*` parameters to modify the range of parameters you want to
- create for testing yaml configuration files
-* Run `config_generator.py`
-    * This will generate test configuration files to `MTNN/tests/config/positive by default`
-* Run tests in `MTNN/tests`
-
-
-# Generating Documentation 
+## Generating Documentation 
 Documentation can be generated from commented source code using Doxygen. 
 
 * Install [Doxygen](http://www.doxygen.nl/manual/install.html)
@@ -147,32 +130,5 @@ Documentation can be generated from commented source code using Doxygen.
     make docs 
      ```
 
-# Debugging 
-
-## With MTNN Model logs
-* For  MTNN Model object, set `Model.debug` to `True` to enable logging
-* In the commandline: use the -d or --debug flag 
-* Logs will be stored in  `runs/logs/`
-
-## Visualization
-### With ONYXX 
- * TODO 
-### With Tensorboard
-1. Initialize or set Model.Tensorboard to True
-1.5 Remove Previous logs:
-
-    ```bash
-    !rm -rf ./runs/
-    ```
-
-2. In the commandline terminal:
-
-    ```bash
-    tensorboard --logdir=<full path to log directory> --port 6006
-    ```
-
-    * Defaults to `port 6006`
-    * Don't use quotation marks in the directory path; Tensorboard will not raise any errors
-3. In your browser:  `http://localhost:6006` or CTRL + click on link in the commandline terminal
-
+## Debugging 
 
