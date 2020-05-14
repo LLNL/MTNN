@@ -3,6 +3,7 @@ import os
 import sys
 import inspect
 import logging
+import datetime
 from pathlib import Path, PurePath
 
 import torch
@@ -77,8 +78,7 @@ def get_logger(logger_name, create_file=False):
 
     # File Handler
     if create_file:
-        filepath = get_caller_filepath() + "/log/" + get_caller_filename() + ".log"
-        filepath = make_fullpath(filepath)
+        filepath = make_default_path("/logs/", ".txt")
 
         fh = logging.FileHandler(filepath)
         fh.setLevel(level=logging.DEBUG)
@@ -93,15 +93,15 @@ def get_logger(logger_name, create_file=False):
 
     return logger
 
-def make_fullpath(filepath):
-    """
 
+def make_path(filepath):
+    """
+    Recursively makes a file path.
     Args:
         filepath: <string>
 
     Returns:
-        ret_path: <Path> Posix or Windows filepath
-
+        ret_path: <Path> Posix or Windows file path object
     """
     basedir = PurePath(filepath).parent
     filename = PurePath(filepath).name
@@ -112,32 +112,40 @@ def make_fullpath(filepath):
 
     # Create file
     ret_path = Path(basedir, filename)
-    ret_path.open(mode='w')
 
     return ret_path
 
 
+def make_default_path(dir: str, ext: str):
+    """
+    Creates a sub directory if it doesn't exist and default filename based on caller filename.
+        <filename>_MMDDYYY_HH:MM:SS_DayofWeek_<ext>
+    Returns open file object.
+    Args:
+        dir: <str> Name of the sub directory.
+        ext: <str> Name of the file extension
 
+    Returns:
+        default_path <Path> Posix or Windows file path object
+    """
+    dirname = re.sub('[\\\/]', '', dir)
+    default_dir = PurePath.joinpath(Path.cwd(), Path("./" + dirname))
+    default_file = get_caller_filename() + "_" \
+                    + datetime.datetime.today().strftime("%m%d%Y") + "_" \
+                    + datetime.datetime.now().strftime("%H:%M:%S") + "_" \
+                    + datetime.datetime.today().strftime("%A") + ext
+    default_path = default_dir.joinpath(Path(default_file))
 
-def make_path(dirname, filename):
-    if not Path(dirname).exists():
-        Path(dirname).mkdir()
+    default_path = make_path(default_path)
 
-    if not Path(filename).exists():
-        if isinstance(filename, str):
-            # Sanitize filename
-            filename = re.sub('[\\\/]', '', filename)
-
-            ret_path = Path(dirname, filename)
-            ret_path.open(mode='w')
-
-    return ret_path
+    return default_path
 
 
 def enable_cuda():
     # TODO
     pass
 
+
 def plot():
-    #TODO: Fill in
+    #TODO
     pass

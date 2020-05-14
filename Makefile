@@ -68,6 +68,10 @@ clean-logs:
 	#find /scripts/examples/runs/logs/ -type f -name "*.txt" -exec rm -rf {} \; # Generated debugging logs
 	find . -type d -name logs* -exec rm -rf {} \; # Model run logs
 
+clean-models: 
+	@echo " clean-models"
+	@echo "		remove files from models/"
+	find . -type d -name models* -exec rm -rf {} \; # Checkpoint model weights
 
 # Tests
 test-config::
