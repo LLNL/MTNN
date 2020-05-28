@@ -10,8 +10,9 @@ __all__ = ["MultiLinearNet",
            "BasicMnistModel",
            "BasicCifarModel"]
 
-
+####################################################################
 # API
+###################################################################
 class BaseModel(nn.Module):
     """
     Base Model class
@@ -29,6 +30,7 @@ class BaseModel(nn.Module):
         for param_tensor in self.state_dict():
             print(f"\t{param_tensor}    {self.state_dict()[param_tensor].size()}")
 
+    # TODO: Remove
     def log(self, logpath):
         for param in self.parameters():
             print(param.data)
@@ -36,17 +38,19 @@ class BaseModel(nn.Module):
 
 ############################################################################
 # Implementations
-##########################################################################3
+############################################################################
 
 
 class MultiLinearNet(BaseModel):
-    def __init__(self, dim: list):
+    def __init__(self, dim: list, activation=F.relu): # Check activationtype
         """
-        List of dimensions
+        Builds a fully connected network given a list of dimensions
         Args:
-            dim:
+            dim: <list> List of dimensions [dim_in, hidden,...,dim_out]
+            activation: <torch.nn.Functional> Torch activation function
         """
         super().__init__()
+        self.activation = activation
         modules = nn.ModuleList()
 
         for x in range(len(dim) - 1):
@@ -59,10 +63,12 @@ class MultiLinearNet(BaseModel):
         x = x.view(x.size(0), -1)
 
         for idx, layer in enumerate(self.layers):
-            x = self.layers[idx](x)
-        x = F.relu(x)
+            if idx != (len(self.layers) - 1):
+                x = self.layers[idx](x)
+                x = self.activation(x)
+            else:
+                x = self.layers[idx](x)
         return x
-
 
 class BasicMnistModel(BaseModel):
     """A basic image classifier."""
