@@ -6,6 +6,10 @@ Holds Multigrid Schemes
 import torch
 from abc import ABC, abstractmethod
 
+#local
+import MTNN.utils.logger as log
+
+log = log.get_logger(__name__, write_to_file =True)
 
 class Level:
     """A level in an Multigrid hierarchy"""
@@ -14,7 +18,6 @@ class Level:
                  coarsegrid_solver=None, stopping_criteria=None):
         """
         Args:
-            num_epochs: <int>
             presmoother: <core.alg.optimizer.operators.smoother>
             postsmoother: <core.alg.optimizer.operators.smoother>
             prolongation: <core.alg.optimizer.operators.prolongation>
@@ -52,9 +55,11 @@ class Level:
     def view(self):
         # TODO: print type
         for atr in self.__dict__:
-            print(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__} ")
+            log.info(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__} ")
 
-
+##############################
+# API
+##############################
 class _BaseMultigridHierarchy(ABC):
     """
     Base Multigrid Hierarchy
@@ -75,47 +80,48 @@ class _BaseMultigridHierarchy(ABC):
     def get_num_levels(self):
         return len(self.levels)
 
-
+############################################################################
+# Implementations
+############################################################################
 class Cascadic(_BaseMultigridHierarchy):
     """
     Interface for Cascadic Multigrid Algorithm
     """
-    #def run(self, model, data, verbose:bool, save=False, path="./model"):
     def run(self, model, trainer):
 
         # Verbose
         if trainer.verbose:
-            print(f"\nNumber  of levels: {self.get_num_levels()}")
+            log.info(f"\nNumber  of levels: {self.get_num_levels()}")
             for i, level in enumerate(self.levels):
-                print(f"Level {i}")
+                log.info(f"Level {i}")
                 level.view()
 
         # Loading
         if trainer.load:
-            print(f"\nLoading from {trainer.load_path}")
+            log.info(f"\nLoading from {trainer.load_path}")
             model = torch.load(trainer.load_path)
             model.eval()
 
         # Training
-        for level_idx in range(len(self.levels)):
-            print(f"\nLevel  {level_idx}: Applying Presmoother ")
+        for level_idx, level in enumerate(self.levels):
+            log.info(f"\nLevel  {level_idx}: Applying Presmoother ")
             level.presmooth(model, trainer.dataloader, trainer.verbose)
 
-            print(f"\nLevel {level_idx} :Applying Prolongation")
+            log.info(f"\nLevel {level_idx} :Applying Prolongation")
             level.prolong(model, trainer.verbose)
 
-            print(f"\nLevel {level_idx}: Appying Coarse Solver")
+            log.info(f"\nLevel {level_idx}: Appying Coarse Solver")
             level.coarse_solve(model, trainer.dataloader, trainer.verbose)
 
             # Apply last layer smoothing
 
             if level_idx == self.levels[-1]:
-                print(f"\nLevel {level_idx}: Appying Postsmoother")
+                log.info(f"\nLevel {level_idx}: Appying Postsmoother")
                 level.postsmooth(model, trainer.dataloader, trainer.verbose)
 
         # Saving
         if trainer.save:
-            print(f"\nSaving to ...{trainer.save_path}")
+            log.info(f"\nSaving to ...{trainer.save_path}")
             torch.save({'model_state_dict': model.state_dict()},
                        trainer.save_path)
 

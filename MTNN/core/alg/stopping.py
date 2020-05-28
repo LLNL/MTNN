@@ -2,7 +2,6 @@
 Holds Multigrid stopping measures
 """
 from abc import ABC, abstractmethod
-# Functions or Class?
 
 
 class BaseStopper(ABC):
@@ -50,6 +49,7 @@ class EpochStopper(BaseStopper):
 class CycleStopper(BaseStopper):
     """
     Stops the training loop based on number of iterations
+    # TODO: Fix this. Clarify what we mean by cycles?
     """
     def __init__(self, epochs, cycles):
         super().__init__(epochs)
@@ -58,7 +58,6 @@ class CycleStopper(BaseStopper):
 
     def track(self):
         self.cycle_count += 1
-
 
     def should_stop(self):
         if self.cycle_count == self.max_cycles:
@@ -82,7 +81,10 @@ class TotalLossStopper(BaseStopper):
         # TODO: Fill in
 
 
-class RelativeLossStopper(BaseStopper):
+class NoLongerImprovingStopper(BaseStopper):
+    """
+    Stops the training loop if the loss stops improving within the epoch
+    """
     def __init__(self, epochs):
         self.epochs = epochs
 

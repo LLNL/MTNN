@@ -6,19 +6,25 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import torch.utils.data as td
 
-
+####################################################################
+# API
+###################################################################
 class BaseDataLoader:
     # Top-level of datasets folder
     root = './datasets'
     num_workers = 0 # 4 * numGPUs
     batch_size = 64
 
+###################################################################
+# Implementation
+####################################################################
 class MnistData(BaseDataLoader):
     """
     Loads Mnist Dataset into Dataloaders
+    Image size is 28 x 28
+        - 60,000 training images
+        -10,000 testing images
     """
-
-
     preprocess = transforms.Compose(
         [transforms.ToTensor(), # Convert to 3 Channels
          transforms.Normalize((0.1307,), (0.3081,))])  # mean, standard deviation

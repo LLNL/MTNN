@@ -4,11 +4,13 @@ Holds Multigrid Smoothers
 # PyTorch
 import torch.optim as optim
 # local
-import MTNN.core.utils as utils
+import MTNN.utils.logger as logger
 
-logger = utils.get_logger(__name__, create_file=True)
+log = logger.get_logger(__name__, write_to_file =True)
 
-
+####################################################################
+# API
+###################################################################
 class BaseSmoother:
     """
     Base Training Algorithm Smoother
@@ -18,7 +20,9 @@ class BaseSmoother:
     def apply(self, model, data, stopper, verbose: bool):
         raise NotImplementedError
 
-
+###################################################################
+# Implementation
+####################################################################
 class SGDSmoother(BaseSmoother):
 
     def __init__(self, model, loss, lr=0.01, momentum=0.9, log_interval=0):
@@ -49,15 +53,17 @@ class SGDSmoother(BaseSmoother):
 
                 if verbose:
                     if hasattr(stopper, 'cycle_count'):
-                        print(f"Cycle {stopper.cycle_count}/{stopper.max_cycles}")
-                    print(f"Epoch {epoch + 1}/{stopper.max_epochs}")
+                        log.info(f"Cycle {stopper.cycle_count}/{stopper.max_cycles}")
+                    log.info(f"Epoch {epoch + 1}/{stopper.max_epochs}")
+
 
                 for batch_idx, data in enumerate(dataloader, 0):
                     # Show status bar
-                    if verbose:
+                    """
+                    if verbose:   
                         total_work = len(dataloader)
-                        utils.progressbar(batch_idx, total_work, status = "Training")
-
+                        logger.progressbar(batch_idx, total_work, status = "Training")
+                    """
                     inputs, labels = data
 
                     # Zero the parameter gradients
@@ -71,10 +77,8 @@ class SGDSmoother(BaseSmoother):
                     loss.backward()
                     self.optimizer.step()
 
-                    if (batch_idx % self.log_interval) == 0:
-                        #print("Finished 10")
-                        #print(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
-                        logger.debug(f"Epoch: {epoch} {batch_idx * len(data)}/ {len(dataloader)}\t Loss: {loss.item()}")
+                    if verbose and (batch_idx % self.log_interval) == 0:
+                        log.info(f"Epoch: {epoch}\t{batch_idx}/ {len(dataloader) * dataloader.batch_size}\t\tLoss: {loss.item()}")
 
                 stopper.track()
         stopper.reset()
