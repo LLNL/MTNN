@@ -1,5 +1,6 @@
-
-"""LowerTriangular Class"""
+"""
+Prolongation operators
+"""
 # standard
 import logging
 import copy
@@ -8,9 +9,9 @@ import torch.nn as nn
 from abc import ABC, abstractmethod
 
 # local
-import MTNN.core.utils as utils
+import MTNN.utils.logger as logger
 
-logger = utils.get_logger(__name__, create_file=True)
+log = logger.get_logger(__name__, write_to_file=True)
 
 
 __all__ = ['IdentityProlongation',
@@ -18,14 +19,30 @@ __all__ = ['IdentityProlongation',
            'RandomSplitOperator',
            'RandomPerturbationOperator']
 
+
+def log_model(msg, model, **options):
+    if 'val' in options and options['val']:
+        log.info(f"{msg}")
+        for layer_idx, layer in enumerate(model.layers):
+            log.info(f"\tLAYER {layer_idx}")
+            log.info(f"\t\tWEIGHTS  \t{layer.weight.data}")
+            log.info(f"\t\tBIAS  \t{layer.bias.data}")
+
+    if 'dim' in options and options['dim']:
+        log.info(f"{msg}")
+        for layer_idx, layer in enumerate(model.layers):
+            log.info(f"\tLAYER {layer_idx} WEIGHT DIM\t{layer.weight.size()} \tBIAS DIM {layer.bias.size()}")
+
+####################################################################
 # API
+###################################################################
 class BaseProlongation(ABC):
     @abstractmethod
     def apply(self, **kwargs):
         raise NotImplementedError
 
 ###################################################################
-# Implementations
+# Implementation
 ####################################################################
 class IdentityProlongation(BaseProlongation):
     """Identity Interpolation Operator
@@ -58,8 +75,8 @@ class LowerTriangleProlongation(BaseProlongation):
         - Weight matrix W'_i:  K * N_i * N_(i-1)
         - Bias vector b'_i: K * N_1 X 1
     – The output layer has dimensions
-        – Weight matrix W'_out: N_out X N_(i-1)
-        - Bias vector b'_out: b_out X 1
+        – Weight matrix W'_out: N_out * N_(i-1)
+        - Bias vector b'_out: b_out * 1
 
      Example. In a fully connected neural network with input x = [x1, x2] and 2 hidden layers of 1 neuron each
      (a neuron being the computational unit comprising of the linear transformation and non-linear activation function).
@@ -89,9 +106,9 @@ class LowerTriangleProlongation(BaseProlongation):
         Takes a sourcemodel. Copies and updates weights/biases of each layer of sourcemodel into a new model with
         new block lower triangular weight matrix and augmented bias vector according to some expansion factor.
         Args:
-            sourcemodel <Model>
+            sourcemodel <MTNN.BaseModel>
         Returns:
-            prolonged_model <Model>
+            prolonged_model <MTNN.BaseModel>
         """
         # 1 Layer case:
         """
@@ -113,7 +130,7 @@ class LowerTriangleProlongation(BaseProlongation):
         # Multi-hidden layer
         else:
             prolonged_model = copy.deepcopy(source_model)
-            last_layer_idx = len(prolonged_model.layers)
+            last_layer_idx = len(prolonged_model.layers) - 1
 
             for index, layer in enumerate(prolonged_model.layers):
 
@@ -127,7 +144,7 @@ class LowerTriangleProlongation(BaseProlongation):
                 noise2_dim = ((self.expansion_factor * weight_row) - weight_row,
                               (self.expansion_factor * weight_col))  # Rest of layers
                 zero_dim = (weight_row, ((self.expansion_factor * weight_col) - weight_col))
-                last_layer_zero_dim = (weight_row, ((self.expansion_factor * weight_col) - weight_row))
+                last_layer_zero_dim = (weight_row, ((self.expansion_factor * weight_col) - weight_col))
 
 
                 # First hidden layer(weight matrix and bias vector):
@@ -142,13 +159,10 @@ class LowerTriangleProlongation(BaseProlongation):
 
                     # Update parameters.
                     with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
-                        logging.debug(f"ORIGINAL WEIGHT {layer.weight.data}")
-                        layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
 
+                        layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
                         layer.bias.data = torch.cat((layer.bias.data, bias_noise))
 
-                        logging.debug(f"PROLONGED WEIGHTS {layer.weight.data}")
-                        logging.debug(f"PROLONGED BIAS {layer.bias.data}")
 
                 # For middle hidden layers(weight matrix and bias vector):
                 elif index > 0 and index != last_layer_idx:
@@ -169,14 +183,19 @@ class LowerTriangleProlongation(BaseProlongation):
                         layer.weight.data = torch.cat((layer.weight.data, noise_matrix))
                         layer.bias.data = torch.cat((layer.bias.data, bias_noise))
 
+
                 # For last hidden layer(weight matrix and bias vector):
                 else:
                     # weight matrix [ W 0]
                     zero_matrix = nn.init.zeros_(torch.empty(last_layer_zero_dim))
                     with torch.no_grad():  # note: disable torch.grad else this update modifies the gradient
+
                         layer.weight.data = torch.cat((layer.weight.data, zero_matrix), dim = 1)
                         # bias dim stays the same
 
+        if verbose:
+            log_model("ORIGINAL", source_model, dim=True)
+            log_model("PROLONGED", prolonged_model, dim=True)
 
         return prolonged_model
 
