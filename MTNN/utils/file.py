@@ -1,23 +1,14 @@
 import re
 import os
-import sys
 import inspect
-import logging
 import datetime
 from pathlib import Path, PurePath
 
-import torch
+__all__ =['get_caller_filename',
+          'get_caller_filepath',
+          'make_path',
+          'make_default_path']
 
-
-def progressbar(count, total, status=''):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
-
-    percents = round(100.0 * count / float(total), 1)
-    bar = '=' * filled_len + '-' * (bar_len - filled_len)
-
-    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
-    sys.stdout.flush()
 
 
 def get_caller_filepath():
@@ -57,41 +48,6 @@ def get_caller_filename():
     return prev_caller_filename
 
 
-def get_logger(logger_name, create_file=False):
-    """
-    Set up logger for each module.
-    Args:
-        logger_name: Pass the module's __name__
-        create_file : <bool>
-
-    Returns:
-        logger
-
-    TODO: Log multiple modules to the same file (smoother, prolongation)
-
-    """
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(level=logging.INFO)  # Default
-
-    # Set formatting
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # File Handler
-    if create_file:
-        filepath = make_default_path("/logs/", ".txt")
-
-        fh = logging.FileHandler(filepath)
-        fh.setLevel(level=logging.DEBUG)
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-
-    # Console Handler
-    ch = logging.StreamHandler()
-    ch.setLevel(level=logging.ERROR)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
-    return logger
 
 
 def make_path(filepath):
