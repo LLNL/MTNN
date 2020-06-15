@@ -10,13 +10,13 @@ __all__ = ["MultiLinearNet",
            "BasicMnistModel",
            "BasicCifarModel"]
 
+
 ####################################################################
-# API
+# Interface
 ###################################################################
-class BaseModel(nn.Module):
+class _BaseModel(nn.Module):
     """
     Base Model class
-     * Overwrite this
     """
     def __init__(self):
         super().__init__()
@@ -24,25 +24,25 @@ class BaseModel(nn.Module):
 
     @abstractmethod
     def forward(self, input_):
+        """Overwrite this"""
         raise NotImplementedError
 
     def print(self):
         for param_tensor in self.state_dict():
-            print(f"\t{param_tensor}    {self.state_dict()[param_tensor].size()}")
+            print(f"\t{param_tensor}  {self.state_dict()[param_tensor].size()}")
 
-    # TODO: Remove
+    # TODO: Remove?
     def log(self, logpath):
         for param in self.parameters():
             print(param.data)
         # TODO: Write to log
 
+
 ############################################################################
 # Implementations
 ############################################################################
-
-
-class MultiLinearNet(BaseModel):
-    def __init__(self, dim: list, activation=F.relu): # Check activationtype
+class MultiLinearNet(_BaseModel):
+    def __init__(self, dim: list, activation, output_activation): # Check activationtype
         """
         Builds a fully connected network given a list of dimensions
         Args:
@@ -51,6 +51,7 @@ class MultiLinearNet(BaseModel):
         """
         super().__init__()
         self.activation = activation
+        self.output = output_activation
         modules = nn.ModuleList()
 
         for x in range(len(dim) - 1):
@@ -66,11 +67,14 @@ class MultiLinearNet(BaseModel):
             if idx != (len(self.layers) - 1):
                 x = self.layers[idx](x)
                 x = self.activation(x)
+
+            elif idx == self.layers[-1]:
+                x = self.output(x)
             else:
                 x = self.layers[idx](x)
         return x
 
-class BasicMnistModel(BaseModel):
+class BasicMnistModel(_BaseModel):
     """A basic image classifier."""
 
     # https://github.com/pytorch/examples/blob/master/mnist/main.py
@@ -99,7 +103,7 @@ class BasicMnistModel(BaseModel):
         return output
 
 
-class BasicCifarModel(BaseModel):
+class BasicCifarModel(_BaseModel):
     # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html#sphx-glr-beginner-blitz-cifar10-tutorial-py
     def __init__(self):
         super(BasicCifarModel, self).__init__()

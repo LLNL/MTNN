@@ -2,7 +2,6 @@
 Prolongation operators
 """
 # standard
-import logging
 import copy
 import torch
 import torch.nn as nn
@@ -10,36 +9,25 @@ from abc import ABC, abstractmethod
 
 # local
 import MTNN.utils.logger as logger
+import MTNN.utils.printer as printer
 
-log = logger.get_logger(__name__, write_to_file=True)
-
+log = logger.get_logger(__name__, write_to_file = True)
 
 __all__ = ['IdentityProlongation',
            'LowerTriangleProlongation',
-           'RandomSplitOperator',
-           'RandomPerturbationOperator']
-
-
-def log_model(msg, model, **options):
-    if 'val' in options and options['val']:
-        log.info(f"{msg}")
-        for layer_idx, layer in enumerate(model.layers):
-            log.info(f"\tLAYER {layer_idx}")
-            log.info(f"\t\tWEIGHTS  \t{layer.weight.data}")
-            log.info(f"\t\tBIAS  \t{layer.bias.data}")
-
-    if 'dim' in options and options['dim']:
-        log.info(f"{msg}")
-        for layer_idx, layer in enumerate(model.layers):
-            log.info(f"\tLAYER {layer_idx} WEIGHT DIM\t{layer.weight.size()} \tBIAS DIM {layer.bias.size()}")
+           'PairwiseAggregationProlongation'
+           ]
 
 ####################################################################
-# API
+# Interface
 ###################################################################
 class BaseProlongation(ABC):
+    """Overwrite this"""
+
     @abstractmethod
     def apply(self, **kwargs):
         raise NotImplementedError
+
 
 ###################################################################
 # Implementation
@@ -49,6 +37,7 @@ class IdentityProlongation(BaseProlongation):
 
     Copy model weights.
     """
+
     def __init__(self):
         pass
 
@@ -97,6 +86,7 @@ class LowerTriangleProlongation(BaseProlongation):
     Output:
         prolonged_model <MTNN.model>: a MTNN.model object
     """
+
     # TODO: Check doc string
     def __init__(self, expansion_factor: int):
         self.expansion_factor = expansion_factor
@@ -123,7 +113,6 @@ class LowerTriangleProlongation(BaseProlongation):
 
         # TODO: Add Check for fully connected layers
         # Single Hidden Layer
-
         if len(source_model.layers) <= 2:
             return source_model
 
@@ -145,7 +134,6 @@ class LowerTriangleProlongation(BaseProlongation):
                               (self.expansion_factor * weight_col))  # Rest of layers
                 zero_dim = (weight_row, ((self.expansion_factor * weight_col) - weight_col))
                 last_layer_zero_dim = (weight_row, ((self.expansion_factor * weight_col) - weight_col))
-
 
                 # First hidden layer(weight matrix and bias vector):
                 if index == 0:
@@ -194,10 +182,19 @@ class LowerTriangleProlongation(BaseProlongation):
                         # bias dim stays the same
 
         if verbose:
-            log_model("ORIGINAL", source_model, dim=True)
-            log_model("PROLONGED", prolonged_model, dim=True)
+            printer.printModel("ORIGINAL", source_model, dim = True)
+            printer.printModel("PROLONGED", prolonged_model, dim = True)
 
         return prolonged_model
+
+
+class PairwiseAggregationProlongation(BaseProlongation):
+    def __init__(self):
+        pass
+
+    def apply(self, fine_level, course_level, verbose):
+        pass
+
 
 class RandomPerturbationOperator(BaseProlongation):
     def __init__(self):
@@ -205,7 +202,6 @@ class RandomPerturbationOperator(BaseProlongation):
 
     def apply(self, source_model):
         pass
-
 
 
 class RandomSplitOperator(BaseProlongation):

@@ -1,26 +1,59 @@
 """
-Holds Datasets
+Holds Pre-configured Dataloaders
 """
-import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import torch.utils.data as td
 
+
 ####################################################################
-# API
+# Interface
 ###################################################################
-class BaseDataLoader:
+class _BaseDataLoader:
     # Top-level of datasets folder
     root = './datasets'
     num_workers = 0 # 4 * numGPUs
-    batch_size = 64
+    batch_size = 1
+
 
 ###################################################################
 # Implementation
 ####################################################################
-class MnistData(BaseDataLoader):
+class TestData(_BaseDataLoader):
+   """
+   Use this dataset for development and testing
+   Loads Pytorch Fake Dataset into Dataloaders
+   https://pytorch.org/docs/stable/_modules/torchvision/datasets/fakedata.html#FakeData
+   """
+   preprocess = transforms.Compose(
+       [transforms.ToTensor()])
+
+   def __init__(self, imagesize:tuple, trainbatch_size, testbatch_size):
+       self.trainset = datasets.FakeData(size=100,
+                                         image_size=imagesize, # channels, width, height
+                                         num_classes=5,
+                                         transform=TestData.preprocess,
+                                         target_transform=None,
+                                         random_offset=0)
+       self.testset = datasets.FakeData(size=100,
+                                         image_size=imagesize,
+                                         num_classes=5,
+                                         transform=TestData.preprocess,
+                                         target_transform = None,
+                                         random_offset=0)
+       self.trainloader = td.DataLoader(self.trainset,
+                                        batch_size=trainbatch_size,
+                                        shuffle=True)
+       self.testloader = td.DataLoader(self.testset,
+                                        batch_size = testbatch_size,
+                                        shuffle = True)
+
+
+
+
+class MnistData(_BaseDataLoader):
     """
-    Loads Mnist Dataset into Dataloaders
+    Loads Pytorch Mnist Dataset into Dataloaders
     Image size is 28 x 28
         - 60,000 training images
         -10,000 testing images
@@ -30,11 +63,11 @@ class MnistData(BaseDataLoader):
          transforms.Normalize((0.1307,), (0.3081,))])  # mean, standard deviation
 
     def __init__(self, trainbatch_size, testbatch_size):
-        self.trainset = datasets.MNIST(root=BaseDataLoader.root,
+        self.trainset = datasets.MNIST(root=_BaseDataLoader.root,
                                        train=True,
                                        download=True,
                                        transform=MnistData.preprocess)
-        self.testset = datasets.MNIST(root=BaseDataLoader.root,
+        self.testset = datasets.MNIST(root=_BaseDataLoader.root,
                                       train=False,
                                       download=True,
                                       transform=MnistData.preprocess)
@@ -49,9 +82,7 @@ class MnistData(BaseDataLoader):
 
 
 
-
-
-class CIFAR10Data(BaseDataLoader):
+class CIFAR10Data(_BaseDataLoader):
     """
     Loads Cifar10 Dataset into Dataloaders
     """
@@ -64,11 +95,11 @@ class CIFAR10Data(BaseDataLoader):
                'dog', 'frog', 'horse', 'ship', 'truck')
 
     def __init__(self, trainbatch_size, testbatch_size):
-        self.trainset = datasets.CIFAR10(root = BaseDataLoader.root,
+        self.trainset = datasets.CIFAR10(root = _BaseDataLoader.root,
                                          train = True,
                                          download = True,
                                          transform = CIFAR10Data.preprocess)
-        self.testset = datasets.CIFAR10(root = BaseDataLoader.root,
+        self.testset = datasets.CIFAR10(root = _BaseDataLoader.root,
                                         train = False,
                                         download = True,
                                         transform = CIFAR10Data.preprocess)

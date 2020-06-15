@@ -1,5 +1,6 @@
 
 # Public
 __all__ = ['logger',
-           'file']
+           'file',
+           'printer']
 

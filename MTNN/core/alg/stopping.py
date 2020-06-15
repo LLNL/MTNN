@@ -48,8 +48,8 @@ class EpochStopper(BaseStopper):
 
 class CycleStopper(BaseStopper):
     """
-    Stops the training loop based on number of iterations
-    # TODO: Fix this. Clarify what we mean by cycles?
+    Stops the training loop based on number of cycles through a multigrid hierarchy
+    # TODO: Fix this
     """
     def __init__(self, epochs, cycles):
         super().__init__(epochs)
@@ -65,7 +65,6 @@ class CycleStopper(BaseStopper):
             return True
         else:
             return False
-
 
     def reset(self):
         self.cycle_count = 0
