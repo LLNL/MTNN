@@ -13,6 +13,6 @@ setup(name="MTNN",
       install_requires=['torch',
                         'torchvision',
                         'pytest',
-                        'onnx'],
+                        'onnx', 'numpy'],
       python_requires='>=3.7'
       )

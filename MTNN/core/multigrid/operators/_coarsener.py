@@ -1,5 +1,10 @@
+# standard
 import numpy as np
+import pdb
 
+#local
+from MTNN.utils import logger
+log = logger.get_logger(__name__, write_to_file =True)
 
 class _HEMCoarsener():
     """
@@ -17,9 +22,10 @@ class _HEMCoarsener():
         self.theta = theta
         self.randseq = randseq
         self.coarseLevelDim = None
-        self.Fine2CoursePerLayer = None
+        self.Fine2CoarsePerLayer = None
 
-    def HeavyEdgeMatching(self, similarityMatrix):
+
+    def get_heavyedgematching(self, similarityMatrix):
         """This function computes a heavy-edge-matching based on the similarity matrix S
         Constructs numColumnIn_list and the restrictionElementPos_list.
         These will be used in the restriction operators setup to construct the restriction matrix
@@ -29,12 +35,10 @@ class _HEMCoarsener():
         # Sort the rows of similarityMatrix in descending order
         P = np.argsort(-similarityMatrix, 1)
         # initialization
-        match = np.empty(n, dtype = int)
-        cnode = np.empty(n, dtype = int)
+        cnode, match = np.empty(n, dtype = int), np.empty(n, dtype = int)
         match.fill(-1)
         cnode.fill(-1)
-        n_pair = 0
-        n_single = 0
+        n_pair, n_single = 0, 0
         # randomized ordering
         seq = range(0, n)
         if self.randseq:
@@ -69,17 +73,24 @@ class _HEMCoarsener():
         assert num_ColumnIn == n_pair + n_single
         # print('hem: %.2f' % (sim / n_pair))
 
-        #print(fine2course, num_ColumnIn)
+        log.debug(f"Coarsener.setup {fine2course= } {num_ColumnIn=} ")
         return fine2course, num_ColumnIn
 
     def coarsen(self, fine_level_net):
+        """
+        Given a fine-level net coarsens
+        Args:
+            fine_level_net:
 
+        Returns:
+
+        """
         num_layers = len(fine_level_net.layers)
         # number columns
         self.coarseLevelDim = [fine_level_net.layers[0].in_features]
 
         # fine2coarse array
-        self.Fine2CoursePerLayer = []
+        self.Fine2CoarsePerLayer = []
         # coarsen layers
         for layer_id in range(num_layers - 1):
             w = fine_level_net.layers[layer_id].weight.detach().numpy()
@@ -94,18 +105,20 @@ class _HEMCoarsener():
             for i in range(nf):
                 similarity[i, i] = 0
 
-            # pdb.set_trace()
+            #pdb.set_trace()
 
-            f2c, nc = self.HeavyEdgeMatching(similarity)
+            f2c, num_ColIn = self.get_heavyedgematching(similarity)
 
 
             #
-            self.coarseLevelDim.append(nc)
-            self.Fine2CoursePerLayer.append(f2c)
+            self.coarseLevelDim.append(num_ColIn)
+            self.Fine2CoarsePerLayer.append(f2c)
             #
-            # print('Coarsen layer %d: %d --> %d' % (layer_id, nF, nC))
+
+            log.debug(f"Coarsener.Coarsen: LayerID nf {layer_id}: {nf} nc{num_ColIn}")
+            #print('Coarsen layer %d: %d --> %d' % (layer_id, nf, num_ColIn))
         #
 
         self.coarseLevelDim.append(fine_level_net.layers[num_layers - 1].out_features)
 
-        print(f"restriction Element Position{self.Fine2CoursePerLayer}, coarse_level dim {self.coarseLevelDim}")
+        log.info(f"restriction Element Position{self.Fine2CoarsePerLayer}, coarse_level dim {self.coarseLevelDim}")

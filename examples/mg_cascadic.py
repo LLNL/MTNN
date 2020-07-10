@@ -11,7 +11,7 @@ from MTNN.core.components import data, models
 from MTNN.core.multigrid.operators import smoother, prolongation
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
-import MTNN.builder.levels as levels
+import MTNN.utils.builder as levels
 
 
 

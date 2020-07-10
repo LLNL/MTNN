@@ -3,9 +3,13 @@ Prolongation operators
 """
 # standard
 import copy
+import numpy as np
+from abc import ABC, abstractmethod
+
+
+# third-party
 import torch
 import torch.nn as nn
-from abc import ABC, abstractmethod
 
 # local
 import MTNN.utils.logger as logger
@@ -15,13 +19,14 @@ log = logger.get_logger(__name__, write_to_file = True)
 
 __all__ = ['IdentityProlongation',
            'LowerTriangleProlongation',
-           'PairwiseAggregationProlongation'
+           'PairwiseAggProlongation'
            ]
+
 
 ####################################################################
 # Interface
 ###################################################################
-class BaseProlongation(ABC):
+class _BaseProlongation(ABC):
     """Overwrite this"""
 
     @abstractmethod
@@ -32,7 +37,7 @@ class BaseProlongation(ABC):
 ###################################################################
 # Implementation
 ####################################################################
-class IdentityProlongation(BaseProlongation):
+class IdentityProlongation(_BaseProlongation):
     """Identity Interpolation Operator
 
     Copy model weights.
@@ -46,7 +51,7 @@ class IdentityProlongation(BaseProlongation):
         return source_model
 
 
-class LowerTriangleProlongation(BaseProlongation):
+class LowerTriangleProlongation(_BaseProlongation):
     """
     Transforms a model's weight matrix into a block lower triangular matrix.
     Let x be the model input with dimension N_1(row) x N_in(col)
@@ -182,21 +187,58 @@ class LowerTriangleProlongation(BaseProlongation):
                         # bias dim stays the same
 
         if verbose:
-            printer.printModel("ORIGINAL", source_model, dim = True)
-            printer.printModel("PROLONGED", prolonged_model, dim = True)
+            printer.printModel("ORIGINAL", source_model, dim=True)
+            printer.printModel("PROLONGED", prolonged_model, dim=True)
 
         return prolonged_model
 
 
-class PairwiseAggregationProlongation(BaseProlongation):
+class PairwiseAggProlongation(_BaseProlongation):
     def __init__(self):
-        pass
+        self.prolongation_operators = []
 
-    def apply(self, fine_level, course_level, verbose):
-        pass
+    def apply(self, fine_level, coarse_level, dataloader, verbose):
+        """
+        Args:
+            fine_level:
+            coarse_level:
+            dataloader:
+            verbose:
+
+        Returns:
+
+        """
+        # Check PairwiseAggSetup
+        assert fine_level.interpolation_data is not None
+        num_coarse_layers = len(coarse_level.net.layers)
+        R_array, P_array = [*fine_level.interpolation_data]
+
+        for layer_id in range(num_coarse_layers):
+            W_c = np.copy(coarse_level.net.layers[layer_id].weight.detach().numpy())
+            B_c = np.copy(coarse_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1))
+            e_W = W_c - coarse_level.Winit_array[
+                layer_id]  # W_c = self.R_array[layer_id] @ W_f @ self.P_array[layer_id-1]
+            e_B = B_c - coarse_level.Binit_array[layer_id]
+            if layer_id < num_coarse_layers - 1:
+                if layer_id == 0:
+                    e_W = P_array[layer_id] @ e_W
+                else:
+                    e_W = P_array[layer_id] @ e_W @ R_array[layer_id - 1]
+                e_B = P_array[layer_id] @ e_B
+            elif layer_id > 0:
+                e_W = e_W @ R_array[layer_id - 1]
+
+            W_f = np.copy(fine_level.net.layers[layer_id].weight.detach().numpy())
+            B_f = np.copy(fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1))
+            W_f += e_W
+            B_f += e_B
+
+            with torch.no_grad():
+                np.copyto(fine_level.net.layers[layer_id].weight.detach().numpy(), W_f)
+                np.copyto(fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1), B_f)
 
 
-class RandomPerturbationOperator(BaseProlongation):
+class RandomPerturbationOperator(_BaseProlongation):
     def __init__(self):
         pass
 
@@ -204,7 +246,7 @@ class RandomPerturbationOperator(BaseProlongation):
         pass
 
 
-class RandomSplitOperator(BaseProlongation):
+class RandomSplitOperator(_BaseProlongation):
     def __init__(self):
         pass
 

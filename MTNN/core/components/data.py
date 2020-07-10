@@ -21,32 +21,34 @@ class _BaseDataLoader:
 ####################################################################
 class TestData(_BaseDataLoader):
    """
-   Use this dataset for development and testing
+   Use this dataset for development and debugging
    Loads Pytorch Fake Dataset into Dataloaders
    https://pytorch.org/docs/stable/_modules/torchvision/datasets/fakedata.html#FakeData
    """
    preprocess = transforms.Compose(
        [transforms.ToTensor()])
 
-   def __init__(self, imagesize:tuple, trainbatch_size, testbatch_size):
-       self.trainset = datasets.FakeData(size=100,
+   def __init__(self, imagesize:tuple, num_classes: int, trainbatch_size: int, testbatch_size:int):
+       self.trainset = datasets.FakeData(size=trainbatch_size,
                                          image_size=imagesize, # channels, width, height
-                                         num_classes=5,
+                                         num_classes=num_classes,
                                          transform=TestData.preprocess,
                                          target_transform=None,
                                          random_offset=0)
-       self.testset = datasets.FakeData(size=100,
+       self.testset = datasets.FakeData(size=testbatch_size,
                                          image_size=imagesize,
-                                         num_classes=5,
+                                         num_classes=num_classes,
                                          transform=TestData.preprocess,
                                          target_transform = None,
                                          random_offset=0)
        self.trainloader = td.DataLoader(self.trainset,
                                         batch_size=trainbatch_size,
-                                        shuffle=True)
+                                        shuffle=True,
+                                        num_workers = self.num_workers)
        self.testloader = td.DataLoader(self.testset,
                                         batch_size = testbatch_size,
-                                        shuffle = True)
+                                        shuffle = True,
+                                        num_workers = self.num_workers)
 
 
 
