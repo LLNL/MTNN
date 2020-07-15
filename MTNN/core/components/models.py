@@ -3,11 +3,12 @@ Holds Models
 """
 # standard
 from abc import abstractmethod
-
+from collections import namedtuple
 # torch
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 # local
 import MTNN.utils.logger as logger
@@ -39,27 +40,32 @@ class _BaseModel(nn.Module):
         """Overwrite this"""
         raise NotImplementedError
 
-    def _get_grad(self, dataset, loss_fn, weights=None, bias=None, verbose=False):
+    def _get_grad(self, dataloader, loss_fn, verbose=False):
         """Get gradients w.r.t to the dataset with optional L2 Regularization"""
-
+        log.debug("Get Grad")
         # Compute the gradient
-        nbatches = len(dataset)
-        # zero the parameter gradients
+
+        nbatches = len(dataloader)
+        # zero the parameter gradient
         self.zero_grad()
-        loss = None
+        loss = 0.00
         # batch loop
-        for i, data in enumerate(dataset, 0):
+        for i, data in enumerate(dataloader, 0):
             # get the inputs. data is a list of [inputs, labels]
             inputs, labels = data
             if len(inputs.size()) == 4:
                 inputs = inputs.view(inputs.size()[0], inputs.size()[1] * inputs.size()[2] * inputs.size()[3])
             # forward: get the loss w.r.t this batch
+
             outputs = self(inputs)
 
+            """
             if loss is None:
                 loss = loss_fn(outputs, labels)
             else:
                 loss += loss_fn(outputs, labels)
+            """
+            loss += loss_fn(outputs, labels)
 
         # TODO: Add L2 regularization printing option
         """
@@ -74,9 +80,18 @@ class _BaseModel(nn.Module):
                 loss += 0.5 * nbatches * loss_fn.l2_decay * l2_reg
         """
         loss.backward()
+        printer.printModel(self, msg = "MODELS.Getgrad:after update", grad = True)
 
         if verbose:
-            printer.printGradNorm(loss, weights, bias) # TODO: FIX
+            printer.printGradNorm(loss) # TODO
+
+        weight_grad, bias_grad = [], []
+        for layer_id in range(len(self.layers)):
+            weight_grad += self.layers[layer_id].weight.grad.detach().clone()
+            bias_grad += self.layers[layer_id].bias.grad.detach().clone()
+        Grad = namedtuple('grad', ['weight_grad', 'bias_grad'])
+
+        return Grad (weight_grad, bias_grad)
 
     def print(self, mode='light'):
         # TODO: Add modality
@@ -128,10 +143,9 @@ class TestLinearNet(_BaseModel):
                 x = self.layers[idx](x)
                 x = self.activation(x)
 
-            elif idx == self.layers[-1]:
-                x = self.output(x)
-            else:
+            elif layer == self.layers[-1]:
                 x = self.layers[idx](x)
+                x = self.output(x, dim=1)
         return x
 
 
@@ -154,7 +168,6 @@ class MultiLinearNet(_BaseModel):
         with torch.no_grad():
             for x in range(len(dim) - 1):
                 layer = nn.Linear(dim[x], dim[x + 1])
-
                 if weight_fill and bias_fill:
                     layer.weight.fill_(weight_fill)
                     layer.bias.fill_(bias_fill)
@@ -162,19 +175,25 @@ class MultiLinearNet(_BaseModel):
 
         self.layers = modules
 
-    def forward(self, x):
+    def forward(self, x, verbose=False):
         # Flatten Input
         x = x.view(x.size(0), -1)
 
         for idx, layer in enumerate(self.layers):
             if idx != (len(self.layers) - 1):
+
                 x = self.layers[idx](x)
                 x = self.activation(x)
 
-            elif idx == self.layers[-1]:
-                x = self.output(x)
-            else:
+
+            elif layer == self.layers[-1]:
+
                 x = self.layers[idx](x)
+                x = self.output(x, dim=1)
+                
+        if verbose:
+            printer.printModel(self, val=True)
+
         return x
 
 class BasicMnistModel(_BaseModel):
