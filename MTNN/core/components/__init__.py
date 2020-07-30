@@ -1,4 +1,4 @@
 
 # Public
-__all__ = ['data.py',
+__all__ = ['data',
             'models']

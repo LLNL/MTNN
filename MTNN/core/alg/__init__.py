@@ -1,5 +1,5 @@
 
 # Public
-__all__ = [ 'multigrid',
-            'evaluator',
-            'trainer']
+__all__ = ['stopping',
+           'evaluator',
+           'trainer']

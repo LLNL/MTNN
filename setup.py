@@ -8,11 +8,12 @@ setup(name="MTNN",
       author="Christina Mao",
       author_email="mao6@llnl.gov",
       packages=find_packages(),
-      #namespace_packages=find_namespace_packages(),
+      namespace_packages=['MTNN'],
       package_dir={' ': 'MTNN'},
       install_requires=['torch',
                         'torchvision',
                         'pytest',
-                        'onnx', 'numpy'],
-      python_requires='>=3.7'
+                        'onnx',
+                        'numpy'],
+      python_requires='>=3.8'
       )
