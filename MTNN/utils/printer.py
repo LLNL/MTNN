@@ -38,8 +38,8 @@ def printLevelStats( level_idx: int, num_levels: int, msg="",) -> None:
 
 
 def printLevelInfo(levels: list) -> None:
-    for i, level in enumerate(levels):
-        log.info(f"Level {i}")
+    for idx, level in enumerate(levels):
+        log.info(f"Level {idx}")
         level.view()
 
 
@@ -57,6 +57,15 @@ def printModel(model, msg="", **options) -> None:
             log.info(f"{msg} \n Model Dimensions")
             for layer_idx, layer in enumerate(model.layers):
                 log.info(f"\tLAYER {layer_idx} WEIGHT DIM\t{layer.weight.size()} \tBIAS DIM {layer.bias.size()}")
+
+        if 'grad' in options and options['grad']:
+            log.info(f"{msg} \n Model Gradients")
+            for layer_idx, layer in enumerate(model.layers):
+                log.info(f"\tLAYER {layer_idx}")
+                log.info(f"\t\tWEIGHTS  \t{layer.weight.grad}")
+                log.info(f"\t\tBIAS  \t{layer.bias.grad}")
+
+
     except AttributeError:
         log.warning(f"Net is empty.")
 

@@ -4,6 +4,7 @@ Holds Models
 # standard
 from abc import abstractmethod
 from collections import namedtuple
+
 # torch
 import torch
 import torch.nn as nn
@@ -40,15 +41,13 @@ class _BaseModel(nn.Module):
         """Overwrite this"""
         raise NotImplementedError
 
-    def _get_grad(self, dataloader, loss_fn, verbose=False):
-        """Get gradients w.r.t to the dataset with optional L2 Regularization"""
+    def getGrad(self, dataloader, loss_fn, verbose=False):
+        """Get gradients w.r.t to the entire dataset """
         log.debug("Get Grad")
         # Compute the gradient
-
-        nbatches = len(dataloader)
         # zero the parameter gradient
         self.zero_grad()
-        loss = 0.00
+        loss = None
         # batch loop
         for i, data in enumerate(dataloader, 0):
             # get the inputs. data is a list of [inputs, labels]
@@ -58,18 +57,19 @@ class _BaseModel(nn.Module):
             # forward: get the loss w.r.t this batch
 
             outputs = self(inputs)
+            print(F"{inputs = }, {outputs = }")
 
-            """
             if loss is None:
                 loss = loss_fn(outputs, labels)
             else:
                 loss += loss_fn(outputs, labels)
-            """
-            loss += loss_fn(outputs, labels)
 
-        # TODO: Add L2 regularization printing option
+            #loss += loss_fn(outputs, labels)
+
+        # TODO: Add L2 regularization printing option?
         """
             # L2 regularization
+            nbatches = len(dataloader)
             if loss_fn.l2_decay != 0.0:
                 l2_reg = None
                 for W in self.parameters():
@@ -79,29 +79,40 @@ class _BaseModel(nn.Module):
                         l2_reg += torch.pow(W, 2).sum()
                 loss += 0.5 * nbatches * loss_fn.l2_decay * l2_reg
         """
+        print(f"Model.getgrad: Total loss{loss = }")
         loss.backward()
         printer.printModel(self, msg = "MODELS.Getgrad:after update", grad = True)
 
+        # TODO
+        """
         if verbose:
-            printer.printGradNorm(loss) # TODO
+            printer.printGradNorm(loss)
+        """
 
         weight_grad, bias_grad = [], []
         for layer_id in range(len(self.layers)):
-            weight_grad += self.layers[layer_id].weight.grad.detach().clone()
-            bias_grad += self.layers[layer_id].bias.grad.detach().clone()
+            weight_grad.append(np.copy(self.layers[layer_id].weight.grad.detach()))
+            bias_grad.append(np.copy(self.layers[layer_id].bias.grad.detach()))
         Grad = namedtuple('grad', ['weight_grad', 'bias_grad'])
-
-        return Grad (weight_grad, bias_grad)
+        grad = Grad(weight_grad, bias_grad)
+        return grad
 
     def print(self, mode='light'):
-        # TODO: Add modality
+        # TODO: Improve modality
         assert mode in ('light', 'med', 'high')
         if mode == 'light':
             for param_tensor in self.state_dict():
                 log.info(f"\t{param_tensor}  {self.state_dict()[param_tensor].size()}")
         if mode == 'med':
-            for layer in self.layers:
-                log.info(f"{layer.weight}  {layer.bias}")
+            for layer_idx, layer in enumerate(self.layers):
+                log.info(f"LAYER: {layer_idx}")
+                log.info(f"\tWEIGHTS {layer.weight}\n\t BIAS{layer.bias}")
+        if mode == 'high':
+            for layer_idx, layer in enumerate(self.layers):
+                log.info(f"LAYER: {layer_idx}")
+                log.info(f" \tWEIGHTS {layer.weight}\n\tBIAS {layer.bias}")
+                log.info(f" \tWEIGHT GRADIENTS {layer.weight.grad}\n\tBIAS GRADIENTS {layer.bias.grad}")
+
 
     def log(self, logpath):
         for param in self.parameters():
@@ -112,43 +123,6 @@ class _BaseModel(nn.Module):
 ############################################################################
 # Implementations
 ############################################################################
-class TestLinearNet(_BaseModel):
-    def __init__(self, weight_fill: float, bias_fill: float, dim: list, activation, output_activation): # Check activationtype
-        """
-        Builds a fully connected network given a list of dimensions
-        Args:
-            dim: <list> List of dimensions [dim_in, hidden,...,dim_out]
-            activation: <torch.nn.Functional> Torch activation function
-        """
-        super().__init__()
-        self.activation = activation
-        self.output = output_activation
-
-        modules = nn.ModuleList()
-        with torch.no_grad():
-            for x in range(len(dim) - 1):
-                layer = nn.Linear(dim[x], dim[x + 1])
-                layer.weight.fill_(weight_fill)
-                layer.bias.fill_(bias_fill)
-                modules.append(layer)
-
-        self.layers = modules
-
-    def forward(self, x):
-        # Flatten Input
-        x = x.view(x.size(0), -1)
-
-        for idx, layer in enumerate(self.layers):
-            if idx != (len(self.layers) - 1):
-                x = self.layers[idx](x)
-                x = self.activation(x)
-
-            elif layer == self.layers[-1]:
-                x = self.layers[idx](x)
-                x = self.output(x, dim=1)
-        return x
-
-
 class MultiLinearNet(_BaseModel):
     def __init__(self, dim: list, activation, output_activation, weight_fill=None, bias_fill=None): # Check activationtype
         """
@@ -181,16 +155,13 @@ class MultiLinearNet(_BaseModel):
 
         for idx, layer in enumerate(self.layers):
             if idx != (len(self.layers) - 1):
-
                 x = self.layers[idx](x)
                 x = self.activation(x)
 
-
             elif layer == self.layers[-1]:
-
                 x = self.layers[idx](x)
                 x = self.output(x, dim=1)
-                
+
         if verbose:
             printer.printModel(self, val=True)
 

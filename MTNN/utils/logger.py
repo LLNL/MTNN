@@ -24,7 +24,7 @@ fh.setFormatter(file_formatter)
 
 # Console Handler
 ch = logging.StreamHandler()  # writes to stderr
-ch.setLevel(level=logging.INFO)
+ch.setLevel(level=logging.DEBUG)
 ch.setFormatter(console_formatter)
 
 

@@ -6,7 +6,7 @@ import pdb
 from MTNN.utils import logger
 log = logger.get_logger(__name__, write_to_file =True)
 
-class _HEMCoarsener():
+class HEMCoarsener():
     """
     Heavy Edge Matching Coarsener
     Takes a fine-level and constructs the coarsening layer to be used
@@ -25,11 +25,14 @@ class _HEMCoarsener():
         self.Fine2CoarsePerLayer = None
 
 
-    def get_heavyedgematching(self, similarityMatrix):
+    def get_heavyedgematching(self, similarityMatrix, random_seq=False):
         """This function computes a heavy-edge-matching based on the similarity matrix S
         Constructs numColumnIn_list and the restrictionElementPos_list.
         These will be used in the restriction operators setup to construct the restriction matrix
         per layer per level.
+        Args:
+            similarityMatrix: <numpy matrix>
+            random_seq: <bool> Enables randomized ordering of rows
         """
         n = similarityMatrix.shape[0]
         # Sort the rows of similarityMatrix in descending order
@@ -41,7 +44,7 @@ class _HEMCoarsener():
         n_pair, n_single = 0, 0
         # randomized ordering
         seq = range(0, n)
-        if self.randseq:
+        if random_seq:
             seq = np.random.permutation(seq)
         sim = 0.0
         # greedy algorithm
@@ -108,7 +111,6 @@ class _HEMCoarsener():
             #pdb.set_trace()
 
             f2c, num_ColIn = self.get_heavyedgematching(similarity)
-
 
             #
             self.coarseLevelDim.append(num_ColIn)

@@ -1,80 +1,100 @@
 """
-Example of VCycle multigrid with MTNN
+Example of FAS VCycle
 """
 import time
 from collections import namedtuple
 
 # PyTorch
-import torch
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+import torch
+import numpy as np
 
 # local
 from MTNN.core.components import data, models
-from MTNN.core.multigrid.operators import smoother, restriction, prolongation, interpolator
+from MTNN.core.multigrid.operators import smoother, prolongation, restriction
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
-import MTNN.utils.builder as levels
 
-# Set seed for reproducibility
+
+# For reproducibility
 torch.manual_seed(0)
 torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 np.random.seed(0)
+torch.set_printoptions(precision=5)
 
+
+#=======================================
 # Set-up
-# Load Data and Model
-dataloader = data.TestData(imagesize=(1, 28, 28), trainbatch_size=10, testbatch_size=10)
-net = models.MultiLinearNet([784, 10, 5, 10], F.relu, F.log_softmax)
+#=====================================
+#test_data = data.TestData(trainbatch_size=10, testbatch_size=10)
+data = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainbatch_size=10, testbatch_size=10)
+net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, bias_fill=1)
 
+#=====================================
 # Multigrid Hierarchy Components
-optim_params = namedtuple("SGD", ["lr", "momentum", "l2_decay"])
-# TODO: Epoch Power Control number of epochs per optimizer per level
-# TODO: Control the learning rate per level
-# TODO: Control the l2 decay per optimizer per level
-smoother = smoother.SGDSmoother(model=net, loss=nn.NLLLoss(), optim_params=optim_params(1e-2, 0.01, 0.09),
-                                log_interval=100)
+#=====================================
+SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
+
 prolongation_op = prolongation.PairwiseAggProlongation()
 restriction_op = restriction.PairwiseAggRestriction()
-
-
-stopping_measure = stopping.EpochStopper(1)
+epoch_stopper = stopping.EpochStopper(1)
 # TODO: Refactor Stopping measure
-#stopping_measure = stopping.CycleStopper(epochs=1, cycles=1)
 
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = 3
-FAS_levels = levels.build_vcycle_levels(num_levels=num_levels,  presmoother=smoother, postsmoother=smoother,
-                                        prolongation_operator=prolongation_op,
-                                        restriction_operator=restriction_op,
-                                        coarsegrid_solver=smoother, stopper=stopping_measure,
-                                        loss_function=nn.NLLLoss())
+FAS_levels = []
+# Control number of pochs and learning rate per level
+for level_idx in range(0, num_levels):
+    if level_idx == 0:
+        optim_params = SGDparams(lr=0.01, momentum=0.00, l2_decay=1e-2)
+        epoch_stopper = stopping.EpochStopper(1)
+        loss_fn = nn.CrossEntropyLoss()
+    elif level_idx == 1:
+        optim_params = SGDparams(lr=0.01, momentum=0.00, l2_decay=1e-2)
+        epoch_stopper = stopping.EpochStopper(2)
+        loss_fn = nn.NLLLoss()
+    else:
+        optim_params = SGDparams(lr=0.01, momentum=0.00, l2_decay=1e-2)
+        epoch_stopper = stopping.EpochStopper(3)
+        loss_fn = nn.NLLLoss()
+    sgd_smoother = smoother.SGDSmoother(model = net, loss_fn = loss_fn,
+                                        optim_params = optim_params,
+                                        stopper = epoch_stopper,
+                                        log_interval = 10)
+    aLevel = mg.Level(id=level_idx, presmoother=sgd_smoother, postsmoother=sgd_smoother,
+                      prolongation=prolongation_op, restriction=restriction_op, coarsegrid_solver=sgd_smoother,
+                      stopping_measure=epoch_stopper, loss_fn=loss_fn)
+    FAS_levels.append(aLevel)
 
 
 mg_scheme = mg.FASVCycle(FAS_levels)
-training_alg = trainer.MultigridTrainer(dataloader=dataloader.trainloader,
+training_alg = trainer.MultigridTrainer(dataloader=data.trainloader,
                                         verbose=True,
-                                        log=False,
+                                        log=True,
                                         save=False,
                                         load=False)
 
+# To view parameters
+# net.print('med')
 
-net.print('med')
+#=====================================
 # Train
+#=====================================
 print('Starting Training')
 start = time.perf_counter()
 trained_model = training_alg.train(model=net, multigrid=mg_scheme, cycles=1)
 stop = time.perf_counter()
 print('Finished Training (%.3fs)' % (stop - start))
-net.print('med')
-
-
+#=====================================
 # Test
+#=====================================
 evaluator = evaluator.CategoricalEvaluator()
 print('Starting Testing')
 start = time.perf_counter()
-correct, total = evaluator.evaluate(model=net, dataloader=dataloader.testloader)
+correct, total = evaluator.evaluate(model=net, dataloader=data.testloader)
 stop = time.perf_counter()
 print('Finished Testing (%.3fs)' % (stop-start))
 print('Accuracy of the network on the test images: %d %%' % (100 * correct / total))

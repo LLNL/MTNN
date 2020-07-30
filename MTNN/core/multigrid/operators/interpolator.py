@@ -20,7 +20,7 @@ class PairwiseAggCoarsener:
 
 
 
-        self.coarsener = coarsener._HEMCoarsener()
+        self.coarsener = coarsener.HEMCoarsener()
         #self.prolongation_operators = None # a list of arrays, each corresponding to a hidden layer
         #self.restriction_operators = None
         #self.interpolation_data = None
