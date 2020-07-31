@@ -3,8 +3,10 @@ Holds Multigrid stopping measures
 """
 from abc import ABC, abstractmethod
 
-
-class BaseStopper(ABC):
+###################################################################
+# Interface
+####################################################################
+class _BaseStopper(ABC):
     """
     Base Stopper Class
     * Overwrite this.
@@ -24,8 +26,10 @@ class BaseStopper(ABC):
     def reset(self):
         raise NotImplementedError
 
-
-class EpochStopper(BaseStopper):
+###################################################################
+# Implementation
+####################################################################
+class EpochStopper(_BaseStopper):
     """
     Stops the training loop based on epoch count
     """
@@ -46,7 +50,7 @@ class EpochStopper(BaseStopper):
         self.epoch_count = 0
 
 
-class CycleStopper(BaseStopper):
+class CycleStopper(_BaseStopper):
     """
     Stops the training loop based on number of cycles through a multigrid hierarchy
     # TODO: Fix this
@@ -70,17 +74,16 @@ class CycleStopper(BaseStopper):
         self.cycle_count = 0
 
 
-class TotalLossStopper(BaseStopper):
+class TotalLossStopper(_BaseStopper):
     def __init__(self, epochs):
         pass
-
 
     def should_stop(self):
         pass
         # TODO: Fill in
 
 
-class NoLongerImprovingStopper(BaseStopper):
+class NoLongerImprovingStopper(_BaseStopper):
     """
     Stops the training loop if the loss stops improving within the epoch
     """

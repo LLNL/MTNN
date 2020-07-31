@@ -12,7 +12,7 @@ import numpy as np
 
 # local
 from MTNN.core.components import data, models
-from MTNN.core.multigrid.operators import smoother, prolongation, restriction
+from MTNN.core.multigrid.operators import *
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
 
@@ -38,7 +38,7 @@ net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, b
 SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
 
 prolongation_op = prolongation.PairwiseAggProlongation()
-restriction_op = restriction.PairwiseAggRestriction()
+restriction_op = restriction.PairwiseAggRestriction(interpolator.PairwiseAggCoarsener)
 epoch_stopper = stopping.EpochStopper(1)
 # TODO: Refactor Stopping measure
 

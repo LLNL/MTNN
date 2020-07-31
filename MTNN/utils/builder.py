@@ -14,22 +14,24 @@ import MTNN.core.multigrid.scheme as mg
 
 #TODO: Fix new instances on each level!
 
-def build_uniform_levels(num_levels=0, presmoother=None, postsmoother=None, prolongation_operator=None,
-                         restriction_operator=None, coarsegrid_solver=None, stopping_criteria=None,
-                         loss_function=None) -> List[mg.Level]:
+def build_uniform_levels(num_levels, presmoother, postsmoother, prolongation_operator,
+                         restriction_operator, coarsegrid_solver, stopping_criteria,
+                         loss_function: Type[nn.modules.loss._Loss]) -> List[mg.Level]:
     """
     Constructs a uniform set of levels
     Args:
-        num_levels:
-        presmoother:
-        postsmoother:
-        prolongation_operator:
-        restriction_operator:
-        coarsegrid_solver:
-        stopping_criteria:
+
+        num_levels: <int>
+        presmoother: <core.multigrid.operators.smoother>
+        postsmoother: <core.multigrid.operators.smoother>
+        prolongation_operator: <core.multigrid.operators.prolongation>
+        restriction_operator: <core.multigrid.operators.restriction>
+        coarsegrid_solver: <core.multigrid.operators.smoother>
+        stopping_criteria: <core.alg.stopping>
+        loss_function: <nn.
 
     Returns:
-        set_of_levels: <list> A list of multigrid.scheme.Level Objects
+        set_of_levels: <list>  A list of <multigrid.scheme.Level> objects
 
     """
     set_of_levels = []
@@ -54,18 +56,17 @@ def build_vcycle_levels(num_levels:int, presmoother: smoother, postsmoother: smo
                         loss_function: Type[nn.modules.loss._Loss]) -> List[mg.Level]:
     """
     Constructs set of standard VCycle levels
-    Args:
-        num_levels:
-        presmoother:
-        postsmoother:
-        prolongation_operator:
-        restriction_operator:
-        coarsegrid_solver:
-        stopper:
-        loss_function:
+   Args:
+        num_levels: <int>
+        presmoother: <core.multigrid.operators.smoother>
+        postsmoother: <core.multigrid.operators.smoother>
+        prolongation_operator: <core.multigrid.operators.prolongation>
+        restriction_operator: <core.multigrid.operators.restriction>
+        coarsegrid_solver: <core.multigrid.operators.smoother>
+        stopping_criteria: <core.alg.stopping._BaseStopper>
 
     Returns:
-        set_of_levels: <list> of MTNN.core.multigrid.scheme.level objects
+        set_of_levels: <list>  A list of <multigrid.scheme.Level> objects
 
     """
 

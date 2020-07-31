@@ -21,7 +21,7 @@ net = models.MultiLinearNet([784, 50, 25, 10], activation=F.relu)
 
 
 # Build Multigrid Hierarchy
-smoother = smoother.SGDSmoother(model=net, loss=nn.CrossEntropyLoss(),
+smoother = smoother.SGDSmoother(model=net, loss_fn =nn.CrossEntropyLoss(),
                                 lr=0.01, momentum=0.09, log_interval=10000)
 
 prolongation_operator = prolongation.LowerTriangleProlongation(expansion_factor=3)
