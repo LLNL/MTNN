@@ -1,5 +1,8 @@
+# standard 
 import numpy as np
 import collections as col
+# torch 
+import torch
 # local
 import MTNN.core.multigrid.scheme as mg
 import MTNN.core.multigrid.operators._coarsener as coarsener
@@ -43,19 +46,22 @@ class PairwiseAggCoarsener:
         # Instantiate the coarse-level net with the coarsener dimensions
         self.coarsener.coarsen(fine_level.net)
 
-#        log.debug(f"interpolator.setup: Coarse Level Net dimensions: {self.coarsener.coarseLevelDim}")
+#       log.debug(f"interpolator.setup: Coarse Level Net dimensions: {self.coarsener.coarseLevelDim}")
         coarse_level.net = fine_level.net.__class__(self.coarsener.coarseLevelDim,
                                                     fine_level.net.activation,
                                                     fine_level.net.output)
-#        log.debug(f"interpolator.setup {coarse_level.net = }")
+        coarse_level.net.set_device(fine_level.net.device)
+      
+#       log.debug(f"interpolator.setup {coarse_level.net = }")
 
         # Create the restriction operator per hidden layer (except for the last layer)
         # from the coarsener
+        """with numpy
         num_layers = len(fine_level.net.layers)
         for layer_id in range(num_layers - 1):
-
-            original_W = np.copy(fine_level.net.layers[layer_id].weight.detach().numpy())
-            original_b = np.copy(fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1))
+            
+            original_W = fine_level.net.layers[layer_id].weight.detach().numpy())
+            original_b = fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1))
 
             WB = np.concatenate([original_W, original_b], axis = 1)
             nr = np.linalg.norm(WB, ord = 2, axis = 1, keepdims = True)
@@ -83,7 +89,44 @@ class PairwiseAggCoarsener:
 
 #           log.info(f"\n R {R_layer} \n P {P_layer}")
             # pdb.set_trace()
+        """
 
+        # with torch 
+        # 
+        #
+        num_layers = len(fine_level.net.layers)
+        for layer_id in range(num_layers - 1):
+            
+            original_W = fine_level.net.layers[layer_id].weight.detach().clone()
+            original_b = fine_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
+
+            WB = torch.cat([original_W, original_b], axis = 1)
+            nr = torch.norm(WB, p=2, dim=1, keepdim=True)
+
+            F2C_layer = self.coarsener.Fine2CoarsePerLayer[layer_id]
+
+            nF = fine_level.net.layers[layer_id].out_features
+            nC = coarse_level.net.layers[layer_id].out_features
+            R_layer = torch.zeros([nC, nF]).to(fine_level.net.device)
+
+            # Construct restriction operators for each layer
+            for i in range(nF):
+                # print(f"Constructing R: {i}, {F2C_l[i]}")
+                R_layer[F2C_layer[i], i] = 1
+            # d = diag(R*B*R^T)
+           
+            d = (R_layer * torch.reshape(nr, (1, -1)) @ torch.transpose(R_layer, 0, 1)).diagonal().reshape(-1, 1)
+            #d = torch.mm(R_layer * torch.reshape(nr, (1, -1)), torch.transpose(R_layer, 0, 1).diagonal().reshape(-1,1))
+            
+            # P = diag(nr) * R^T * diag(1./d)
+            restriction_operators.append(R_layer)
+
+            # Construct prolongation operators for each layer
+            # TODO - Decouple?
+            P_layer = torch.transpose(R_layer, 0, 1) * nr / d.reshape(1, -1) 
+            prolongation_operators.append(P_layer)
+
+#           log.info(f"\n R {R_layer} \n P {P_layer}")
 #        log.debug(f"Coarsener.setup: \n{restriction_operators=} \n{prolongation_operators=}")
         interpolation_data = col.namedtuple("interpolation_data", "R_op P_op")
         return interpolation_data(restriction_operators, prolongation_operators)

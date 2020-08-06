@@ -12,7 +12,7 @@ import torch.optim as optim
 # local
 from MTNN.core.components import models, data
 from MTNN.core.alg import stopping
-from MTNN.utils import logger, printer
+from MTNN.utils import logger, printer, deviceloader
 
 log = logger.get_logger(__name__, write_to_file =True)
 
@@ -53,7 +53,6 @@ class SGDSmoother(_BaseSmoother):
         self.stopper = stopper
 
     def apply(self, model, dataloader,  stopper, rhs=None,  verbose=False) -> None:
-        #TODO: refactor with pipeline/token?
         """
         Apply forward pass and backward pass to the model until stopping criteria is met.
         Args:
@@ -65,29 +64,22 @@ class SGDSmoother(_BaseSmoother):
         Returns:
             None
         """
-
+        # TODO: refactor with pipeline/token?
         # TODO: Fix/Check about Stoppers
         # TODO: Fix logging
         # TODO: Apply SGD not batch gradient descent
         while not self.stopper.should_stop():
             for epoch in range(stopper.max_epochs):
                 for batch_idx, mini_batch_data in enumerate(dataloader, 0):
-
-                    # Show status bar
-                    """
-                    if verbose:   
-                        total_work = len(dataloader)
-                        logger.progressbar(batch_idx, total_work, status = "Training")
-                    """
-                    inputs, labels = mini_batch_data
-
+                    input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
+                    self.loss_fn.to(model.device)
+                   
                     # Zero the parameter gradients
                     self.optimizer.zero_grad()
-
                     # Forward
-                    outputs = model(inputs)
+                    outputs = model(input_data)
 #                    printer.printModel(model, msg="Smoother.Before loss",val= True)
-                    loss = self.loss_fn(outputs, labels)
+                    loss = self.loss_fn(outputs, target_data)
 #                    printer.printModel(model, msg="Smoother.After loss", val = True)
 
 #                    log.debug(f"Smoother.Loss: {loss}")
@@ -98,6 +90,9 @@ class SGDSmoother(_BaseSmoother):
                     printer.printModel(model, msg = "After loss.backward", val = True)
                     self.optimizer.step()
                     if verbose:
+                        # Show status bar
+                        #total_work = len(dataloader)
+                        #logger.progressbar(batch_idx, total_work, status = "Training")
                         printer.printSmoother(epoch + 1, loss, batch_idx, dataloader, stopper, self.log_interval)
                         printer.printModel(model, msg="Smoother.After optimizer update", val = True)
 

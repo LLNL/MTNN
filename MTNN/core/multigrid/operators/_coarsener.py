@@ -1,4 +1,5 @@
 # standard
+import torch
 import numpy as np
 import pdb
 
@@ -14,7 +15,6 @@ class HEMCoarsener():
     """
     def __init__(self, theta=0.0, randseq=False):
         """
-
         Args:
             theta:
             randseq:
@@ -34,6 +34,8 @@ class HEMCoarsener():
             similarityMatrix: <numpy matrix>
             random_seq: <bool> Enables randomized ordering of rows
         """
+
+        """with numpy
         n = similarityMatrix.shape[0]
         # Sort the rows of similarityMatrix in descending order
         P = np.argsort(-similarityMatrix, 1)
@@ -77,6 +79,48 @@ class HEMCoarsener():
         # print('hem: %.2f' % (sim / n_pair))
 
         log.debug(f"Coarsener.setup {fine2course= } {num_ColumnIn=} ")
+        """
+        # with torch 
+        #
+        #
+        n = similarityMatrix.shape[0]
+        # Sort the rows of similarityMatrix in descending order
+        P = torch.argsort(-similarityMatrix, 1)
+        # initialization
+        cnode = torch.full(torch.Size([n]), -1, dtype=int)
+        match = torch.full(torch.Size([n]), -1, dtype=int)
+        n_pair, n_single = 0, 0
+        # randomized ordering
+        seq = range(0, n)
+        if random_seq:
+            seq = torch.randperm(seq)
+        sim = 0.0
+        for i in seq:
+            if match[i] == -1:
+                for j in range(0, n):
+                    c = P[i, j]
+                    if (c != i and match[c] == -1 and similarityMatrix[i, c] > 0):
+                        match[i] = c
+                        match[c] = i
+                        cnode[i] = cnode[c] = n_pair + n_single
+                        n_pair += 1
+                        sim += similarityMatrix[i, c]
+                        break
+                if match[i] == -1:
+                    match[i] = i
+                    cnode[i] = n_pair + n_single
+                    n_single += 1
+        # Column-size/ In-features per layer
+        num_ColumnIn= 0
+        # Construct the fine
+        fine2course = torch.full(torch.Size([n]), -1, dtype=int)
+        for i in range(n):
+            if (fine2course[i] == -1):
+                fine2course[i] = num_ColumnIn
+                fine2course[match[i]] = num_ColumnIn
+                num_ColumnIn += 1
+        assert num_ColumnIn == n_pair + n_single
+        # print('hem: %.2f' % (sim / n_pair))
         return fine2course, num_ColumnIn
 
     def coarsen(self, fine_level_net):
@@ -95,6 +139,7 @@ class HEMCoarsener():
         # fine2coarse array
         self.Fine2CoarsePerLayer = []
         # coarsen layers
+        """with numpy
         for layer_id in range(num_layers - 1):
             w = fine_level_net.layers[layer_id].weight.detach().numpy()
             b = fine_level_net.layers[layer_id].bias.detach().numpy().reshape(-1, 1)
@@ -119,7 +164,26 @@ class HEMCoarsener():
 
             log.debug(f"Coarsener.Coarsen: LayerID nf {layer_id}: {nf} nc{num_ColIn}")
             #print('Coarsen layer %d: %d --> %d' % (layer_id, nf, num_ColIn))
-        #
+        """
+        for layer_id in range(num_layers - 1):
+            w = fine_level_net.layers[layer_id].weight.detach()
+            b = fine_level_net.layers[layer_id].bias.detach().reshape(-1, 1)
+            wb = torch.cat([w, b], dim=1)
+            nr = torch.norm(wb, p=2, dim=1, keepdim=True)
+            wb = wb / nr
+            # f-size (w.shape[0])
+            nf = fine_level_net.layers[layer_id].out_features
+            # similarity strength
+            similarity = abs(torch.mm(wb, torch.transpose(wb, dim0=0, dim1=1)))
+            for i in range(nf):
+                similarity[i, i] = 0
+            f2c, num_ColIn = self.get_heavyedgematching(similarity)
+
+            self.coarseLevelDim.append(num_ColIn)
+            self.Fine2CoarsePerLayer.append(f2c)
+            
+            log.debug(f"Coarsener.Coarsen: LayerID nf {layer_id}: {nf} nc{num_ColIn}")
+            #print('Coarsen layer %d: %d --> %d' % (layer_id, nf, num_ColIn)) 
 
         self.coarseLevelDim.append(fine_level_net.layers[num_layers - 1].out_features)
 

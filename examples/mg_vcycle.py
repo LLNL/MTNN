@@ -16,7 +16,6 @@ from MTNN.core.multigrid.operators import *
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
 
-
 # For reproducibility
 torch.manual_seed(0)
 torch.backends.cudnn.deterministic = True
@@ -32,11 +31,14 @@ torch.set_printoptions(precision=5)
 data = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainbatch_size=10, testbatch_size=10)
 net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, bias_fill=1)
 
+# With Mnist
+#data = data.MnistData(trainbatch_size=100, testbatch_size=100)
+#net = models.MultiLinearNet([784, 50, 25, 10], F.relu, F.log_softmax)
+
 #=====================================
 # Multigrid Hierarchy Components
 #=====================================
 SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-
 prolongation_op = prolongation.PairwiseAggProlongation()
 restriction_op = restriction.PairwiseAggRestriction(interpolator.PairwiseAggCoarsener)
 epoch_stopper = stopping.EpochStopper(1)

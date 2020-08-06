@@ -1,6 +1,8 @@
 
 # Public
-__all__ = ['logger',
+__all__ = ['builder', 
+           'deviceloader',
+           'logger',
            'file',
            'printer']
 

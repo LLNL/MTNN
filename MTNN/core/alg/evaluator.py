@@ -1,7 +1,6 @@
 # A basic testing/evaluation class.
-
 import torch
-
+from MTNN.utils import deviceloader
 
 class BaseEvaluator:
     """
@@ -18,18 +17,19 @@ class CategoricalEvaluator(BaseEvaluator):
     @staticmethod
     def evaluate(model, dataloader):
         """"
-        :param model:
-        :param dataloader:
-        :return:
-            correct <int>
-            total <int>
+        Args: 
+            model <MTNN.core.components.model> 
+            dataloader <torch.utils.data.dataloader> 
+        Returns:
+            correct <int> Number correct
+            total <int> Total test set 
         """
         correct = 0
         total = 0
 
         with torch.no_grad():
             for data in dataloader:
-                input_data, labels = data
+                input_data, labels = deviceloader.load_data(data, model.device)
                 outputs = model(input_data)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
@@ -40,16 +40,16 @@ class CategoricalEvaluator(BaseEvaluator):
 # TODO: Remove?
 class SimpleRegressionEvaluator(BaseEvaluator):
     @staticmethod
-    def evaluate_output(model, dataset):
+    def evaluate(model, dataloader):
         correct = 0
         total = 0
 
         print("\n   INPUT  |   TARGET  |   PREDICTION")
         with torch.no_grad():
-            for data in dataset:
-                input_data, labels = data
+            for data in dataloader:
+                input_data, labels = deviceloader.load_data(data, model.device)
                 outputs = model(input_data)
-                predicted, _ = torch.max(outputs.data, 1)
+                _, predicted = torch.max(outputs.data, 1)
 
                 printout = "{} | {} | {}".format(input_data, labels.tolist(), predicted.tolist())
                 print(printout)

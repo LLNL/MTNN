@@ -12,8 +12,9 @@ import torch.utils.data as td
 class _BaseDataLoader:
     # Top-level of datasets folder
     root = './datasets'
-    num_workers = 0 # 4 * numGPUs
+    num_workers = 1 # 4 * numGPUs
     batch_size = 1
+    
 
 
 ###################################################################
@@ -44,11 +45,13 @@ class FakeData(_BaseDataLoader):
        self.trainloader = td.DataLoader(self.trainset,
                                         batch_size=trainbatch_size,
                                         shuffle=False,
-                                        num_workers = self.num_workers)
+                                        num_workers=self.num_workers, 
+                                        pin_memory=True)
        self.testloader = td.DataLoader(self.testset,
-                                        batch_size = testbatch_size,
-                                        shuffle =False,
-                                        num_workers = self.num_workers)
+                                        batch_size=testbatch_size,
+                                        shuffle=False,
+                                        num_workers=self.num_workers,
+                                        pin_memory=True)
 
 
 
@@ -74,13 +77,15 @@ class MnistData(_BaseDataLoader):
                                       download=True,
                                       transform=MnistData.preprocess)
         self.trainloader = td.DataLoader(self.trainset,
-                                                batch_size=trainbatch_size,
-                                                shuffle=True,
-                                                num_workers=self.num_workers)
+                                        batch_size=trainbatch_size,
+                                        shuffle=True,
+                                        num_workers=self.num_workers,
+                                        pin_memory=True)
         self.testloader = td.DataLoader(self.testset,
-                                               batch_size=testbatch_size,
-                                               shuffle=True,
-                                               num_workers=self.num_workers)
+                                        batch_size=testbatch_size,
+                                        shuffle=True,
+                                        num_workers=self.num_workers,
+                                        pin_memory=True)
 
 
 
@@ -106,13 +111,15 @@ class CIFAR10Data(_BaseDataLoader):
                                         download = True,
                                         transform = CIFAR10Data.preprocess)
         self.trainloader = td.DataLoader(self.trainset,
-                                                batch_size = trainbatch_size,
-                                                shuffle = True,
-                                                num_workers = self.num_workers)
+                                        batch_size = trainbatch_size,
+                                        shuffle = True,
+                                        num_workers = self.num_workers, 
+                                        pin_memory=True)
         self.testloader = td.DataLoader(self.testset,
-                                               batch_size = testbatch_size,
-                                               shuffle = True,
-                                               num_workers = self.num_workers)
+                                        batch_size = testbatch_size,
+                                        shuffle = True,
+                                        num_workers = self.num_workers,
+                                        pin_memory=True)
 
 
 

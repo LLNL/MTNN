@@ -12,7 +12,7 @@ import numpy as np
 
 # local
 from MTNN.core.components import data, models
-from MTNN.core.multigrid.operators import smoother, prolongation, restriction
+from MTNN.core.multigrid.operators import smoother, prolongation, restriction, interpolator
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
 import MTNN.utils.builder as builder
@@ -44,7 +44,7 @@ SGDparams = namedtuple("SGD", ["lr", "momentum", "l2_decay"])
 sgd_smoother = smoother.SGDSmoother(model=net, loss_fn =nn.NLLLoss(), optim_params=SGDparams(0.01, 0.00, 1e-2),
                                 stopper=stopping.EpochStopper(1), log_interval=10)
 prolongation_op = prolongation.PairwiseAggProlongation()
-restriction_op = restriction.PairwiseAggRestriction()
+restriction_op = restriction.PairwiseAggRestriction(interpolator.PairwiseAggCoarsener)
 epoch_stopper = stopping.EpochStopper(1)
 
 

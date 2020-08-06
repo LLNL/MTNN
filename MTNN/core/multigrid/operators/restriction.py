@@ -65,7 +65,7 @@ class PairwiseAggRestriction(_BaseRestriction):
         #  coarse_level weight and bias
         # ==============================
         log.info("APPLYING RESTRICTION")
-
+        """ with numpy
         for layer_id in range(num_fine_layers):
             W_f = fine_level.net.layers[layer_id].weight.detach().numpy()
             B_f = fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1)
@@ -99,6 +99,43 @@ class PairwiseAggRestriction(_BaseRestriction):
             with torch.no_grad():
                 np.copyto(coarse_level.net.layers[layer_id].weight.detach().numpy(), W_c)
                 np.copyto(coarse_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1), B_c)
+        """
+        # with torch 
+        #
+        #
+        for layer_id in range(num_fine_layers):
+            W_f = fine_level.net.layers[layer_id].weight.detach()
+            B_f = fine_level.net.layers[layer_id].bias.detach().reshape(-1, 1)
+
+            if layer_id < num_fine_layers - 1:
+                if layer_id == 0:
+                    #log.info(f"Agg: restrict:First network layer {self.restriction_operators[layer_id]}")
+                    log.debug(f"Layer {layer_id} Restriction operator{np.shape(fine_level.interpolation_data.R_op[layer_id])} Fine-level weight{np.shape(W_f)}")
+                    W_c = R_op[layer_id] @ W_f
+
+                else:
+                    log.debug( f"Layer {layer_id} Restriction operator{np.shape(fine_level.interpolation_data.R_op[layer_id])} Fine-level weight{np.shape(W_f)}")
+                    W_c = R_op[layer_id] @ W_f @ P_op[layer_id - 1]
+                    log.debug(f"W_c is {W_c}")
+                B_c = R_op[layer_id] @ B_f
+            elif layer_id > 0:
+
+                W_c = W_f @ P_op[-1]
+                B_c = B_f.clone()
+
+
+            # save the initial W_c and B_c
+            # NOTE: Winit and the Binit only used in prolongation
+            coarse_level.Winit_array.append(W_c)
+            coarse_level.Binit_array.append(B_c)
+
+            assert coarse_level.net.layers[layer_id].weight.detach().clone().shape == W_c.shape
+            assert coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1).shape == B_c.shape
+            # Copy to coarse_level net
+
+            with torch.no_grad():
+                W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
+                B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
 
         log.debug(f"restriction:apply {coarse_level.net.layers=}")
         coarse_level.net.zero_grad()
@@ -118,7 +155,7 @@ class PairwiseAggRestriction(_BaseRestriction):
         log.debug(f"Restriction.Fine Level after get grad{fine_level_grad =}")
 
         # get the gradient on the coarse level
-        #printer.printModel(coarse_level.net, msg = "Restriction.Coarse level before get grad",  grad = True)
+        printer.printModel(coarse_level.net, msg = "Restriction.Coarse level before get grad",  grad = True)
         coarse_level_grad = coarse_level.net.getGrad(dataloader, coarse_level.loss_fn)
         printer.printModel(coarse_level.net, msg = "Restriction.Coarse level after get grad",grad = True)
         log.debug(f"Restriction.Coarse Level after get grad {coarse_level_grad=}")

@@ -12,8 +12,7 @@ import torch
 import torch.nn as nn
 
 # local
-import MTNN.utils.logger as logger
-import MTNN.utils.printer as printer
+from MTNN.utils import logger, printer
 
 log = logger.get_logger(__name__, write_to_file = True)
 
@@ -214,8 +213,8 @@ class PairwiseAggProlongation(_BaseProlongation):
         R_array, P_array = [*fine_level.interpolation_data]
 
         for layer_id in range(num_coarse_layers):
-            W_c = np.copy(coarse_level.net.layers[layer_id].weight.detach().numpy())
-            B_c = np.copy(coarse_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1))
+            W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
+            B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
             e_W = W_c - coarse_level.Winit_array[
                 layer_id]  # W_c = self.R_array[layer_id] @ W_f @ self.P_array[layer_id-1]
             e_B = B_c - coarse_level.Binit_array[layer_id]
@@ -228,14 +227,14 @@ class PairwiseAggProlongation(_BaseProlongation):
             elif layer_id > 0:
                 e_W = e_W @ R_array[layer_id - 1]
 
-            W_f = np.copy(fine_level.net.layers[layer_id].weight.detach().numpy())
-            B_f = np.copy(fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1))
+            W_f = fine_level.net.layers[layer_id].weight.detach().clone()
+            B_f = fine_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
             W_f += e_W
             B_f += e_B
 
             with torch.no_grad():
-                np.copyto(fine_level.net.layers[layer_id].weight.detach().numpy(), W_f)
-                np.copyto(fine_level.net.layers[layer_id].bias.detach().numpy().reshape(-1, 1), B_f)
+                W_f = fine_level.net.layers[layer_id].weight.detach().clone()
+                B_f = fine_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
 
 
 class RandomPerturbationOperator(_BaseProlongation):

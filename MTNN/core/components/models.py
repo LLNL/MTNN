@@ -12,14 +12,14 @@ import torch.nn.functional as F
 import numpy as np
 
 # local
-import MTNN.utils.logger as logger
-import MTNN.utils.printer as printer
+from MTNN.utils import logger, printer, deviceloader
 
 log = logger.get_logger(__name__, write_to_file = True)
 
 __all__ = ["MultiLinearNet",
            "BasicMnistModel",
            "BasicCifarModel"]
+
 
 
 ####################################################################
@@ -32,6 +32,8 @@ class _BaseModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = nn.ModuleList()
+        self.device = deviceloader.get_device(verbose=True)
+
 
     def __len__(self):
         return len(self.layers)
@@ -47,22 +49,22 @@ class _BaseModel(nn.Module):
         # Compute the gradient
         # zero the parameter gradient
         self.zero_grad()
-        loss = None
+        total_loss = None
         # batch loop
-        for i, data in enumerate(dataloader, 0):
+        for i, mini_batch_data in enumerate(dataloader, 0):
             # get the inputs. data is a list of [inputs, labels]
-            inputs, labels = data
+            inputs, labels = deviceloader.load_data(mini_batch_data, self.device)
+
             if len(inputs.size()) == 4:
                 inputs = inputs.view(inputs.size()[0], inputs.size()[1] * inputs.size()[2] * inputs.size()[3])
             # forward: get the loss w.r.t this batch
-
             outputs = self(inputs)
-            print(F"{inputs = }, {outputs = }")
+            #print(F"{inputs = }, {outputs = }")
 
-            if loss is None:
-                loss = loss_fn(outputs, labels)
+            if total_loss is None:
+                total_loss = loss_fn(outputs, labels)
             else:
-                loss += loss_fn(outputs, labels)
+                total_loss += loss_fn(outputs, labels)
 
             #loss += loss_fn(outputs, labels)
 
@@ -79,8 +81,8 @@ class _BaseModel(nn.Module):
                         l2_reg += torch.pow(W, 2).sum()
                 loss += 0.5 * nbatches * loss_fn.l2_decay * l2_reg
         """
-        print(f"Model.getgrad: Total loss{loss = }")
-        loss.backward()
+        print(f"Model.getgrad: Total loss{total_loss = }")
+        total_loss.backward()
         printer.printModel(self, msg = "MODELS.Getgrad:after update", grad = True)
 
         # TODO
@@ -91,8 +93,8 @@ class _BaseModel(nn.Module):
 
         weight_grad, bias_grad = [], []
         for layer_id in range(len(self.layers)):
-            weight_grad.append(np.copy(self.layers[layer_id].weight.grad.detach()))
-            bias_grad.append(np.copy(self.layers[layer_id].bias.grad.detach()))
+            weight_grad.append(self.layers[layer_id].weight.grad.detach().clone())
+            bias_grad.append(self.layers[layer_id].bias.grad.detach().clone())
         Grad = namedtuple('grad', ['weight_grad', 'bias_grad'])
         grad = Grad(weight_grad, bias_grad)
         return grad
@@ -113,6 +115,8 @@ class _BaseModel(nn.Module):
                 log.info(f" \tWEIGHTS {layer.weight}\n\tBIAS {layer.bias}")
                 log.info(f" \tWEIGHT GRADIENTS {layer.weight.grad}\n\tBIAS GRADIENTS {layer.bias.grad}")
 
+    def set_device(self, device): 
+        self.layers.to(device)
 
     def log(self, logpath):
         for param in self.parameters():
@@ -136,9 +140,9 @@ class MultiLinearNet(_BaseModel):
         super().__init__()
         self.activation = activation
         self.output = output_activation
-        modules = nn.ModuleList()
-
+       
         # Fill layers
+        modules = nn.ModuleList()
         with torch.no_grad():
             for x in range(len(dim) - 1):
                 layer = nn.Linear(dim[x], dim[x + 1])
@@ -148,6 +152,7 @@ class MultiLinearNet(_BaseModel):
                 modules.append(layer)
 
         self.layers = modules
+        self.layers.to(self.device) 
 
     def forward(self, x, verbose=False):
         # Flatten Input
