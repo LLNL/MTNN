@@ -1,12 +1,12 @@
 # standard 
-import numpy as np
 import collections as col
 # torch 
 import torch
 # local
 import MTNN.core.multigrid.scheme as mg
-import MTNN.core.multigrid.operators._coarsener as coarsener
+import MTNN.core.multigrid.operators.coarsener as coarsener
 import MTNN.utils.logger as log
+import MTNN.utils.datatypes as mgdata
 
 log = log.get_logger(__name__, write_to_file = True)
 
@@ -21,12 +21,8 @@ class PairwiseAggCoarsener:
         # A list of restriction operators(matrices) to use
         # for each fine_level network's hidden layer
 
-
-
         self.coarsener = coarsener.HEMCoarsener()
-        #self.prolongation_operators = None # a list of arrays, each corresponding to a hidden layer
-        #self.restriction_operators = None
-        #self.interpolation_data = None
+
 
     def setup(self, fine_level: mg.Level, coarse_level: mg.Level):
         """
@@ -100,7 +96,7 @@ class PairwiseAggCoarsener:
             original_W = fine_level.net.layers[layer_id].weight.detach().clone()
             original_b = fine_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
 
-            WB = torch.cat([original_W, original_b], axis = 1)
+            WB = torch.cat((original_W, original_b), dim=1)
             nr = torch.norm(WB, p=2, dim=1, keepdim=True)
 
             F2C_layer = self.coarsener.Fine2CoarsePerLayer[layer_id]
@@ -128,6 +124,6 @@ class PairwiseAggCoarsener:
 
 #           log.info(f"\n R {R_layer} \n P {P_layer}")
 #        log.debug(f"Coarsener.setup: \n{restriction_operators=} \n{prolongation_operators=}")
-        interpolation_data = col.namedtuple("interpolation_data", "R_op P_op")
-        return interpolation_data(restriction_operators, prolongation_operators)
+        #interpolation_data = col.namedtuple("interpolation_data", "R_op P_op")
+        return mgdata.operators(restriction_operators, prolongation_operators)
 

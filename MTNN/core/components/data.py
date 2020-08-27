@@ -29,18 +29,19 @@ class FakeData(_BaseDataLoader):
    preprocess = transforms.Compose(
        [transforms.ToTensor()])
 
-   def __init__(self, imagesize:tuple, num_classes: int, trainbatch_size: int, testbatch_size:int):
-       self.trainset = datasets.FakeData(size=trainbatch_size,
+   def __init__(self, imagesize:tuple, num_classes: int, trainset_size: int, trainbatch_size: int,
+                testset_size: int, testbatch_size:int):
+       self.trainset = datasets.FakeData(size=trainset_size,
                                          image_size=imagesize,  # channels, width, height
                                          num_classes=num_classes,
                                          transform=FakeData.preprocess,
                                          target_transform=None,
                                          random_offset=0)
-       self.testset = datasets.FakeData(size=testbatch_size,
+       self.testset = datasets.FakeData(size=testset_size,
                                         image_size=imagesize,
                                         num_classes=num_classes,
                                         transform=FakeData.preprocess,
-                                        target_transform = None,
+                                        target_transform=None,
                                         random_offset=0)
        self.trainloader = td.DataLoader(self.trainset,
                                         batch_size=trainbatch_size,

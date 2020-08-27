@@ -2,4 +2,5 @@
 __all__ = ['smoother',
            'interpolator',
            'prolongation',
-           'restriction']
+           'restriction',
+           'tau_corrector']

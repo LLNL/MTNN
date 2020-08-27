@@ -12,7 +12,7 @@ import numpy as np
 
 # local
 from MTNN.core.components import data, models
-from MTNN.core.multigrid.operators import smoother, prolongation, restriction, interpolator
+from MTNN.core.multigrid.operators import smoother, prolongation, restriction, interpolator, tau_corrector
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
 import MTNN.utils.builder as builder
@@ -29,7 +29,8 @@ torch.set_printoptions(precision=5)
 #=======================================
 # Set-up
 #=====================================
-dataloader = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainbatch_size=10, testbatch_size=10)
+dataloader = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainset_size=10, trainbatch_size=10,
+                           testset_size=10, testbatch_size=10)
 net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, bias_fill=1)
 
 #test_data = data.TestData(trainbatch_size=10, testbatch_size=10)
@@ -43,8 +44,9 @@ net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, b
 SGDparams = namedtuple("SGD", ["lr", "momentum", "l2_decay"])
 sgd_smoother = smoother.SGDSmoother(model=net, loss_fn =nn.NLLLoss(), optim_params=SGDparams(0.01, 0.00, 1e-2),
                                 stopper=stopping.EpochStopper(1), log_interval=10)
-prolongation_op = prolongation.PairwiseAggProlongation()
-restriction_op = restriction.PairwiseAggRestriction(interpolator.PairwiseAggCoarsener)
+prolongation_op = prolongation.PairwiseAggProlongation
+restriction_op = restriction.PairwiseAggRestriction
+tau = tau_corrector.BasicTau
 epoch_stopper = stopping.EpochStopper(1)
 
 
@@ -52,14 +54,16 @@ epoch_stopper = stopping.EpochStopper(1)
 num_levels = 3
 
 FAS_levels = builder.build_vcycle_levels(num_levels=num_levels,  presmoother=sgd_smoother, postsmoother=sgd_smoother,
-                                        prolongation_operator=prolongation_op,
-                                        restriction_operator=restriction_op,
-                                        coarsegrid_solver=sgd_smoother, stopper=epoch_stopper,
+                                        prolongation_operator=prolongation_op(),
+                                        restriction_operator=restriction_op(interpolator.PairwiseAggCoarsener),
+                                        corrector = tau(),
+                                        coarsegrid_solver=sgd_smoother,
+                                        stopper=epoch_stopper,
                                         loss_function=nn.NLLLoss())
 
-mg_scheme = mg.FASVCycle(FAS_levels)
+mg_scheme = mg.VCycle(FAS_levels)
 training_alg = trainer.MultigridTrainer(dataloader=dataloader.trainloader,
-                                        verbose=True,
+                                        verbose=False,
                                         log=True,
                                         save=False,
                                         load=False)

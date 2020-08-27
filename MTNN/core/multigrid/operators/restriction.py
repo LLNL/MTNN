@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 # local
 import MTNN.core.multigrid.scheme as mg
 import MTNN.core.multigrid.operators.interpolator as interp
+from MTNN.utils.datatypes import operators
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
 
@@ -32,23 +33,29 @@ class PairwiseAggRestriction(_BaseRestriction):
     Pairwise Aggregation-based Restriction Operator for Fully connected Networks
         * Uses Heavy Edge matching from similarity matrix of source_model's Weight and Bias
 
-    Returns level.net - coarsened model (grid)
+    Restricts fine level model and its residual to create a coarsened model with rhs.
     """
-
 
     def __init__(self, matching_alg):
         self.matching_alg = matching_alg
 
-    def apply(self, fine_level: mg.Level, coarse_level: mg.Level, dataloader, verbose=False) -> None:
+    def apply(self, fine_level: mg.Level, coarse_level: mg.Level, dataloader, corrector, verbose=False) -> None:
         """
-        Apply Restriction on the fine_level to return a restricted coarse-level
-        and compute the rhs with tau correction calculated per minibatch
+        Apply Restriction on the fine_level to return a restricted coarse-level net
+        and compute the coarse-level's residual tau correction.
         Args:
+            fine_level: <core.multigrid.scheme> Level
+            coarse_level: <core.multigrid.scheme>  Level
+            dataloader: <torch.utils.data.Dataloader> Pytorch dataloader
+            corrector: <core.multigrid.operators.tau_corrector> _BaseTau_Corrector
+            verbose: <bool>
 
         Returns:
+            None
         """
 
         # setup
+        # TODO: refactor setup?
         fine_level.interpolation_data = interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
         assert fine_level.interpolation_data is not None
 
@@ -57,14 +64,13 @@ class PairwiseAggRestriction(_BaseRestriction):
         # Update coarse level's layers by applying self.restriction_operators
         # TODO: Fill with agg_interpolator.restrict
         num_fine_layers = len(fine_level.net.layers)
-        coarse_level.Winit_array = []
-        coarse_level.Binit_array = []
+        coarse_level.Winit = []
+        coarse_level.Binit = []
 
 
         # ==============================
         #  coarse_level weight and bias
         # ==============================
-        log.info("APPLYING RESTRICTION")
         """ with numpy
         for layer_id in range(num_fine_layers):
             W_f = fine_level.net.layers[layer_id].weight.detach().numpy()
@@ -126,8 +132,8 @@ class PairwiseAggRestriction(_BaseRestriction):
 
             # save the initial W_c and B_c
             # NOTE: Winit and the Binit only used in prolongation
-            coarse_level.Winit_array.append(W_c)
-            coarse_level.Binit_array.append(B_c)
+            coarse_level.Winit.append(W_c)
+            coarse_level.Binit.append(B_c)
 
             assert coarse_level.net.layers[layer_id].weight.detach().clone().shape == W_c.shape
             assert coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1).shape == B_c.shape
@@ -140,6 +146,10 @@ class PairwiseAggRestriction(_BaseRestriction):
         log.debug(f"restriction:apply {coarse_level.net.layers=}")
         coarse_level.net.zero_grad()
 
+        ops = operators(R_op, P_op)
+        corrector.compute_tau(fine_level, coarse_level, dataloader, ops, verbose)
+
+    """"
     #def get_tau(self, fine_level, coarse_level, dataloader):
         # TODO: Separate TAU
         # ==============================
@@ -162,19 +172,19 @@ class PairwiseAggRestriction(_BaseRestriction):
 
 
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
-        coarse_level.rhs_W_array = []
-        coarse_level.rhs_B_array = []
+        coarse_level.rhs_W = []
+        coarse_level.rhs_B = []
 
         # Compute the Tau correction
         for layer_id in range(len(fine_level.net.layers)):
-            """
-            dW_f = np.copy(fine_level.net.layers[layer_id].weight.grad.detach().numpy())
-  #          log.debug(f"{fine_level.net.layers[layer_id].weight.grad.detach().numpy()}")
+            # with numpy
+            #dW_f = np.copy(fine_level.net.layers[layer_id].weight.grad.detach().numpy())
+  #         #log.debug(f"{fine_level.net.layers[layer_id].weight.grad.detach().numpy()}")
          
-            dB_f = np.copy(fine_level.net.layers[layer_id].bias.grad.detach().numpy().reshape(-1, 1))
-            dW_c = np.copy(coarse_level.net.layers[layer_id].weight.grad.detach().numpy())
-            dB_c = np.copy(coarse_level.net.layers[layer_id].bias.grad.detach().numpy().reshape(-1, 1))
-            """
+            #dB_f = np.copy(fine_level.net.layers[layer_id].bias.grad.detach().numpy().reshape(-1, 1))
+            #dW_c = np.copy(coarse_level.net.layers[layer_id].weight.grad.detach().numpy())
+            #dB_c = np.copy(coarse_level.net.layers[layer_id].bias.grad.detach().numpy().reshape(-1, 1))
+            
 
 
             dW_f = fine_level_grad.weight_grad[layer_id]
@@ -185,8 +195,8 @@ class PairwiseAggRestriction(_BaseRestriction):
 
             # f^h - A^h(u^h)
             if fine_level.id > 0:
-                rhsW = fine_level.rhs_W_array[layer_id] - dW_f
-                rhsB = fine_level.rhs_B_array[layer_id] - dB_f
+                rhsW = fine_level.rhs_W[layer_id] - dW_f
+                rhsB = fine_level.rhs_B[layer_id] - dB_f
             else:
                 rhsW = -dW_f
                 rhsB = -dB_f
@@ -205,9 +215,10 @@ class PairwiseAggRestriction(_BaseRestriction):
             rhsW += dW_c
             rhsB += dB_c
 
-            log.debug(F"Restriction.Tau{rhsW = } {rhsB =}")
-            coarse_level.rhs_W_array.append(rhsW)
-            coarse_level.rhs_B_array.append(rhsB)
-
+            log.info(f"Restriction.Tau{rhsW = } {rhsB =}")
+            log.info(f"{rhsW.device} {rhsB.device}")
+            coarse_level.rhs_W.append(rhsW)
+            coarse_level.rhs_B.append(rhsB)
+    """
 
 

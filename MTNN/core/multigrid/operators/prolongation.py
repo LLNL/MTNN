@@ -186,8 +186,8 @@ class LowerTriangleProlongation(_BaseProlongation):
                         # bias dim stays the same
 
         if verbose:
-            printer.printModel("ORIGINAL", source_model, dim=True)
-            printer.printModel("PROLONGED", prolonged_model, dim=True)
+            printer.print_model("ORIGINAL", source_model, dim=True)
+            printer.print_model("PROLONGED", prolonged_model, dim=True)
 
         return prolonged_model
 
@@ -215,9 +215,8 @@ class PairwiseAggProlongation(_BaseProlongation):
         for layer_id in range(num_coarse_layers):
             W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
             B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
-            e_W = W_c - coarse_level.Winit_array[
-                layer_id]  # W_c = self.R_array[layer_id] @ W_f @ self.P_array[layer_id-1]
-            e_B = B_c - coarse_level.Binit_array[layer_id]
+            e_W = W_c - coarse_level.Winit[layer_id]  # W_c = self.R_array[layer_id] @ W_f @ self.P_array[layer_id-1]
+            e_B = B_c - coarse_level.Binit[layer_id]
             if layer_id < num_coarse_layers - 1:
                 if layer_id == 0:
                     e_W = P_array[layer_id] @ e_W
@@ -232,10 +231,10 @@ class PairwiseAggProlongation(_BaseProlongation):
             W_f += e_W
             B_f += e_B
 
+            # Update fine-level net
             with torch.no_grad():
-                W_f = fine_level.net.layers[layer_id].weight.detach().clone()
-                B_f = fine_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
-
+                fine_level.net.layers[layer_id].weight.copy_(W_f)
+                fine_level.net.layers[layer_id].bias.copy_(B_f.reshape(-1))
 
 class RandomPerturbationOperator(_BaseProlongation):
     def __init__(self):

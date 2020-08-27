@@ -4,9 +4,7 @@ Holds Multigrid Schemes
 # TODO: Add logging level. Change Verbose option to logs level?
 """
 # standard
-from collections import namedtuple
 from abc import ABC, abstractmethod
-
 
 # third-party
 import torch
@@ -14,24 +12,31 @@ import torch
 #local
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
+import MTNN.utils.datatypes as mgdata
 
 log = log.get_logger(__name__, write_to_file =True)
+
+__all__ = ['Level',
+           'Cascadic',
+           'WCycle',
+           'VCycle']
 
 
 class Level:
     """A level or grid  in an Multigrid hierarchy"""
     def __init__(self, id: int, presmoother, postsmoother, prolongation, restriction,
-                 coarsegrid_solver, stopping_measure, loss_fn):
+                 coarsegrid_solver, stopping_measure, corrector, loss_fn):
         """
         Args:
             id: <int> level id (assumed to be unique)
-            model:  <core.components.models.BaseModel>
-            presmoother:  <core.alg.multigrid.operators.smoother>
-            postsmoother: <core.alg.multigrid.operators.smoother>
-            prolongation: <core.alg.multigrid.operators.prolongation>
-            restriction: <core.alg.multigrid.operators.restriction>
-            coarsegrid_solver:  <core.alg.multigrid.operators.smoother>
-            stopping:  <core.alg.multigrid.stopping>
+            model:  <core.components.model> Model
+            presmoother:  <core.alg.multigrid.operators.smoother> Smoother
+            postsmoother: <core.alg.multigrid.operators.smoother> Smoother
+            prolongation: <core.alg.multigrid.operators.prolongation> Prolongation
+            restriction: <core.alg.multigrid.operators.restriction> Restriction
+            coarsegrid_solver:  <core.alg.multigrid.operators.smoother> Smoother
+            stopping: <core.alg.stopping> Stopper
+            corrector: <core.multigrid.operators.tau_corrector> TauCorrector
         """
         self.net = None
         self.id = id
@@ -40,42 +45,42 @@ class Level:
         self.coarsegrid_solver = coarsegrid_solver
         self.prolongation = prolongation
         self.restriction = restriction
+        self.corrector = corrector
         self.stopper = stopping_measure
         self.loss_fn = loss_fn
 
-        # Computation attributes
-        # TODO: pipeline and tokenize?
+        # Data attributes
+        # TODO: tokenize?
         self.interpolation_data = None
         # Lhs
-        self.Winit_array = None
-        self.Binit_array = None
-        # Rhs
-        self.rhs_W_array = None
-        self.rhs_B_array = None
+        self.Winit = None  # list of tensors
+        self.Binit = None  # list of tensors
 
-        RHS = namedtuple('rhs', ['W', 'b'])
-        self.rhs = RHS(self.rhs_W_array, self.rhs_B_array)
+
+
 
     def presmooth(self, model, trainer):
         try:
             log.info(f'Applying presmoother {self.presmoother.__class__.__name__}')
-            self.presmoother.apply(model, trainer.dataloader, self.stopper, self.rhs,
-                                trainer.verbose)
+            #self.set_rhs()
+            self.presmoother.apply(model, trainer.dataloader, self.stopper, tau=self.corrector, verbose=trainer.verbose)
         except Exception:
             raise
 
     def postsmooth(self, model, trainer):
         try:
             log.info(f'Applying postsmoother {self.postsmoother.__class__.__name__}')
-            self.postsmoother.apply(model, trainer.dataloader, self.stopper, self.rhs,
-                                    trainer.verbose)
+            #self.set_rhs()
+            self.postsmoother.apply(model, trainer.dataloader, self.stopper, tau=self.corrector, verbose=trainer.verbose)
         except Exception:
            raise
 
     def coarse_solve(self, model, trainer):
         try:
             log.info(f'Applying coarse solve {self.coarsegrid_solver.__class__.__name__}')
-            self.coarsegrid_solver.apply(model, trainer.dataloader, self.stopper, self.rhs, trainer.verbose)
+            #self.set_rhs()
+            self.coarsegrid_solver.apply(model, trainer.dataloader, self.stopper, tau=self.corrector,
+                                         verbose=trainer.verbose)
         except Exception:
             raise
 
@@ -89,17 +94,25 @@ class Level:
     def restrict(self, fine_level, coarse_level, dataloader, verbose):
         try:
             log.info(f'Applying restriction {self.restriction.__class__.__name__}')
-            self.restriction.apply(fine_level, coarse_level, dataloader,  verbose)
+            self.restriction.apply(fine_level, coarse_level, dataloader, self.corrector,  verbose)
         except Exception:
             raise
 
     def view(self):
-        # TODO: Add modality
+        """Logs level attributes"""
         for atr in self.__dict__:
-            if type(self.__dict__[atr]) in (int, float, str, list, bool):
-                log.info(f"\t{atr}: \t{self.__dict__[atr]} ")
+
+            atrval = self.__dict__[atr]
+            if type(atrval) in (int, float, str, list, bool):
+                log.info(f"\t{atr}: \t{atrval} ")
+            elif isinstance(atrval, mgdata.operators):
+                log.info(f"\t{atr}: \n\t\tRestriction: {atrval.R_op} "
+                         f"\n\t\tProlongation: {atrval.P_op}")
+            elif isinstance(atrval, mgdata.rhs):
+                log.info(f"\t{atr}: {atrval}")
             else:
                 log.info(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__}")
+
 
 
 ############################################################################
@@ -109,11 +122,13 @@ class _BaseMultigridScheme(ABC):
     """
     Base Multigrid Hierarchy
     """
-    def __init__(self, levels=[]):
+    def __init__(self, levels=None):
         """
         Args:
             levels: List of <core.alg.multigrid.multigrid.Level> Level objects
         """
+        if levels is None:
+            levels = []
         self.levels = levels
 
 
@@ -182,13 +197,11 @@ class WCycle(_BaseMultigridScheme):
     pass
     # TODO
 
-class VCYCLE(_BaseMultigridScheme):
-    pass
-    # TODO
 
 
-class FASVCycle(_BaseMultigridScheme):
-    def run(self, session, num_cycles:int):
+class VCycle(_BaseMultigridScheme):
+    def run(self, session, num_cycles: int):
+        #TODO: Add checkpoints
         """
         Full Approximation Scheme Multigrid Algorithm
 
@@ -208,7 +221,7 @@ class FASVCycle(_BaseMultigridScheme):
 
         if session.trainer.verbose:
             log.info(f"Applying FAS cycle with {num_levels} levels")
-            printer.printLevelInfo(self.levels)
+            printer.print_level(self.levels)
 
 
         # Iteratively restrict each level's grid
@@ -218,7 +231,7 @@ class FASVCycle(_BaseMultigridScheme):
             ############################################
             for level_idx, level in enumerate(self.levels[:-1]):
                 if session.trainer.verbose:
-                    printer.printLevelStats(level_idx, num_levels, f"\nDOWN CYCLING {cycle}: Restricting") #TODO: Remove
+                    printer.print_levelstats(level_idx, num_levels, f"\nDOWN CYCLING {cycle=}: Restricting")
 
                 fine_level = level
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists
@@ -229,9 +242,6 @@ class FASVCycle(_BaseMultigridScheme):
                 #Restrict
                 fine_level.restrict(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
 
-                log.debug(f"Down Cycling {cycle = } {level_idx = }")
-                printer.printLevelInfo(self.levels)
-
             # Smoothing with coarse-solver at the coarsest level
             log.info(f"Scheme:Coarse-solving at the last level {self.levels[-1].net}")
             self.levels[-1].coarse_solve(level.net, session.trainer)
@@ -240,23 +250,22 @@ class FASVCycle(_BaseMultigridScheme):
             # Up Cycle - Interpolate/Prolongate back up to  all levels
             ##############################################
             for level_idx in range(num_levels - 2, -1, -1):
-                if session.trainer.verbose: #TODO: Remove
-                    printer.printLevelStats(level_idx, num_levels, "\nUP CYCLING: Prolongating")
+                if session.trainer.verbose:
+                    printer.print_levelstats(level_idx, num_levels, "\nUP CYCLING: Prolongating")
 
                 fine_level = self.levels[level_idx]
-                coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists
+                coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # mod gets next level if it exists
 
                 fine_level.prolong(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
                 fine_level.postsmooth(fine_level.net, session.trainer)
 
-                if session.trainer.verbose:
-                    printer.printLevelInfo(self.levels)
-
+#                if session.trainer.verbose:
+#                    printer.printLevelInfo(self.levels)
 
             # Return the fine net
             if session.trainer.verbose:
                 log.info(f" \nFinished FAS Cycle")
-                printer.printLevelInfo(self.levels)
+                printer.print_level(self.levels)
 
             return self.levels[0].net
 

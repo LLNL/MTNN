@@ -15,7 +15,7 @@ import MTNN.core.multigrid.scheme as mg
 #TODO: Fix new instances on each level!
 
 def build_uniform_levels(num_levels, presmoother, postsmoother, prolongation_operator,
-                         restriction_operator, coarsegrid_solver, stopping_criteria,
+                         restriction_operator, coarsegrid_solver, stopping_criteria, corrector,
                          loss_function: Type[nn.modules.loss._Loss]) -> List[mg.Level]:
     """
     Constructs a uniform set of levels
@@ -43,6 +43,7 @@ def build_uniform_levels(num_levels, presmoother, postsmoother, prolongation_ope
                           prolongation = prolongation_operator,
                           restriction = restriction_operator,
                           coarsegrid_solver = coarsegrid_solver,
+                          corrector = corrector,
                           stopping_measure = stopping_criteria,
                           loss_fn = loss_function)
         set_of_levels.append(aLevel)
@@ -50,9 +51,9 @@ def build_uniform_levels(num_levels, presmoother, postsmoother, prolongation_ope
     return set_of_levels
 
 
-def build_vcycle_levels(num_levels:int, presmoother: smoother, postsmoother: smoother,
+def build_vcycle_levels(num_levels: int, presmoother: smoother, postsmoother: smoother,
                         prolongation_operator: prolongation, restriction_operator: restriction,
-                        coarsegrid_solver, stopper: stopping._BaseStopper,
+                        coarsegrid_solver, stopper: stopping._BaseStopper, corrector,
                         loss_function: Type[nn.modules.loss._Loss]) -> List[mg.Level]:
     """
     Constructs set of standard VCycle levels
@@ -64,6 +65,8 @@ def build_vcycle_levels(num_levels:int, presmoother: smoother, postsmoother: smo
         restriction_operator: <core.multigrid.operators.restriction>
         coarsegrid_solver: <core.multigrid.operators.smoother>
         stopping_criteria: <core.alg.stopping._BaseStopper>
+        corrector:
+        loss_function:
 
     Returns:
         set_of_levels: <list>  A list of <multigrid.scheme.Level> objects
@@ -79,6 +82,7 @@ def build_vcycle_levels(num_levels:int, presmoother: smoother, postsmoother: smo
                              prolongation = prolongation_operator,
                              restriction = restriction_operator,
                              coarsegrid_solver = coarsegrid_solver,
+                             corrector = corrector,
                              stopping_measure = stopper,
                              loss_fn = loss_function)
             set_of_levels.append(level)
@@ -90,6 +94,7 @@ def build_vcycle_levels(num_levels:int, presmoother: smoother, postsmoother: smo
                              prolongation = None,
                              restriction = None,
                              coarsegrid_solver = coarsegrid_solver,
+                             corrector = corrector,
                              stopping_measure = stopper,
                              loss_fn = loss_function)
 

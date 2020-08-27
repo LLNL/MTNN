@@ -28,7 +28,9 @@ torch.set_printoptions(precision=5)
 # Set-up
 #=====================================
 #test_data = data.TestData(trainbatch_size=10, testbatch_size=10)
-data = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainbatch_size=10, testbatch_size=10)
+fake_data = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainset_size=10, trainbatch_size= 1,
+                          testset_size= 10,testbatch_size=10)
+#vcycle_data = data.CycleLoader(fake_data.trainloader, alt=True)
 net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, bias_fill=1)
 
 # With Mnist
@@ -39,10 +41,10 @@ net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, b
 # Multigrid Hierarchy Components
 #=====================================
 SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-prolongation_op = prolongation.PairwiseAggProlongation()
-restriction_op = restriction.PairwiseAggRestriction(interpolator.PairwiseAggCoarsener)
-epoch_stopper = stopping.EpochStopper(1)
-# TODO: Refactor Stopping measure
+prolongation_op = prolongation.PairwiseAggProlongation
+restriction_op = restriction.PairwiseAggRestriction
+epoch_stopper = stopping.EpochStopper
+tau = tau_corrector.BasicTau
 
 
 # Build Multigrid Hierarchy Levels/Grids
@@ -65,22 +67,26 @@ for level_idx in range(0, num_levels):
     sgd_smoother = smoother.SGDSmoother(model = net, loss_fn = loss_fn,
                                         optim_params = optim_params,
                                         stopper = epoch_stopper,
-                                        log_interval = 10)
-    aLevel = mg.Level(id=level_idx, presmoother=sgd_smoother, postsmoother=sgd_smoother,
-                      prolongation=prolongation_op, restriction=restriction_op, coarsegrid_solver=sgd_smoother,
-                      stopping_measure=epoch_stopper, loss_fn=loss_fn)
+                                        log_interval = 1)
+
+    aLevel = mg.Level(id=level_idx,
+                      presmoother=sgd_smoother,
+                      postsmoother=sgd_smoother,
+                      prolongation=prolongation_op(),
+                      restriction=restriction_op(interpolator.PairwiseAggCoarsener),
+                      coarsegrid_solver=sgd_smoother,
+                      corrector=tau(),
+                      stopping_measure=epoch_stopper,
+                      loss_fn=loss_fn)
     FAS_levels.append(aLevel)
 
 
-mg_scheme = mg.FASVCycle(FAS_levels)
-training_alg = trainer.MultigridTrainer(dataloader=data.trainloader,
-                                        verbose=True,
+mg_scheme = mg.VCycle(FAS_levels)
+training_alg = trainer.MultigridTrainer(dataloader=fake_data.trainloader,
+                                        verbose=False,
                                         log=True,
                                         save=False,
                                         load=False)
-
-# To view parameters
-# net.print('med')
 
 #=====================================
 # Train
@@ -96,7 +102,7 @@ print('Finished Training (%.3fs)' % (stop - start))
 evaluator = evaluator.CategoricalEvaluator()
 print('Starting Testing')
 start = time.perf_counter()
-correct, total = evaluator.evaluate(model=net, dataloader=data.testloader)
+correct, total = evaluator.evaluate(model=net, dataloader=fake_data.testloader)
 stop = time.perf_counter()
 print('Finished Testing (%.3fs)' % (stop-start))
 print('Accuracy of the network on the test images: %d %%' % (100 * correct / total))
