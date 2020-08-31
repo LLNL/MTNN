@@ -53,44 +53,53 @@ class Level:
         self.Winit = None  # list of tensors
         self.Binit = None  # list of tensors
 
-
-
-
-    def presmooth(self, model, trainer):
+    def presmooth(self, model, trainer, verbose=False):
         try:
-            log.info(f'Applying presmoother {self.presmoother.__class__.__name__}')
-            #self.set_rhs()
-            self.presmoother.apply(model, trainer.dataloader, self.stopper, tau=self.corrector, verbose=trainer.verbose)
+            if verbose:
+                log.info(f'================================='
+                         f'PRESMOOTHING {self.presmoother.__class__.__name__}'
+                         f'=================================')
+            self.presmoother.apply(model, trainer.dataloader, tau=self.corrector, verbose=trainer.verbose)
         except Exception:
             raise
 
-    def postsmooth(self, model, trainer):
+    def postsmooth(self, model, trainer, verbose=False):
         try:
-            log.info(f'Applying postsmoother {self.postsmoother.__class__.__name__}')
-            #self.set_rhs()
-            self.postsmoother.apply(model, trainer.dataloader, self.stopper, tau=self.corrector, verbose=trainer.verbose)
+            if verbose:
+                log.info(f'================================='
+                         f'POSTSMOOTHING {self.postsmoother.__class__.__name__} '
+                         f'=================================')
+            self.postsmoother.apply(model, trainer.dataloader, tau=self.corrector, verbose=trainer.verbose)
         except Exception:
            raise
 
-    def coarse_solve(self, model, trainer):
+    def coarse_solve(self, model, trainer, verbose=False):
         try:
-            log.info(f'Applying coarse solve {self.coarsegrid_solver.__class__.__name__}')
-            #self.set_rhs()
-            self.coarsegrid_solver.apply(model, trainer.dataloader, self.stopper, tau=self.corrector,
+            if verbose:
+                log.info( f'================================='
+                          f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}'
+                          f'=================================')
+            self.coarsegrid_solver.apply(model, trainer.dataloader, tau=self.corrector,
                                          verbose=trainer.verbose)
         except Exception:
             raise
 
-    def prolong(self, fine_level, coarse_level, dataloader, verbose):
+    def prolong(self, fine_level, coarse_level, dataloader, verbose=False):
         try:
-            log.info(f'Applying prolongation {self.prolongation.__class__.__name__}')
+            if verbose:
+                log.info(f'================================='
+                         f'PROLONGATING {self.prolongation.__class__.__name__}'
+                         f'=================================')
             self.prolongation.apply(fine_level, coarse_level, dataloader, verbose)
         except Exception:
             raise
 
-    def restrict(self, fine_level, coarse_level, dataloader, verbose):
+    def restrict(self, fine_level, coarse_level, dataloader, verbose=False):
         try:
-            log.info(f'Applying restriction {self.restriction.__class__.__name__}')
+            if verbose:
+                log.info(f'================================='
+                         f'RESTRICTING {self.restriction.__class__.__name__}'
+                         f'=================================')
             self.restriction.apply(fine_level, coarse_level, dataloader, self.corrector,  verbose)
         except Exception:
             raise
@@ -98,7 +107,6 @@ class Level:
     def view(self):
         """Logs level attributes"""
         for atr in self.__dict__:
-
             atrval = self.__dict__[atr]
             if type(atrval) in (int, float, str, list, bool):
                 log.info(f"\t{atr}: \t{atrval} ")
@@ -128,10 +136,14 @@ class _BaseMultigridScheme(ABC):
             levels = []
         self.levels = levels
 
+    def setup(self, model):
+        """Set the first level's model"""
+        self.levels[0].net = model
 
     @abstractmethod
     def run(self, **kawrgs):
         raise NotImplementedError
+
 
     def __len__(self):
         return len(self.levels)
@@ -144,10 +156,11 @@ class Cascadic(_BaseMultigridScheme):
     """
     Interface for Cascadic Multigrid Algorithm
     """
-    def run(self, session):
+    def run(self, session, num_cycles: int):
         """
         Args:
-            session: Model, Trainer
+            session: <MTNN.trainer.session> starting Model, Trainer
+            num_cycles: <int> Number of cycle iterations
         Returns:
 
         """
@@ -155,7 +168,7 @@ class Cascadic(_BaseMultigridScheme):
         # Verbose
         if session.trainer.verbose:
             log.info(f" Applying Cascadic Multigrid")
-            log.info(f"\nNumber  of levels: {self.get_num_levels()}")
+            log.info(f"\nNumber  of levels: {len(self.levels)}")
             for i, level in enumerate(self.levels):
                 log.info(f"Level {i}")
                 level.view()
@@ -168,17 +181,21 @@ class Cascadic(_BaseMultigridScheme):
 
         # Training
         for level_idx, level in enumerate(self.levels):
+
+            # Set levels
+            fine_level = level
+            coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists
+
             log.info(f"\nLevel  {level_idx}: Applying Presmoother ")
             level.presmooth(session.model, session.trainer)
 
             log.info(f"\nLevel {level_idx} :Applying Prolongation")
-            level.prolong(session)
+            level.prolong(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
 
             log.info(f"\nLevel {level_idx}: Appying Coarse Solver")
-            level.coarse_solve(session)
+            level.coarse_solve(level.net, session.trainer)
 
             # Apply last layer smoothing
-
             if level_idx == self.levels[-1]:
                 log.info(f"\nLevel {level_idx}: Appying Postsmoother")
                 level.postsmooth(session)
@@ -189,11 +206,11 @@ class Cascadic(_BaseMultigridScheme):
             torch.save({'model_state_dict': model.state_dict()},
                        session.trainer.save_path)
 
+        return self.levels[-1].net
 
 class WCycle(_BaseMultigridScheme):
     pass
     # TODO
-
 
 
 class VCycle(_BaseMultigridScheme):
@@ -217,7 +234,7 @@ class VCycle(_BaseMultigridScheme):
         self.levels[0].net = session.model
 
         if session.trainer.verbose:
-            log.info(f"Applying FAS cycle with {num_levels} levels")
+            printer.print_cycle_info(self)
             printer.print_level(self.levels)
 
 

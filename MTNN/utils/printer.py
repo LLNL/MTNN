@@ -1,33 +1,37 @@
+"""Holds printing functions"""
 # standard
 import collections as col
 import numpy as np
 from numpy import linalg as LA
 
+#local
 from MTNN.utils import logger
 log = logger.get_logger(__name__, write_to_file =True)
 
-__all__ = ['printSmoother',
-           'printLevelStats',
-           'printModel']
+__all__ = ['print_smoother',
+           'print_levelstats',
+           'print_model']
 
 
-def printSmoother(epoch:int, loss:int, batch_idx:int, dataloader, stopper, log_interval:int) -> None:
+def print_smoother(epoch:int, loss:int, batch_idx:int, dataloader, stopper, log_interval: int, tau:None) -> None:
     """ Print based on specified logging interval.
     Args:
         log_interval: <int> Specifies batch intervals to log/print-out
     """
-    if ((batch_idx) * dataloader.batch_size % log_interval) == 0 and batch_idx != 0:
+    batch_idx = batch_idx + 1
+    epoch = epoch + 1
+    if ((batch_idx * dataloader.batch_size) % log_interval) == 0:
         log.info(f"Epoch: {epoch}/{stopper.max_epochs}"
-                 f"\t{batch_idx * dataloader.batch_size} / {len(dataloader.dataset)}"
-                 f"\t\tLoss: {loss.item()}")
-    elif batch_idx + 1 == len(dataloader):
-        log.info(f"Epoch: {epoch}/{stopper.max_epochs}"
-                 f"\t{(batch_idx + 1) * dataloader.batch_size} / {len(dataloader.dataset)}"
+                 f"\t{(batch_idx) * dataloader.batch_size} / {len(dataloader.dataset)}"
                  f"\t\tLoss: {loss.item()}")
 
 
+def print_cycle_info(cycleclass) -> None:
+    log.info("=========================================")
+    log.info(f"Applying {cycleclass.__class__.__name__}")
+    log.info("=========================================")
 
-def printLevelStats( level_idx: int, num_levels: int, msg="",) -> None:
+def print_levelstats(level_idx: int, num_levels: int, msg="", ) -> None:
     """
     Args:
         level_idx: <int> Level Id
@@ -37,13 +41,13 @@ def printLevelStats( level_idx: int, num_levels: int, msg="",) -> None:
     log.info(f"{msg} Level {level_idx}: {level_idx + 1}/{num_levels}")
 
 
-def printLevelInfo(levels: list) -> None:
+def print_level(levels: list) -> None:
     for idx, level in enumerate(levels):
         log.info(f"Level {idx}")
         level.view()
 
 
-def printModel(model, msg="", **options) -> None:
+def print_model(model, msg="", **options) -> None:
     # TODO: Refactor
     try:
         if 'val' in options and options['val']:
@@ -64,10 +68,13 @@ def printModel(model, msg="", **options) -> None:
                 log.info(f"\tLAYER {layer_idx}")
                 log.info(f"\t\tWEIGHTS  \t{layer.weight.grad}")
                 log.info(f"\t\tBIAS  \t{layer.bias.grad}")
-
-
     except AttributeError:
         log.warning(f"Net is empty.")
+
+
+def print_tau(tau, loss, msg="") -> None:
+    log.info(f"{msg}{tau.__class__.__name__} {loss = }")
+
 
 def printGradNorm(loss, weights, bias) -> None:
     # TODO

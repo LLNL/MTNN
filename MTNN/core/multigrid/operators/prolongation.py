@@ -95,7 +95,7 @@ class LowerTriangleProlongation(_BaseProlongation):
     def __init__(self, expansion_factor: int):
         self.expansion_factor = expansion_factor
 
-    def apply(self, source_model, verbose=False):
+    def apply(self, fine_level, coarse_level, dataloader, verbose=False):
         """
         Takes a sourcemodel. Copies and updates weights/biases of each layer of sourcemodel into a new model with
         new block lower triangular weight matrix and augmented bias vector according to some expansion factor.
@@ -117,15 +117,15 @@ class LowerTriangleProlongation(_BaseProlongation):
 
         # TODO: Add Check for fully connected layers
         # Single Hidden Layer
-        if len(source_model.layers) <= 2:
-            return source_model
+        if len(fine_level.net.layers) <= 2:
+            return fine_level
 
         # Multi-hidden layer
         else:
-            prolonged_model = copy.deepcopy(source_model)
-            last_layer_idx = len(prolonged_model.layers) - 1
+            coarse_level.net = copy.deepcopy(fine_level.net)
+            last_layer_idx = len(coarse_level.net.layers) - 1
 
-            for index, layer in enumerate(prolonged_model.layers):
+            for index, layer in enumerate(coarse_level.net.layers):
 
                 # Get weight matrices dimensions
                 weight_row = layer.weight.size()[0]
@@ -186,10 +186,9 @@ class LowerTriangleProlongation(_BaseProlongation):
                         # bias dim stays the same
 
         if verbose:
-            printer.print_model("ORIGINAL", source_model, dim=True)
-            printer.print_model("PROLONGED", prolonged_model, dim=True)
+            printer.print_model(fine_level.net, msg="ORIGINAL",  val=True, dim=True)
+            printer.print_model(coarse_level.net, msg="PROLONGED", val=True, dim=True)
 
-        return prolonged_model
 
 
 class PairwiseAggProlongation(_BaseProlongation):

@@ -45,7 +45,7 @@ class MultigridTrainer:
         """
 
         session = Session(model, self)
-
+        multigrid.setup(session.model)
         trained_model = multigrid.run(session, cycles)
 
         return trained_model
