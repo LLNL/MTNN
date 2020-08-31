@@ -13,6 +13,10 @@ def get_device(verbose=False):
         device = torch.device("cpu")
     if verbose: 
         print(f"Running on {device.type}")
+        if device.type == "cuda":
+            print(torch.cuda.get_device_name(0))
+            print(torch.cuda.get_device_properties())
+            print('Memory Allocated', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
 
     return device
 

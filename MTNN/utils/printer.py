@@ -1,13 +1,9 @@
 """Holds printing functions"""
-# standard
-import collections as col
-import numpy as np
-from numpy import linalg as LA
-
 #local
 from MTNN.utils import logger
 log = logger.get_logger(__name__, write_to_file =True)
 
+# Public
 __all__ = ['print_smoother',
            'print_levelstats',
            'print_model']
@@ -78,6 +74,7 @@ def print_tau(tau, loss, msg="") -> None:
 
 def printGradNorm(loss, weights, bias) -> None:
     # TODO
+    """
     # Yield  gradient norm
     # total_loss -= Tr(rhsW' * W) + Tr(rhsB' * B)
     # grad -= rh
@@ -105,3 +102,4 @@ def printGradNorm(loss, weights, bias) -> None:
         norm_dB = norm_dB ** (0.5)
 
         yield total_loss, norm_dW, norm_dB
+        """

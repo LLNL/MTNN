@@ -63,13 +63,9 @@ class BasicTau(_BaseTauCorrector):
         num_fine_layers = len(fine_level.net.layers)
 
         # Get the residual
-        # get the gradient on the fine level
+        # get the gradients on the fine level and coarse_level
         fine_level_grad = fine_level.net.getGrad(dataloader, self.loss_fn)
- #       log.debug(f"Restriction.Fine Level after get grad{fine_level_grad =}")
-
-        # get the gradient on the coarse level
         coarse_level_grad = coarse_level.net.getGrad(dataloader, self.loss_fn)
- #       log.debug(f"Restriction.Coarse Level after get grad {coarse_level_grad=}")
 
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
         coarse_level_rhsW = []
@@ -108,8 +104,8 @@ class BasicTau(_BaseTauCorrector):
             coarse_level_rhsW.append(rhsW)
             coarse_level_rhsB.append(rhsB)
 
-        if verbose:
-            log.info(f"Restriction.Tau {rhsW = } {rhsB =}")
+#        if verbose:
+#            log.info(f"Restriction.Tau {rhsW = } {rhsB =}")
 
         coarse_level.corrector.rhs_W = coarse_level_rhsW
         coarse_level.corrector.rhs_B = coarse_level_rhsB

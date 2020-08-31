@@ -12,7 +12,7 @@ from MTNN.core.components import data, models
 from MTNN.core.multigrid.operators import smoother, prolongation
 from MTNN.core.alg import trainer, evaluator, stopping
 import MTNN.core.multigrid.scheme as mg
-import MTNN.utils.builder as levels
+import MTNN.utils.builder as builder
 
 
 # Load Data and Model
@@ -29,7 +29,7 @@ smoother = smoother.SGDSmoother
 
 
 
-mg_levels = levels.build_uniform_levels(num_levels=3,
+mg_levels = builder.build_uniform_levels(num_levels=3,
                                         presmoother = smoother(model=net, loss_fn =nn.CrossEntropyLoss(),
                                                              optim_params=optim_params, stopper=stopping_measure,
                                                              log_interval=10000),

@@ -16,6 +16,7 @@ import MTNN.utils.datatypes as mgdata
 
 log = log.get_logger(__name__, write_to_file =True)
 
+# Public
 __all__ = ['Level',
            'Cascadic',
            'WCycle',
@@ -119,7 +120,6 @@ class Level:
                 log.info(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__}")
 
 
-
 ############################################################################
 # Interface
 ############################################################################
@@ -143,7 +143,6 @@ class _BaseMultigridScheme(ABC):
     @abstractmethod
     def run(self, **kawrgs):
         raise NotImplementedError
-
 
     def __len__(self):
         return len(self.levels)
@@ -208,6 +207,7 @@ class Cascadic(_BaseMultigridScheme):
 
         return self.levels[-1].net
 
+
 class WCycle(_BaseMultigridScheme):
     pass
     # TODO
@@ -237,7 +237,6 @@ class VCycle(_BaseMultigridScheme):
             printer.print_cycle_info(self)
             printer.print_level(self.levels)
 
-
         # Iteratively restrict each level's grid
         for cycle in range(num_cycles):
             #############################################
@@ -253,11 +252,10 @@ class VCycle(_BaseMultigridScheme):
                 # Presmooth
                 fine_level.presmooth(fine_level.net, session.trainer, session.trainer.verbose)
 
-                #Restrict
+                # Restrict
                 fine_level.restrict(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
 
             # Smoothing with coarse-solver at the coarsest level
-#            log.info(f"Scheme:Coarse-solving at the last level {self.levels[-1].net}")
             self.levels[-1].coarse_solve(level.net, session.trainer)
 
             ##############################################
@@ -272,9 +270,6 @@ class VCycle(_BaseMultigridScheme):
 
                 fine_level.prolong(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
                 fine_level.postsmooth(fine_level.net, session.trainer, session.trainer.verbose)
-
-#                if session.trainer.verbose:
-#                    printer.printLevelInfo(self.levels)
 
             # Return the fine net
             if session.trainer.verbose:

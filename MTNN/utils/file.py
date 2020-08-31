@@ -97,11 +97,6 @@ def make_default_path(dir: str, ext: str):
     return default_path
 
 
-def enable_cuda():
-    # TODO
-    pass
-
-
 def plot():
     #TODO
     pass

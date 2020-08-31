@@ -1,7 +1,13 @@
 """
 Holds Multigrid stopping measures
 """
+# standard
 from abc import ABC, abstractmethod
+
+# Public
+__all__ = ['EpochStopper',
+           'CycleStopper']
+
 
 ###################################################################
 # Interface

@@ -34,7 +34,6 @@ class _BaseModel(nn.Module):
         self.layers = nn.ModuleList()
         self.device = deviceloader.get_device(verbose=True)
 
-
     def __len__(self):
         return len(self.layers)
 
@@ -45,47 +44,27 @@ class _BaseModel(nn.Module):
 
     def getGrad(self, dataloader, loss_fn, verbose=False):
         """Get gradients w.r.t to the entire dataset """
-        log.debug("Get Grad")
         # Compute the gradient
-        # zero the parameter gradient
-        self.zero_grad()
+        self.zero_grad()   # zero the parameter gradient
         total_loss = None
-        # batch loop
         for i, mini_batch_data in enumerate(dataloader, 0):
             # get the inputs. data is a list of [inputs, labels]
             inputs, labels = deviceloader.load_data(mini_batch_data, self.device)
 
             if len(inputs.size()) == 4:
                 inputs = inputs.view(inputs.size()[0], inputs.size()[1] * inputs.size()[2] * inputs.size()[3])
+
             # forward: get the loss w.r.t this batch
             outputs = self(inputs)
-            #print(F"{inputs = }, {outputs = }")
 
             if total_loss is None:
                 total_loss = loss_fn(outputs, labels)
             else:
                 total_loss += loss_fn(outputs, labels)
 
-            #loss += loss_fn(outputs, labels)
-
-        # TODO: Add L2 regularization printing option?
-        """
-            # L2 regularization
-            nbatches = len(dataloader)
-            if loss_fn.l2_decay != 0.0:
-                l2_reg = None
-                for W in self.parameters():
-                    if l2_reg is None:
-                        l2_reg = torch.pow(W, 2).sum()
-                    else:
-                        l2_reg += torch.pow(W, 2).sum()
-                loss += 0.5 * nbatches * loss_fn.l2_decay * l2_reg
-        """
-        print(f"Model.getgrad: Total loss{total_loss = }")
         total_loss.backward()
-        printer.printModel(self, msg = "MODELS.Getgrad:after update", grad = True)
 
-        # TODO
+        # TODO: Print L2 regularization?
         """
         if verbose:
             printer.printGradNorm(loss)
@@ -168,13 +147,12 @@ class MultiLinearNet(_BaseModel):
                 x = self.output(x, dim=1)
 
         if verbose:
-            printer.printModel(self, val=True)
+            printer.print_model(self, val=True)
 
         return x
 
 class BasicMnistModel(_BaseModel):
     """A basic image classifier."""
-
     # https://github.com/pytorch/examples/blob/master/mnist/main.py
     def __init__(self):
         super(BasicMnistModel, self).__init__()

@@ -2,15 +2,12 @@
 Holds functions to build multigrid levels to pass to the mulgrid scheme
 """
 # standard
-from typing import Type, List
-
-# torch
-import torch.nn as nn
+from typing import  List
 
 # local
 from MTNN.core.multigrid.operators import smoother, prolongation, restriction
-from MTNN.core.alg import stopping
 import MTNN.core.multigrid.scheme as mg
+
 
 def build_uniform_levels(num_levels, presmoother, postsmoother, prolongation_operator,
                          restriction_operator, coarsegrid_solver, corrector=None) -> List[mg.Level]:
@@ -24,8 +21,6 @@ def build_uniform_levels(num_levels, presmoother, postsmoother, prolongation_ope
         prolongation_operator: <core.multigrid.operators.prolongation>
         restriction_operator: <core.multigrid.operators.restriction>
         coarsegrid_solver: <core.multigrid.operators.smoother>
-        stopping_criteria: <core.alg.stopping>
-        loss_function: <torch.nn.modules.loss>
 
     Returns:
         set_of_levels: <list>  A list of <multigrid.scheme.Level> objects

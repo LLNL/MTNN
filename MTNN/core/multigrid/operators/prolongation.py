@@ -104,16 +104,6 @@ class LowerTriangleProlongation(_BaseProlongation):
         Returns:
             prolonged_model <MTNN.BaseModel>
         """
-        # 1 Layer case:
-        """
-        if 
-            print("SINGLE LAYER MODEL.  APPLYING IDENTITY OPERATOR...")
-        return IdentityInterpolator().apply(source_model)
-        # 1+ Layer case
-        else:
-            prolonged_model = copy.deepcopy(source_model)
-        return prolonged_model
-        """
 
         # TODO: Add Check for fully connected layers
         # Single Hidden Layer

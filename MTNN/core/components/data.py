@@ -1,10 +1,19 @@
 """
 Holds Pre-configured Dataloaders
 """
+# standard
+from abc import ABC
+
+# PyTorch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import torch.utils.data as td
 
+# Public API
+__all__ = ['FakeData',
+           'MnistData',
+           'CIFAR10Data',
+           'CycleSet']
 
 ####################################################################
 # Interface
@@ -12,7 +21,7 @@ import torch.utils.data as td
 class _BaseDataLoader:
     # Top-level of datasets folder
     root = './datasets'
-    num_workers = 1 # 4 * numGPUs
+    num_workers = 0 # 4 * numGPUs
     batch_size = 1
     
 
