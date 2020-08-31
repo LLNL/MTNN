@@ -70,20 +70,20 @@ for level_idx in range(0, num_levels):
                                         log_interval = 1)
 
     aLevel = mg.Level(id=level_idx,
-                      presmoother=sgd_smoother,
-                      postsmoother=sgd_smoother,
-                      prolongation=prolongation_op(),
-                      restriction=restriction_op(interpolator.PairwiseAggCoarsener),
-                      coarsegrid_solver=sgd_smoother,
-                      corrector=tau(),
-                      stopping_measure=epoch_stopper,
-                      loss_fn=loss_fn)
+                      presmoother = sgd_smoother,
+                      postsmoother = sgd_smoother,
+                      prolongation = prolongation_op(),
+                      restriction = restriction_op(interpolator.PairwiseAggCoarsener),
+                      coarsegrid_solver = sgd_smoother,
+                      corrector = tau(loss_fn))
+
+
     FAS_levels.append(aLevel)
 
 
 mg_scheme = mg.VCycle(FAS_levels)
 training_alg = trainer.MultigridTrainer(dataloader=fake_data.trainloader,
-                                        verbose=False,
+                                        verbose=True,
                                         log=True,
                                         save=False,
                                         load=False)

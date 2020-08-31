@@ -16,12 +16,14 @@ __all__ = ['BasicTau']
 ####################################################################
 class _BaseTauCorrector(ABC):
     """Overwrite this"""
-    def __init__(self):
+    def __init__(self, loss_fn):
         """
         Attributes:
+            loss_fn: <torch.nn.modules.loss> Loss function
             rhs_W: residual weights
             rhs_B: residual biases
         """
+        self.loss_fn = loss_fn
         self.rhs_W = None
         self.rhs_B = None
 
@@ -40,8 +42,8 @@ class _BaseTauCorrector(ABC):
 # Implementation
 ####################################################################
 class BasicTau(_BaseTauCorrector):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, loss_fn):
+        super().__init__(loss_fn)
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
         """
@@ -62,12 +64,12 @@ class BasicTau(_BaseTauCorrector):
 
         # Get the residual
         # get the gradient on the fine level
-        fine_level_grad = fine_level.net.getGrad(dataloader, fine_level.loss_fn)
-        log.debug(f"Restriction.Fine Level after get grad{fine_level_grad =}")
+        fine_level_grad = fine_level.net.getGrad(dataloader, self.loss_fn)
+ #       log.debug(f"Restriction.Fine Level after get grad{fine_level_grad =}")
 
         # get the gradient on the coarse level
-        coarse_level_grad = coarse_level.net.getGrad(dataloader, coarse_level.loss_fn)
-        log.debug(f"Restriction.Coarse Level after get grad {coarse_level_grad=}")
+        coarse_level_grad = coarse_level.net.getGrad(dataloader, self.loss_fn)
+ #       log.debug(f"Restriction.Coarse Level after get grad {coarse_level_grad=}")
 
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
         coarse_level_rhsW = []
@@ -120,6 +122,6 @@ class BasicTau(_BaseTauCorrector):
                     loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.rhs_B[layer_id]))
 
                 if verbose:
-                    printer.print_tau(self, loss, msg="\t")
+                    printer.print_tau(self, loss, msg="\tApplying Tau Correction: ")
             except Exception as e:
                 raise e

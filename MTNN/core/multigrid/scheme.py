@@ -25,7 +25,7 @@ __all__ = ['Level',
 class Level:
     """A level or grid  in an Multigrid hierarchy"""
     def __init__(self, id: int, presmoother, postsmoother, prolongation, restriction,
-                 coarsegrid_solver, stopping_measure, corrector, loss_fn):
+                 coarsegrid_solver, corrector):
         """
         Args:
             id: <int> level id (assumed to be unique)
@@ -35,7 +35,6 @@ class Level:
             prolongation: <core.alg.multigrid.operators.prolongation> Prolongation
             restriction: <core.alg.multigrid.operators.restriction> Restriction
             coarsegrid_solver:  <core.alg.multigrid.operators.smoother> Smoother
-            stopping: <core.alg.stopping> Stopper
             corrector: <core.multigrid.operators.tau_corrector> TauCorrector
         """
         self.net = None
@@ -46,8 +45,6 @@ class Level:
         self.prolongation = prolongation
         self.restriction = restriction
         self.corrector = corrector
-        self.stopper = stopping_measure
-        self.loss_fn = loss_fn
 
         # Data attributes
         # TODO: tokenize?
@@ -237,13 +234,13 @@ class VCycle(_BaseMultigridScheme):
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists
 
                 # Presmooth
-                fine_level.presmooth(fine_level.net, session.trainer)
+                fine_level.presmooth(fine_level.net, session.trainer, session.trainer.verbose)
 
                 #Restrict
                 fine_level.restrict(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
 
             # Smoothing with coarse-solver at the coarsest level
-            log.info(f"Scheme:Coarse-solving at the last level {self.levels[-1].net}")
+#            log.info(f"Scheme:Coarse-solving at the last level {self.levels[-1].net}")
             self.levels[-1].coarse_solve(level.net, session.trainer)
 
             ##############################################
@@ -257,14 +254,16 @@ class VCycle(_BaseMultigridScheme):
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # mod gets next level if it exists
 
                 fine_level.prolong(fine_level, coarse_level, session.trainer.dataloader, session.trainer.verbose)
-                fine_level.postsmooth(fine_level.net, session.trainer)
+                fine_level.postsmooth(fine_level.net, session.trainer, session.trainer.verbose)
 
 #                if session.trainer.verbose:
 #                    printer.printLevelInfo(self.levels)
 
             # Return the fine net
             if session.trainer.verbose:
-                log.info(f" \nFinished FAS Cycle")
+                log.info(f'================================='
+                         f'Finished FAS Cycle'
+                         f'=================================')
                 printer.print_level(self.levels)
 
             return self.levels[0].net

@@ -51,7 +51,7 @@ class SGDSmoother(_BaseSmoother):
         self.stopper = stopper
         self.log_interval = log_interval
 
-    def apply(self, model, dataloader, stopper, tau=None, verbose=False) -> None:
+    def apply(self, model, dataloader, tau=None, verbose=False) -> None:
         """
         Apply forward pass and backward pass to the model until stopping criteria is met.
         Optionally apply tau correction if tau_corrector is given.
@@ -69,7 +69,7 @@ class SGDSmoother(_BaseSmoother):
         # TODO: Refactor Stoppers
         # TODO: Fix logging
         while not self.stopper.should_stop():
-            for epoch in range(stopper.max_epochs):
+            for epoch in range(self.stopper.max_epochs):
                 for batch_idx, mini_batch_data in enumerate(dataloader, 0):
                     input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
                     self.loss_fn.to(model.device)

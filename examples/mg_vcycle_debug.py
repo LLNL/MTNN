@@ -42,7 +42,8 @@ net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, b
 # TODO: Control the learning rate per level
 # TODO: Control the l2 decay per stopper per level
 SGDparams = namedtuple("SGD", ["lr", "momentum", "l2_decay"])
-sgd_smoother = smoother.SGDSmoother(model=net, loss_fn =nn.NLLLoss(), optim_params=SGDparams(0.01, 0.00, 1e-2),
+loss_fn = nn.NLLLoss()
+sgd_smoother = smoother.SGDSmoother(model=net, loss_fn =loss_fn, optim_params=SGDparams(0.01, 0.00, 1e-2),
                                 stopper=stopping.EpochStopper(1), log_interval=10)
 prolongation_op = prolongation.PairwiseAggProlongation
 restriction_op = restriction.PairwiseAggRestriction
@@ -56,10 +57,9 @@ num_levels = 3
 FAS_levels = builder.build_vcycle_levels(num_levels=num_levels,  presmoother=sgd_smoother, postsmoother=sgd_smoother,
                                         prolongation_operator=prolongation_op(),
                                         restriction_operator=restriction_op(interpolator.PairwiseAggCoarsener),
-                                        corrector = tau(),
+                                        corrector = tau(loss_fn),
                                         coarsegrid_solver=sgd_smoother,
-                                        stopper=epoch_stopper,
-                                        loss_function=nn.NLLLoss())
+                                        stopper=epoch_stopper)
 
 mg_scheme = mg.VCycle(FAS_levels)
 training_alg = trainer.MultigridTrainer(dataloader=dataloader.trainloader,
