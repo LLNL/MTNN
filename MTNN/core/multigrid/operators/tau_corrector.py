@@ -104,9 +104,10 @@ class BasicTau(_BaseTauCorrector):
             coarse_level_rhsW.append(rhsW)
             coarse_level_rhsB.append(rhsB)
 
-#        if verbose:
-#            log.info(f"Restriction.Tau {rhsW = } {rhsB =}")
+        if verbose:
+            log.info(f"Restriction.Tau rhsW{rhsW} rhsB{rhsB}")
 
+        # Set rhs to coarse_level corrector
         coarse_level.corrector.rhs_W = coarse_level_rhsW
         coarse_level.corrector.rhs_B = coarse_level_rhsB
 

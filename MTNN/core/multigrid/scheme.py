@@ -243,8 +243,8 @@ class VCycle(_BaseMultigridScheme):
             # Down cycle - Coarsen/Restrict all levels
             ############################################
             for level_idx, level in enumerate(self.levels[:-1]):
-                if session.trainer.verbose:
-                    printer.print_levelstats(level_idx, num_levels, f"\nDOWN CYCLING {cycle=}: Restricting")
+                if trainer.verbose:
+                    printer.print_levelstats(level_idx, num_levels, f"\nDOWN CYCLING Cycle {cycle}: Restricting")
 
                 fine_level = level
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists

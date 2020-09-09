@@ -69,7 +69,7 @@ def print_model(model, msg="", **options) -> None:
 
 
 def print_tau(tau, loss, msg="") -> None:
-    log.info(f"{msg}{tau.__class__.__name__} {loss = }")
+    log.info(f"{msg}{tau.__class__.__name__} Loss = {loss}")
 
 
 def printGradNorm(loss, weights, bias) -> None:
