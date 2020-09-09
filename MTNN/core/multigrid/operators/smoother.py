@@ -8,8 +8,6 @@ from abc import ABC, abstractmethod
 import torch.optim as optim
 
 # local
-from MTNN.core.components import models, data
-from MTNN.core.alg import stopping
 from MTNN.utils import logger, printer, deviceloader
 
 log = logger.get_logger(__name__, write_to_file =True)
@@ -86,7 +84,7 @@ class SGDSmoother(_BaseSmoother):
 
                     # Apply Tau Correction
                     if tau:
-                        tau.correct(model, len(dataloader), loss, verbose)
+                        tau.correct(model, loss, len(dataloader), verbose)
 
                     # Backward
                     loss.backward()

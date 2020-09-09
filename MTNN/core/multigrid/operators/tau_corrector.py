@@ -28,12 +28,12 @@ class _BaseTauCorrector(ABC):
         self.rhs_B = None
 
     @abstractmethod
-    def compute_tau(self, **kwargs):
+    def compute_tau(self, fine_level, coarse_level, dataloader, operators, **kwargs):
         """Computes residual tau of the coarse-level"""
         raise NotImplementedError
 
     @abstractmethod
-    def correct(self, **kwargs):
+    def correct(self, model, loss, num_batches, **kwargs):
         """Returns corrected loss """
         raise NotImplementedError
 
@@ -111,7 +111,7 @@ class BasicTau(_BaseTauCorrector):
         coarse_level.corrector.rhs_W = coarse_level_rhsW
         coarse_level.corrector.rhs_B = coarse_level_rhsB
 
-    def correct(self, model, num_batches, loss, verbose=False):
+    def correct(self, model, loss, num_batches, verbose=False):
         if self.rhs_W and self.rhs_B is not None:
             try:
                 for layer_id in range(len(model.layers)):
