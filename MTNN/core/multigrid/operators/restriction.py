@@ -39,7 +39,7 @@ class PairwiseAggRestriction(_BaseRestriction):
     def __init__(self, matching_alg):
         self.matching_alg = matching_alg
 
-    def apply(self, fine_level: mg.Level, coarse_level: mg.Level, dataloader, corrector, verbose=False) -> None:
+    def apply(self, fine_level, coarse_level, dataloader, corrector, verbose=False) -> None:
         """
         Apply Restriction on the fine_level to return a restricted coarse-level net
         and compute the coarse-level's residual tau correction.
@@ -54,8 +54,10 @@ class PairwiseAggRestriction(_BaseRestriction):
             None
         """
 
+
         # setup
         # TODO: refactor setup
+        assert fine_level.id < coarse_level.id
         fine_level.interpolation_data = interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
         assert fine_level.interpolation_data is not None
 

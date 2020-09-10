@@ -5,7 +5,7 @@ log = logger.get_logger(__name__, write_to_file =True)
 
 # Public
 __all__ = ['print_smoother',
-           'print_cycle_info',
+           'print_cycleheader',
            'print_levelstats',
            'print_level',
            'print_model',
@@ -46,7 +46,7 @@ def print_smoother(epoch:int, loss:int, batch_idx:int, dataloader, stopper, log_
                  f"\t\tLoss: {loss.item()}")
 
 
-def print_cycle_info(cycleclass) -> None:
+def print_cycleheader(cycleclass) -> None:
     """
     Print Cycle class name.
 
@@ -56,9 +56,22 @@ def print_cycle_info(cycleclass) -> None:
     Returns:
     """
     log.info(format_header(f"Applying {cycleclass.__class__.__name__}"))
+    log.info(f"Number of Cycles: {cycleclass.cycles}")
 
 
-def print_levelstats(level_idx: int, num_levels: int, msg="", ) -> None:
+def print_cycle_status(cycleclass, cycle=None) -> None:
+    """
+     Print Cycle class name.
+
+     Args:
+         cycleclass: <MTNN.core.multigrid.scheme> subclass of BaseMultigridScheme
+
+     Returns:
+     """
+    log.info(format_header(f"CYCLE {cycle + 1} /{cycleclass.cycles}"))
+
+
+def print_levelstats(cycle, maxcycles, level_idx: int, num_levels: int, msg="", ) -> None:
     """
     Print Level ID and number of remain levels to iterate through.
     Args:
@@ -68,7 +81,7 @@ def print_levelstats(level_idx: int, num_levels: int, msg="", ) -> None:
     Returns:
         NOne
     """
-    log.info(f"{msg} Level {level_idx}: {level_idx + 1}/{num_levels}")
+    log.info(f"{msg} Cycle {cycle +1}/{maxcycles} Level {level_idx}: {level_idx + 1}/{num_levels}")
 
 
 def print_level(levels: list) -> None:

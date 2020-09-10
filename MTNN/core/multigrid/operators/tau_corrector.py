@@ -60,6 +60,7 @@ class BasicTau(_BaseTauCorrector):
         # ==============================
         #  coarse_level rhs
         # ==============================
+        assert fine_level.id < coarse_level.id
         num_fine_layers = len(fine_level.net.layers)
 
         # Get the residual

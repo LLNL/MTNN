@@ -29,9 +29,9 @@ torch.set_printoptions(precision=5)
 #=====================================
 #test_data = data.TestData(trainbatch_size=10, testbatch_size=10)
 fake_data = data.FakeData(imagesize=(1, 2, 2), num_classes=2, trainset_size=10, trainbatch_size= 1,
-                          testset_size= 10,testbatch_size=10)
+                          testset_size= 10, testbatch_size=10)
 #vcycle_data = data.CycleLoader(fake_data.trainloader, alt=True)
-net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax, weight_fill = 1, bias_fill=1)
+net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax)
 
 # With Mnist
 #data = data.MnistData(trainbatch_size=100, testbatch_size=100)
@@ -78,11 +78,12 @@ for level_idx in range(0, num_levels):
                       corrector = tau(loss_fn))
 
 
+
     FAS_levels.append(aLevel)
 
 
-mg_scheme = mg.VCycle(FAS_levels)
-training_alg = trainer.MultigridTrainer(dataloader=fake_data.trainloader,
+mg_scheme = mg.VCycle(FAS_levels, cycles=2)
+training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
                                         verbose=True,
                                         log=True,
                                         save=False,
@@ -93,7 +94,7 @@ training_alg = trainer.MultigridTrainer(dataloader=fake_data.trainloader,
 #=====================================
 print('Starting Training')
 start = time.perf_counter()
-trained_model = training_alg.train(model=net, multigrid=mg_scheme, cycles=1)
+trained_model = training_alg.train(model=net, dataloader=fake_data.trainloader)
 stop = time.perf_counter()
 print('Finished Training (%.3fs)' % (stop - start))
 #=====================================

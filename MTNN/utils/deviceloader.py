@@ -1,5 +1,8 @@
-# Helper functions for GPU-usage
+"""
+ Helper functions to enable GPUs
+"""
 import torch 
+
 
 def get_device(verbose=False):
     """
@@ -15,10 +18,11 @@ def get_device(verbose=False):
         print(f"Running on {device.type}")
         if device.type == "cuda":
             print(torch.cuda.get_device_name(0))
-            print(torch.cuda.get_device_properties())
+            print(torch.cuda.get_device_properties(device))
             print('Memory Allocated', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
 
     return device
+
 
 def load_data(data, device): 
     """

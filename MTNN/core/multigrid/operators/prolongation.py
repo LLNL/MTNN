@@ -95,7 +95,7 @@ class LowerTriangleProlongation(_BaseProlongation):
     def __init__(self, expansion_factor: int):
         self.expansion_factor = expansion_factor
 
-    def apply(self, fine_level, coarse_level, dataloader, verbose=False):
+    def apply(self, coarse_level, fine_level, dataloader, verbose=False):
         """
         Takes a sourcemodel. Copies and updates weights/biases of each layer of sourcemodel into a new model with
         new block lower triangular weight matrix and augmented bias vector according to some expansion factor.
@@ -196,10 +196,13 @@ class PairwiseAggProlongation(_BaseProlongation):
         Returns:
 
         """
+
         # Check PairwiseAggSetup
+        assert fine_level.id < coarse_level.id
         assert fine_level.interpolation_data is not None
         num_coarse_layers = len(coarse_level.net.layers)
-        R_array, P_array = [*fine_level.interpolation_data]
+
+        R_array, P_array = fine_level.interpolation_data
 
         for layer_id in range(num_coarse_layers):
             W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
