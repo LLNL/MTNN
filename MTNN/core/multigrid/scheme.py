@@ -51,57 +51,53 @@ class Level:
         # TODO: tokenize?
         self.interpolation_data = None
         # Lhs
-        self.Winit = None  # list of tensors
-        self.Binit = None  # list of tensors
+        self.Winit = None
+        self.Binit = None
 
     def presmooth(self, model, trainer, verbose=False):
         try:
             if verbose:
-                log.info(f'================================='
-                         f'PRESMOOTHING {self.presmoother.__class__.__name__}'
-                         f'=================================')
             self.presmoother.apply(model, trainer.dataloader, tau=self.corrector, verbose=trainer.verbose)
+                log.info(printer.format_header(f'PRESMOOTHING {self.presmoother.__class__.__name__}',
+                                               width=100, border="="))
+            self.presmoother.apply(model, dataloader, tau=self.corrector, verbose=verbose)
         except Exception:
             raise
 
     def postsmooth(self, model, trainer, verbose=False):
         try:
             if verbose:
-                log.info(f'================================='
-                         f'POSTSMOOTHING {self.postsmoother.__class__.__name__} '
-                         f'=================================')
             self.postsmoother.apply(model, trainer.dataloader, tau=self.corrector, verbose=trainer.verbose)
+                log.info(printer.format_header(f'POSTSMOOTHING {self.postsmoother.__class__.__name__}',
+                                               width=100, border="="))
         except Exception:
            raise
 
     def coarse_solve(self, model, trainer, verbose=False):
         try:
             if verbose:
-                log.info( f'================================='
-                          f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}'
-                          f'=================================')
             self.coarsegrid_solver.apply(model, trainer.dataloader, tau=self.corrector,
                                          verbose=trainer.verbose)
+                log.info(printer.format_header(f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}',
+                                               width=100, border="*"))
         except Exception:
             raise
 
     def prolong(self, fine_level, coarse_level, dataloader, verbose=False):
         try:
             if verbose:
-                log.info(f'================================='
-                         f'PROLONGATING {self.prolongation.__class__.__name__}'
-                         f'=================================')
             self.prolongation.apply(fine_level, coarse_level, dataloader, verbose)
+                log.info(printer.format_header(f'PROLONGATING {self.prolongation.__class__.__name__}',
+                                                width=100, border="="))
         except Exception:
             raise
 
     def restrict(self, fine_level, coarse_level, dataloader, verbose=False):
         try:
             if verbose:
-                log.info(f'================================='
-                         f'RESTRICTING {self.restriction.__class__.__name__}'
-                         f'=================================')
             self.restriction.apply(fine_level, coarse_level, dataloader, self.corrector,  verbose)
+                log.info(printer.format_header(f'RESTRICTING {self.restriction.__class__.__name__}',
+                                               width=100, border="="))
         except Exception:
             raise
 

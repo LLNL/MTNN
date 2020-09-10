@@ -5,13 +5,37 @@ log = logger.get_logger(__name__, write_to_file =True)
 
 # Public
 __all__ = ['print_smoother',
+           'print_cycle_info',
            'print_levelstats',
-           'print_model']
+           'print_level',
+           'print_model',
+           'print_tau']
+
+
+def format_header(text: str, width=100, border="=") -> str:
+    """
+    Centers string with a border.
+
+    Args:
+        text: <str> String to format
+        width: <int> Length of string
+        border: <str> Character to fill missing space on either side.
+    Returns:
+        Formatted string
+    """
+    return f"{text}".center(width, border)
 
 
 def print_smoother(epoch:int, loss:int, batch_idx:int, dataloader, stopper, log_interval: int, tau:None) -> None:
-    """ Print based on specified logging interval.
+    """
+    Print epoch, minibatch and loss based on specified logging interval.
+
     Args:
+        epoch: <int>
+        loss: <Tensor>
+        batch_idx: <int>
+        dataloader: <MTNN.core.components.data> subclass of BaseDataLoader
+        stopper: <MTNN.core.alg.stopping> subclass of BaseStopper
         log_interval: <int> Specifies batch intervals to log/print-out
     """
     batch_idx = batch_idx + 1
@@ -23,21 +47,40 @@ def print_smoother(epoch:int, loss:int, batch_idx:int, dataloader, stopper, log_
 
 
 def print_cycle_info(cycleclass) -> None:
-    log.info("=========================================")
-    log.info(f"Applying {cycleclass.__class__.__name__}")
-    log.info("=========================================")
+    """
+    Print Cycle class name.
+
+    Args:
+        cycleclass: <MTNN.core.multigrid.scheme> subclass of BaseMultigridScheme
+
+    Returns:
+    """
+    log.info(format_header(f"Applying {cycleclass.__class__.__name__}"))
+
 
 def print_levelstats(level_idx: int, num_levels: int, msg="", ) -> None:
     """
+    Print Level ID and number of remain levels to iterate through.
     Args:
-        level_idx: <int> Level Id
+        level_idx: <int> Level ID
         num_levels: <int> Number of Levels
         msg: <str> Message to print
+    Returns:
+        NOne
     """
     log.info(f"{msg} Level {level_idx}: {level_idx + 1}/{num_levels}")
 
 
 def print_level(levels: list) -> None:
+    """
+    Given a list of level, logs each Level instance's id and  attributes
+
+    Args:
+        levels: List of <MTNN.core.multigrid.scheme> Level objects
+
+    Returns:
+        None
+    """
     for idx, level in enumerate(levels):
         log.info(f"Level {idx}")
         level.view()
@@ -45,6 +88,17 @@ def print_level(levels: list) -> None:
 
 def print_model(model, msg="", **options) -> None:
     # TODO: Refactor
+    """
+    For debugging. Prints model parameters.
+
+    Args:
+        model: <MTNN.core.components.model>
+        msg: <str>
+        **options: <bool>
+
+    Returns:
+        None
+    """
     try:
         if 'val' in options and options['val']:
             log.info(f"{msg} \n Model Parameters")
@@ -69,6 +123,17 @@ def print_model(model, msg="", **options) -> None:
 
 
 def print_tau(tau, loss, msg="") -> None:
+    """
+    Prints tau_corrector class with the loss.
+
+    Args:
+        tau: <MTNN.core.multigrid.operators.tau_corrector>
+        loss: <Tensor>
+        msg: <str>
+
+    Returns:
+        None
+    """
     log.info(f"{msg}{tau.__class__.__name__} Loss = {loss}")
 
 
