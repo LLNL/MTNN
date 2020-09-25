@@ -69,36 +69,33 @@ class SGDSmoother(_BaseSmoother):
         """
         # TODO: Refactor Stoppers with callbacks
         # TODO: Fix logging
-        while not self.stopper.should_stop():
-            for epoch in range(self.stopper.max_epochs):
-                for batch_idx, mini_batch_data in enumerate(dataloader, 0):
-                    input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
-                    self.loss_fn.to(model.device)
-                   
-                    # Zero the parameter gradients
-                    self.optimizer.zero_grad()
+        # while not self.stopper.should_stop():
+        #     for epoch in range(self.stopper.max_epochs):
+        #         for batch_idx, mini_batch_data in enumerate(dataloader, 0):
+        for batch_idx, mini_batch_data in enumerate(dataloader):
+            input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
+            self.loss_fn.to(model.device)
+            
+            # Zero the parameter gradients
+            self.optimizer.zero_grad()
+            
+            # Forward
+            outputs = model(input_data)
+            loss = self.loss_fn(outputs, target_data)
 
-                    # Forward
-                    outputs = model(input_data)
-                    loss = self.loss_fn(outputs, target_data)
+            # Apply Tau Correction
+            if tau:
+                tau.correct(model, loss, len(dataloader), verbose)
 
-                    # Apply Tau Correction
-                    if tau:
-                        tau.correct(model, loss, len(dataloader), verbose)
+            # Backward
+            loss.backward()
 
-                    # Backward
-                    loss.backward()
-
-                    self.optimizer.step()
-                    if verbose:
-                        # Show status bar
-                        #total_work = len(dataloader)
-                        #logger.progressbar(batch_idx, total_work, status = "Training")
-                        printer.print_smoother(epoch, loss, batch_idx, dataloader, self.stopper, self.log_interval, tau)
-
-                self.stopper.track()
-        self.stopper.reset()
-
+            self.optimizer.step()
+            if verbose:
+                # Show status bar
+                #total_work = len(dataloader)
+                #logger.progressbar(batch_idx, total_work, status = "Training")
+                printer.print_smoother(epoch, loss, batch_idx, dataloader, self.stopper, self.log_interval, tau)
 
 
 

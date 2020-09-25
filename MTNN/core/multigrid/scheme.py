@@ -118,16 +118,20 @@ class _BaseMultigridScheme(ABC):
     """
     Base Multigrid Hierarchy
     """
-    def __init__(self, levels=None, cycles=1):
+    def __init__(self, levels=None, cycles=1, subsetloader = NextKLoader(10)):
         """
         Args:
             levels: List of <core.alg.multigrid.multigrid.Level> Level objects
             cycles: <int> Number of cycle iterations
+            subsetloader: <core.alg.multigrid.operators.subsetloader> Create a
+                           new dataloader focused on a subset of data for each 
+                           cycle.
         """
         if levels is None:
             levels = []
         self.levels = levels
         self.cycles = cycles
+        self.subsetloader = subsetloader
 
     def setup(self, model):
         """Set the first level's model"""
@@ -231,6 +235,7 @@ class VCycle(_BaseMultigridScheme):
 
         # Iteratively restrict each level's grid
         for cycle in range(0, self.cycles):
+            cycle_dataloader = self.subsetloader.get_subset_dataloader(dataloader)
             if trainer.verbose:
                 printer.print_cycle_status(self, cycle)
             #############################################
@@ -244,13 +249,13 @@ class VCycle(_BaseMultigridScheme):
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists
 
                 # Presmooth
-                fine_level.presmooth(fine_level.net, dataloader, trainer.verbose)
+                fine_level.presmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
                 # Restrict
-                fine_level.restrict(fine_level, coarse_level, dataloader, trainer.verbose)
+                fine_level.restrict(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
 
             # Smoothing with coarse-solver at the coarsest level
-            self.levels[-1].coarse_solve(self.levels[-1].net, dataloader, trainer.verbose)
+            self.levels[-1].coarse_solve(self.levels[-1].net, cycle_dataloader, trainer.verbose)
 
             ##############################################
             # Up Cycle - Interpolate/Prolongate back up to  all levels
@@ -262,8 +267,8 @@ class VCycle(_BaseMultigridScheme):
                 fine_level = self.levels[level_idx]
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # mod gets next level if it exists
 
-                fine_level.prolong(fine_level, coarse_level, dataloader, trainer.verbose)
-                fine_level.postsmooth(fine_level.net, dataloader, trainer.verbose)
+                fine_level.prolong(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
+                fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
         # Return the fine net
         if trainer.verbose:

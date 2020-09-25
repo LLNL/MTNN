@@ -10,6 +10,9 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 
+import sys
+sys.path.append("../../mtnnpython")
+
 # local
 from MTNN.core.components import data, models
 from MTNN.core.multigrid.operators import *
