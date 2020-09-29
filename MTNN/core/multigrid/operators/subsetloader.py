@@ -14,7 +14,7 @@ from MTNN.utils import logger, printer, deviceloader
 log = logger.get_logger(__name__, write_to_file =True)
 
 # Public
-__all__ = ['NextKCollector']
+__all__ = ['WholeSetLoader, NextKLoader']
 
 
 ####################################################################
@@ -34,9 +34,9 @@ class _BaseSubsetLoader(ABC):
     
     @abstractmethod
     def get_subset_dataloader(self, dataloader):
-    """Collect some minibatches and create a dataloader to be used during
-    the next cycle.
-    """
+        """Collect some minibatches and create a dataloader to be used during
+        the next cycle.
+        """
         raise NotImplementedError
 
 

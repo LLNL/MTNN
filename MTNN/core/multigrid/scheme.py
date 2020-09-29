@@ -13,6 +13,7 @@ import torch
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
 import MTNN.utils.datatypes as mgdata
+from MTNN.core.multigrid.operators.subsetloader import WholeSetLoader
 
 log = log.get_logger(__name__, write_to_file =True)
 
@@ -118,7 +119,7 @@ class _BaseMultigridScheme(ABC):
     """
     Base Multigrid Hierarchy
     """
-    def __init__(self, levels=None, cycles=1, subsetloader = NextKLoader(10)):
+    def __init__(self, levels=None, cycles=1, subsetloader = WholeSetLoader()):
         """
         Args:
             levels: List of <core.alg.multigrid.multigrid.Level> Level objects

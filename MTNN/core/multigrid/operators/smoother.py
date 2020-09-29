@@ -21,21 +21,19 @@ __all__ = ['SGDSmoother']
 ###################################################################
 class _BaseSmoother(ABC):
     """Overwrite this"""
-    def __init__(self, model, loss_fn, optim_params, stopper, log_interval=0) -> None:
+    def __init__(self, model, loss_fn, optim_params, log_interval=0) -> None:
         """
         Args:
             model:  <core.components.models.BaseModel>
             loss_fn:  <torch.nn.modules.loss> Instance of a PyTorch loss function
             optim_params: <collections.namedtuple> Named Tuple of optimizer parameters
             log_interval: <int> Controls frequency (every # of minibatches) to log
-            stopper: <core.alg.stopping> Stopper
         """
         self.loss_fn = loss_fn
         self.optimizer = optim.SGD(model.parameters(),
                                    lr = optim_params.lr,
                                    momentum = optim_params.momentum,
                                    weight_decay = optim_params.l2_decay)
-        self.stopper = stopper
         self.log_interval = log_interval
 
     @abstractmethod
@@ -47,11 +45,11 @@ class _BaseSmoother(ABC):
 # Implementation
 ####################################################################
 class SGDSmoother(_BaseSmoother):
-    def __init__(self, model, loss_fn, optim_params, stopper,  log_interval=0) -> None:
+    def __init__(self, model, loss_fn, optim_params, log_interval=0) -> None:
         """
         "Smooths" the error by applying Stochastic Gradient Descent on the model
         """
-        super().__init__(model, loss_fn, optim_params, stopper, log_interval)
+        super().__init__(model, loss_fn, optim_params, log_interval)
 
     def apply(self, model, dataloader, tau=None, verbose=False) -> None:
         """
@@ -81,7 +79,7 @@ class SGDSmoother(_BaseSmoother):
 
             # Apply Tau Correction
             if tau:
-                tau.correct(model, loss, len(dataloader), verbose)
+                tau.correct(model, loss, batch_idx, len(dataloader), verbose)
 
             # Backward
             loss.backward()
@@ -91,7 +89,7 @@ class SGDSmoother(_BaseSmoother):
                 # Show status bar
                 #total_work = len(dataloader)
                 #logger.progressbar(batch_idx, total_work, status = "Training")
-                printer.print_smoother(epoch, loss, batch_idx, dataloader, self.stopper, self.log_interval, tau)
+                printer.print_smoother(loss, batch_idx, dataloader, self.log_interval, tau)
 
 
 

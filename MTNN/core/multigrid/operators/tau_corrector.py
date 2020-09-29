@@ -43,7 +43,7 @@ class _BaseTauCorrector(ABC):
 ###################################################################
 # Implementation
 ####################################################################
-def get_tau_for_data(fine_level, coarse_level, dataloader, operators, verbose=False):
+def get_tau_for_data(fine_level, coarse_level, dataloader, operators, loss_fn, verbose=False):
         """
         Compute the coarse-level residual tau correction. Returns
         Args:
@@ -63,8 +63,8 @@ def get_tau_for_data(fine_level, coarse_level, dataloader, operators, verbose=Fa
 
         # Get the residual
         # get the gradients on the fine level and coarse_level
-        fine_level_grad = fine_level.net.getGrad(dataloader, self.loss_fn)
-        coarse_level_grad = coarse_level.net.getGrad(dataloader, self.loss_fn)
+        fine_level_grad = fine_level.net.getGrad(dataloader, loss_fn)
+        coarse_level_grad = coarse_level.net.getGrad(dataloader, loss_fn)
 
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
         coarse_level_rhsW = []
@@ -113,7 +113,8 @@ class BasicTau(_BaseTauCorrector):
         super().__init__(loss_fn)
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
-        (rhsW, rhsB) = get_tau_for_data(fine_level, coarse_level, dataloader, operators, verbose)
+        (rhsW, rhsB) = get_tau_for_data(fine_level, coarse_level, dataloader,
+                                        operators, self.loss_fn, verbose)
         coarse_level.corrector.rhs_W = rhsW
         coarse_level.corrector.rhs_B = rhsB
         
@@ -141,7 +142,9 @@ class OneAtaTimeTau(_BaseTauCorrector):
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
         self.tau_corrections = []
         for batch_idx, mini_batch_data in enumerate(dataloader):
-            curr_rhsW, curr_rhsB = get_tau_for_data(fine_level, coarse_level, (dataloader,), operators, verbose)
+            curr_rhsW, curr_rhsB = get_tau_for_data(fine_level, coarse_level,
+                                                    (dataloader,), operators,
+                                                    self.loss_fn, verbose)
             self.tau_corrections.append((curr_rhsW, curr_rhsB))
 
     def correct(self, model, loss, batch_idx, num_batches, verbose=False):
