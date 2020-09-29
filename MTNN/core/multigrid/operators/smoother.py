@@ -67,11 +67,7 @@ class SGDSmoother(_BaseSmoother):
         Returns:
             None
         """
-        # TODO: Refactor Stoppers with callbacks
         # TODO: Fix logging
-        # while not self.stopper.should_stop():
-        #     for epoch in range(self.stopper.max_epochs):
-        #         for batch_idx, mini_batch_data in enumerate(dataloader, 0):
         for batch_idx, mini_batch_data in enumerate(dataloader):
             input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
             self.loss_fn.to(model.device)

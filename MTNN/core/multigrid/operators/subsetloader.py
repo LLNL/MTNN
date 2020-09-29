@@ -21,6 +21,13 @@ __all__ = ['NextKCollector']
 # Interface
 ###################################################################
 class _BaseSubsetLoader(ABC):
+    """Base class for all Subsetloaders.
+
+    A Subsetloader will collect some minibatches of training data and
+    then generate a dataloader using just those minibatches. Used to
+    collect a subset of data to focus on e.g. during a V-cycle.
+    """
+    
     """Overwrite this"""
     def __init__(self) -> None:
         pass
@@ -37,6 +44,9 @@ class _BaseSubsetLoader(ABC):
 # Implementations
 ####################################################################
 class NextKLoader(_BaseSubsetLoader):
+    """Collect the next k minibatches of data, possibly reordered.
+    """
+    
     def __init__(self, num_minibatches) -> None:
         """
         Create a dataloader focused on just the next k minibatches
@@ -57,7 +67,7 @@ class NextKLoader(_BaseSubsetLoader):
             indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, amount_from_front))
             self.curr_ind = amount_from_front
         return torch.utils.data.DataLoader(dataloader.dataset, batch_size = dataloader.batch_size,
-                                           sampler=torch.utils.data.SubsetRandomSampler(indices))
+                                           sampler=indices)
 
     
 class WholeSetLoader(_BaseSubsetLoader):
