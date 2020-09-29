@@ -46,7 +46,6 @@ net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax)
 SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
 prolongation_op = prolongation.PairwiseAggProlongation
 restriction_op = restriction.PairwiseAggRestriction
-epoch_stopper = stopping.EpochStopper
 tau = tau_corrector.BasicTau
 
 
