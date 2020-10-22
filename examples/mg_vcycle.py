@@ -14,7 +14,7 @@ import sys
 sys.path.append("../../mtnnpython")
 
 # local
-from MTNN.core.components import data, models
+from MTNN.core.components import data, models, subsetloader
 from MTNN.core.multigrid.operators import *
 from MTNN.core.alg import trainer, evaluator
 import MTNN.core.multigrid.scheme as mg

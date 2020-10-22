@@ -3,5 +3,4 @@ __all__ = ['smoother',
            'interpolator',
            'prolongation',
            'restriction',
-           'tau_corrector',
-           'subsetloader']
+           'tau_corrector']

@@ -39,7 +39,8 @@ class _BaseTauCorrector(ABC):
         """Returns corrected loss """
         raise NotImplementedError
 
-    def get_tau_for_data(fine_level, coarse_level, dataloader, operators, loss_fn, verbose=False):
+    def get_tau_for_data(self, fine_level, coarse_level, dataloader, operators,
+                         loss_fn, verbose=False):
         """
         Compute the coarse-level residual tau correction. Returns
         Args:
@@ -112,8 +113,8 @@ class BasicTau(_BaseTauCorrector):
         super().__init__(loss_fn)
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
-        (rhsW, rhsB) = get_tau_for_data(fine_level, coarse_level, dataloader,
-                                        operators, self.loss_fn, verbose)
+        (rhsW, rhsB) = self.get_tau_for_data(fine_level, coarse_level, dataloader,
+                                             operators, self.loss_fn, verbose)
         coarse_level.corrector.rhs_W = rhsW
         coarse_level.corrector.rhs_B = rhsB
         
@@ -141,8 +142,8 @@ class OneAtaTimeTau(_BaseTauCorrector):
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
         self.tau_corrections = []
         for batch_idx, mini_batch_data in enumerate(dataloader):
-            curr_rhsW, curr_rhsB = get_tau_for_data(fine_level, coarse_level,
-                                                    (dataloader,), operators,
+            curr_rhsW, curr_rhsB = self.get_tau_for_data(fine_level, coarse_level,
+                                                         (dataloader,), operators,
                                                     self.loss_fn, verbose)
             self.tau_corrections.append((curr_rhsW, curr_rhsB))
 

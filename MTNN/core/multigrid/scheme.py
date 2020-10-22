@@ -13,7 +13,7 @@ import torch
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
 import MTNN.utils.datatypes as mgdata
-from MTNN.core.multigrid.operators.subsetloader import WholeSetLoader
+from MTNN.core.components.subsetloader import WholeSetLoader
 
 log = log.get_logger(__name__, write_to_file =True)
 
