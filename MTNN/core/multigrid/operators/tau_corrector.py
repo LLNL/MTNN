@@ -39,11 +39,7 @@ class _BaseTauCorrector(ABC):
         """Returns corrected loss """
         raise NotImplementedError
 
-
-###################################################################
-# Implementation
-####################################################################
-def get_tau_for_data(fine_level, coarse_level, dataloader, operators, loss_fn, verbose=False):
+    def get_tau_for_data(fine_level, coarse_level, dataloader, operators, loss_fn, verbose=False):
         """
         Compute the coarse-level residual tau correction. Returns
         Args:
@@ -108,6 +104,9 @@ def get_tau_for_data(fine_level, coarse_level, dataloader, operators, loss_fn, v
 
         return coarse_level_rhsW, coarse_level_rhsB    
 
+###################################################################
+# Implementation
+####################################################################
 class BasicTau(_BaseTauCorrector):
     def __init__(self, loss_fn):
         super().__init__(loss_fn)
