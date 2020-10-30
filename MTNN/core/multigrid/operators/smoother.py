@@ -21,21 +21,19 @@ __all__ = ['SGDSmoother']
 ###################################################################
 class _BaseSmoother(ABC):
     """Overwrite this"""
-    def __init__(self, model, loss_fn, optim_params, stopper, log_interval=0) -> None:
+    def __init__(self, model, loss_fn, optim_params, log_interval=0) -> None:
         """
         Args:
             model:  <core.components.models.BaseModel>
             loss_fn:  <torch.nn.modules.loss> Instance of a PyTorch loss function
             optim_params: <collections.namedtuple> Named Tuple of optimizer parameters
             log_interval: <int> Controls frequency (every # of minibatches) to log
-            stopper: <core.alg.stopping> Stopper
         """
         self.loss_fn = loss_fn
         self.optimizer = optim.SGD(model.parameters(),
                                    lr = optim_params.lr,
                                    momentum = optim_params.momentum,
                                    weight_decay = optim_params.l2_decay)
-        self.stopper = stopper
         self.log_interval = log_interval
 
     @abstractmethod
@@ -47,11 +45,11 @@ class _BaseSmoother(ABC):
 # Implementation
 ####################################################################
 class SGDSmoother(_BaseSmoother):
-    def __init__(self, model, loss_fn, optim_params, stopper,  log_interval=0) -> None:
+    def __init__(self, model, loss_fn, optim_params, log_interval=0) -> None:
         """
         "Smooths" the error by applying Stochastic Gradient Descent on the model
         """
-        super().__init__(model, loss_fn, optim_params, stopper, log_interval)
+        super().__init__(model, loss_fn, optim_params, log_interval)
 
     def apply(self, model, dataloader, tau=None, verbose=False) -> None:
         """
@@ -67,38 +65,31 @@ class SGDSmoother(_BaseSmoother):
         Returns:
             None
         """
-        # TODO: Refactor Stoppers with callbacks
         # TODO: Fix logging
-        while not self.stopper.should_stop():
-            for epoch in range(self.stopper.max_epochs):
-                for batch_idx, mini_batch_data in enumerate(dataloader, 0):
-                    input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
-                    self.loss_fn.to(model.device)
-                   
-                    # Zero the parameter gradients
-                    self.optimizer.zero_grad()
+        for batch_idx, mini_batch_data in enumerate(dataloader):
+            input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
+            self.loss_fn.to(model.device)
+            
+            # Zero the parameter gradients
+            self.optimizer.zero_grad()
+            
+            # Forward
+            outputs = model(input_data)
+            loss = self.loss_fn(outputs, target_data)
 
-                    # Forward
-                    outputs = model(input_data)
-                    loss = self.loss_fn(outputs, target_data)
+            # Apply Tau Correction
+            if tau:
+                tau.correct(model, loss, batch_idx, len(dataloader), verbose)
 
-                    # Apply Tau Correction
-                    if tau:
-                        tau.correct(model, loss, len(dataloader), verbose)
+            # Backward
+            loss.backward()
 
-                    # Backward
-                    loss.backward()
-
-                    self.optimizer.step()
-                    if verbose:
-                        # Show status bar
-                        #total_work = len(dataloader)
-                        #logger.progressbar(batch_idx, total_work, status = "Training")
-                        printer.print_smoother(epoch, loss, batch_idx, dataloader, self.stopper, self.log_interval, tau)
-
-                self.stopper.track()
-        self.stopper.reset()
-
+            self.optimizer.step()
+            if verbose:
+                # Show status bar
+                #total_work = len(dataloader)
+                #logger.progressbar(batch_idx, total_work, status = "Training")
+                printer.print_smoother(loss, batch_idx, dataloader, self.log_interval, tau)
 
 
 

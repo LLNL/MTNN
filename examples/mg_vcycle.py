@@ -10,10 +10,13 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 
+import sys
+sys.path.append("../../mtnnpython")
+
 # local
-from MTNN.core.components import data, models
+from MTNN.core.components import data, models, subsetloader
 from MTNN.core.multigrid.operators import *
-from MTNN.core.alg import trainer, evaluator, stopping
+from MTNN.core.alg import trainer, evaluator
 import MTNN.core.multigrid.scheme as mg
 
 # For reproducibility
@@ -43,9 +46,8 @@ net = models.MultiLinearNet([4, 3, 2], F.relu, F.log_softmax)
 SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
 prolongation_op = prolongation.PairwiseAggProlongation
 restriction_op = restriction.PairwiseAggRestriction
-epoch_stopper = stopping.EpochStopper
 tau = tau_corrector.BasicTau
-
+subsetloader_type = subsetloader.WholeSetLoader
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = 3
@@ -54,19 +56,15 @@ FAS_levels = []
 for level_idx in range(0, num_levels):
     if level_idx == 0:
         optim_params = SGDparams(lr=0.01, momentum=0.00, l2_decay=1e-2)
-        epoch_stopper = stopping.EpochStopper(1)
         loss_fn = nn.CrossEntropyLoss()
     elif level_idx == 1:
         optim_params = SGDparams(lr=0.01, momentum=0.00, l2_decay=1e-2)
-        epoch_stopper = stopping.EpochStopper(2)
         loss_fn = nn.NLLLoss()
     else:
         optim_params = SGDparams(lr=0.01, momentum=0.00, l2_decay=1e-2)
-        epoch_stopper = stopping.EpochStopper(3)
         loss_fn = nn.NLLLoss()
     sgd_smoother = smoother.SGDSmoother(model = net, loss_fn = loss_fn,
                                         optim_params = optim_params,
-                                        stopper = epoch_stopper,
                                         log_interval = 1)
 
     aLevel = mg.Level(id=level_idx,
@@ -82,7 +80,7 @@ for level_idx in range(0, num_levels):
     FAS_levels.append(aLevel)
 
 
-mg_scheme = mg.VCycle(FAS_levels, cycles=2)
+mg_scheme = mg.VCycle(FAS_levels, cycles = 2, subsetloader = subsetloader_type())
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
                                         verbose=True,
                                         log=True,

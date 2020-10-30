@@ -26,23 +26,19 @@ def format_header(text: str, width=100, border="=") -> str:
     return f"{text}".center(width, border)
 
 
-def print_smoother(epoch:int, loss:int, batch_idx:int, dataloader, stopper, log_interval: int, tau:None) -> None:
+def print_smoother(loss:int, batch_idx:int, dataloader, log_interval: int, tau:None) -> None:
     """
-    Print epoch, minibatch and loss based on specified logging interval.
+    Print minibatch and loss based on specified logging interval.
 
     Args:
-        epoch: <int>
         loss: <Tensor>
         batch_idx: <int>
         dataloader: <MTNN.core.components.data> subclass of BaseDataLoader
-        stopper: <MTNN.core.alg.stopping> subclass of BaseStopper
         log_interval: <int> Specifies batch intervals to log/print-out
     """
     batch_idx = batch_idx + 1
-    epoch = epoch + 1
     if ((batch_idx * dataloader.batch_size) % log_interval) == 0:
-        log.info(f"Epoch: {epoch}/{stopper.max_epochs}"
-                 f"\t{(batch_idx) * dataloader.batch_size} / {len(dataloader.dataset)}"
+        log.info(f"\t{(batch_idx) * dataloader.batch_size} / {len(dataloader.dataset)}"
                  f"\t\tLoss: {loss.item()}")
 
 
