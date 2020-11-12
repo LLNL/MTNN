@@ -38,7 +38,7 @@ def print_smoother(loss:int, batch_idx:int, dataloader, log_interval: int, tau:N
     """
     batch_idx = batch_idx + 1
     if ((batch_idx * dataloader.batch_size) % log_interval) == 0:
-        log.info(f"\t{(batch_idx) * dataloader.batch_size} / {len(dataloader.dataset)}"
+        log.info(f"\t{(batch_idx) * dataloader.batch_size} / {len(dataloader) * dataloader.batch_size}"
                  f"\t\tLoss: {loss.item()}")
 
 

@@ -11,6 +11,8 @@ from abc import ABC, abstractmethod
 # local
 from MTNN.utils import logger, printer, deviceloader
 
+import torch
+
 log = logger.get_logger(__name__, write_to_file =True)
 
 # Public
@@ -57,6 +59,9 @@ class NextKLoader(_BaseSubsetLoader):
 
     def get_subset_dataloader(self, dataloader):
         nextksize = self.num_minibatches * dataloader.batch_size
+        if (nextksize > len(dataloader.dataset)):
+            raise ValueError("Trying to make a subset of size {} but whole dataset is only of size {}".
+                             format(nextksize, len(dataloader.dataset)))
         if self.curr_ind + nextksize <= len(dataloader.dataset):
             indices = list(range(self.curr_ind, self.curr_ind + self.num_minibatches * dataloader.batch_size))
             self.curr_ind += nextksize
@@ -67,7 +72,7 @@ class NextKLoader(_BaseSubsetLoader):
             indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, amount_from_front))
             self.curr_ind = amount_from_front
         return torch.utils.data.DataLoader(dataloader.dataset, batch_size = dataloader.batch_size,
-                                           sampler=indices)
+                                           sampler=torch.utils.data.SubsetRandomSampler(indices))
 
     
 class WholeSetLoader(_BaseSubsetLoader):

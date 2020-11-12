@@ -28,7 +28,7 @@ __all__ = ['Level',
 class Level:
     """A level or grid  in an Multigrid hierarchy"""
     def __init__(self, id: int, presmoother, postsmoother, prolongation, restriction,
-                 coarsegrid_solver, corrector=None):
+                 coarsegrid_solver, num_epochs, corrector=None):
         """
         Args:
             id: <int> level id (assumed to be unique)
@@ -48,6 +48,7 @@ class Level:
         self.prolongation = prolongation
         self.restriction = restriction
         self.corrector = corrector
+        self.num_epochs =  num_epochs
 
         # Data attributes
         # TODO: tokenize?
@@ -60,7 +61,7 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'PRESMOOTHING {self.presmoother.__class__.__name__}',))
-            self.presmoother.apply(model, dataloader, tau=self.corrector, verbose=verbose)
+            self.presmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector, verbose=verbose)
         except Exception:
             raise
 
@@ -68,7 +69,7 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'POSTSMOOTHING {self.postsmoother.__class__.__name__}'))
-            self.postsmoother.apply(model, dataloader, tau=self.corrector, verbose=verbose)
+            self.postsmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector, verbose=verbose)
         except Exception:
            raise
 
@@ -76,7 +77,7 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}', border="*"))
-            self.coarsegrid_solver.apply(model, dataloader, tau=self.corrector, verbose=verbose)
+            self.coarsegrid_solver.apply(model, dataloader, self.num_epochs, tau=self.corrector, verbose=verbose)
         except Exception:
             raise
 
@@ -271,10 +272,18 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.prolong(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
+
+            if trainer.verbose:
+                with torch.no_grad():
+                    total_loss = 0.0
+                    for inputs, true_outputs in dataloader:
+                        outputs = self.levels[0].net(inputs)
+                        total_loss += self.levels[0].presmoother.loss_fn(outputs, true_outputs)
+                    print("After {} cycles, training loss is {}".format(cycle, total_loss))
         # Return the fine net
-        if trainer.verbose:
-            log.info(printer.format_header(f'Finished FAS Cycle'))
-            printer.print_level(self.levels)
+        # if trainer.verbose:
+        #     log.info(printer.format_header(f'Finished FAS Cycle'))
+        #     printer.print_level(self.levels)
 
         return self.levels[0].net
 

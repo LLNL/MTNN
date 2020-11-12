@@ -144,7 +144,7 @@ class MultiLinearNet(_BaseModel):
 
             elif layer == self.layers[-1]:
                 x = self.layers[idx](x)
-                x = self.output(x, dim=1)
+                x = self.output(x)
 
         if verbose:
             printer.print_model(self, val=True)

@@ -30,10 +30,11 @@ class _BaseSmoother(ABC):
             log_interval: <int> Controls frequency (every # of minibatches) to log
         """
         self.loss_fn = loss_fn
-        self.optimizer = optim.SGD(model.parameters(),
-                                   lr = optim_params.lr,
-                                   momentum = optim_params.momentum,
-                                   weight_decay = optim_params.l2_decay)
+        self.optim_params = optim_params       
+        # self.optimizer = optim.SGD(model.parameters(),
+        #                            lr = optim_params.lr,
+        #                            momentum = optim_params.momentum,
+        #                            weight_decay = optim_params.l2_decay)
         self.log_interval = log_interval
 
     @abstractmethod
@@ -51,7 +52,7 @@ class SGDSmoother(_BaseSmoother):
         """
         super().__init__(model, loss_fn, optim_params, log_interval)
 
-    def apply(self, model, dataloader, tau=None, verbose=False) -> None:
+    def apply(self, model, dataloader, num_epochs, tau=None, verbose=False) -> None:
         """
         Apply forward pass and backward pass to the model until stopping criteria is met.
         Optionally apply tau correction if tau_corrector is given.
@@ -65,32 +66,37 @@ class SGDSmoother(_BaseSmoother):
         Returns:
             None
         """
+                
+        self.optimizer = optim.SGD(model.parameters(),
+                                   lr = self.optim_params.lr,
+                                   momentum = self.optim_params.momentum,
+                                   weight_decay = self.optim_params.l2_decay)
         # TODO: Fix logging
-        for batch_idx, mini_batch_data in enumerate(dataloader):
-            input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
-            self.loss_fn.to(model.device)
-            
-            # Zero the parameter gradients
-            self.optimizer.zero_grad()
-            
-            # Forward
-            outputs = model(input_data)
-            loss = self.loss_fn(outputs, target_data)
+        for epoch in range(num_epochs):
+            for batch_idx, mini_batch_data in enumerate(dataloader):
+                input_data, target_data = deviceloader.load_data(mini_batch_data, model.device)
+                self.loss_fn.to(model.device)
+                
+                # Zero the parameter gradients
+                self.optimizer.zero_grad()
+                                
+                # Forward
+                outputs = model(input_data)
+                loss = self.loss_fn(outputs, target_data)
 
-            # Apply Tau Correction
-            if tau:
-                tau.correct(model, loss, batch_idx, len(dataloader), verbose)
+                # Apply Tau Correction
+                if tau:
+                    tau.correct(model, loss, batch_idx, len(dataloader), verbose)
 
-            # Backward
-            loss.backward()
-
-            self.optimizer.step()
-            if verbose:
-                # Show status bar
-                #total_work = len(dataloader)
-                #logger.progressbar(batch_idx, total_work, status = "Training")
-                printer.print_smoother(loss, batch_idx, dataloader, self.log_interval, tau)
-
+                # Backward
+                loss.backward()
+                
+                self.optimizer.step()
+                if verbose:# and (batch_idx + 1) % 50 == 0:
+                    # Show status bar
+                    #total_work = len(dataloader)
+                    #logger.progressbar(batch_idx, total_work, status = "Training")
+                    printer.print_smoother(loss, batch_idx, dataloader, self.log_interval, tau)
 
 
 

@@ -100,8 +100,8 @@ class _BaseTauCorrector(ABC):
             coarse_level_rhsW.append(rhsW)
             coarse_level_rhsB.append(rhsB)
 
-        if verbose:
-            log.info(f"Restriction.Tau rhsW{rhsW} rhsB{rhsB}")
+        # if verbose:
+        #     log.info(f"Restriction.Tau rhsW{rhsW} rhsB{rhsB}")
 
         return coarse_level_rhsW, coarse_level_rhsB    
 
@@ -126,7 +126,7 @@ class BasicTau(_BaseTauCorrector):
                     loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.rhs_B[layer_id]))
 
                 if verbose:
-                    printer.print_tau(self, loss, msg="\tApplying Tau Correction: ")
+                    printer.print_tau(self, loss.item(), msg="\tApplying Tau Correction: ")
             except Exception as e:
                 print("Exception in tau_corrector.py:BasicTau.correct.", file=sys.stderr)
                 raise e
@@ -138,6 +138,7 @@ class OneAtaTimeTau(_BaseTauCorrector):
 
     def __init__(self, loss_fn):
         super().__init__(loss_fn)
+        self.tau_corrections = None
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
         self.tau_corrections = []
@@ -148,7 +149,7 @@ class OneAtaTimeTau(_BaseTauCorrector):
             self.tau_corrections.append((curr_rhsW, curr_rhsB))
 
     def correct(self, model, loss, batch_idx, num_batches, verbose=False):
-        if self.tau_corrections[batch_idx] is not None:
+        if self.tau_corrections is not None:
             rhsW, rhsB = self.tau_corrections[batch_idx]
             try:
                 for layer_id in range(len(model.layers)):

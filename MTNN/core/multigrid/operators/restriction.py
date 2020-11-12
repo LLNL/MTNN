@@ -2,6 +2,7 @@
 Restriction Operators
 """
 import torch
+import torch.nn as nn
 import numpy as np
 from abc import ABC, abstractmethod
 
@@ -58,7 +59,8 @@ class PairwiseAggRestriction(_BaseRestriction):
         # setup
         # TODO: refactor setup
         assert fine_level.id < coarse_level.id
-        fine_level.interpolation_data = interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
+        if fine_level.interpolation_data is None:
+            fine_level.interpolation_data = interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
         assert fine_level.interpolation_data is not None
 
         R_op, P_op = fine_level.interpolation_data.R_op, fine_level.interpolation_data.P_op
@@ -87,7 +89,6 @@ class PairwiseAggRestriction(_BaseRestriction):
                 W_c = W_f @ P_op[-1]
                 B_c = B_f.clone()
 
-
             # save the initial W_c and B_c
             # NOTE: Winit and the Binit only used in prolongation
             coarse_level.Winit.append(W_c)
@@ -98,9 +99,10 @@ class PairwiseAggRestriction(_BaseRestriction):
             # Copy to coarse_level net
 
             with torch.no_grad():
-                W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
-                B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
-
+                coarse_level.net.layers[layer_id].weight = nn.Parameter(W_c.clone())
+                coarse_level.net.layers[layer_id].bias = nn.Parameter(B_c.clone().reshape(-1))
+                # W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
+                # B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
 
         coarse_level.net.zero_grad()
 
