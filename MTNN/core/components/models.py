@@ -119,6 +119,7 @@ class MultiLinearNet(_BaseModel):
         super().__init__()
         self.activation = activation
         self.output = output_activation
+        self.dim = dim
        
         # Fill layers
         modules = nn.ModuleList()

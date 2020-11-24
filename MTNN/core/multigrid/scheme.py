@@ -94,7 +94,7 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'RESTRICTING {self.restriction.__class__.__name__}'))
-            self.restriction.apply(fine_level, coarse_level,  dataloader, self.corrector,  verbose)
+            self.restriction.apply(fine_level, coarse_level,  dataloader,  verbose)
         except Exception:
             raise
 
@@ -120,7 +120,8 @@ class _BaseMultigridScheme(ABC):
     """
     Base Multigrid Hierarchy
     """
-    def __init__(self, levels=None, cycles=1, subsetloader = WholeSetLoader()):
+    def __init__(self, levels=None, cycles=1, subsetloader = WholeSetLoader(),
+                 depth_selector = None):
         """
         Args:
             levels: List of <core.alg.multigrid.multigrid.Level> Level objects
@@ -128,12 +129,18 @@ class _BaseMultigridScheme(ABC):
             subsetloader: <core.alg.multigrid.operators.subsetloader> Create a
                            new dataloader focused on a subset of data for each 
                            cycle.
+            depth_selector: A function that takes the cycle index as input and 
+                            returns the hierarchy depth for this cycle.
         """
         if levels is None:
             levels = []
         self.levels = levels
         self.cycles = cycles
         self.subsetloader = subsetloader
+        if depth_selector is None:
+            self.depth_selector = lambda c : len(self.levels)
+        else:
+            self.depth_selector = depth_selector
 
     def setup(self, model):
         """Set the first level's model"""
@@ -228,7 +235,6 @@ class VCycle(_BaseMultigridScheme):
 
         """
         # Initiate first level
-        num_levels = len(self.levels)
         self.levels[0].net = model
 
         if trainer.verbose:
@@ -243,7 +249,10 @@ class VCycle(_BaseMultigridScheme):
             #############################################
             # Down cycle - Coarsen/Restrict all levels
             ############################################
-            for level_idx, level in enumerate(self.levels[:-1]):
+
+            num_levels = self.depth_selector(cycle)
+            for level_idx in range(num_levels-1):
+                level = self.levels[level_idx]
                 if trainer.verbose:
                     printer.print_levelstats(cycle, self.cycles, level_idx, num_levels, f"DOWN CYCLING ")
 
@@ -257,7 +266,7 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.restrict(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
 
             # Smoothing with coarse-solver at the coarsest level
-            self.levels[-1].coarse_solve(self.levels[-1].net, cycle_dataloader, trainer.verbose)
+            self.levels[num_levels-1].coarse_solve(self.levels[num_levels-1].net, cycle_dataloader, trainer.verbose)
 
             ##############################################
             # Up Cycle - Interpolate/Prolongate back up to  all levels
@@ -273,13 +282,21 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
 
-            if trainer.verbose:
+            if trainer.verbose:# and (cycle + 1) % 50 == 0:
                 with torch.no_grad():
                     total_loss = 0.0
                     for inputs, true_outputs in dataloader:
                         outputs = self.levels[0].net(inputs)
                         total_loss += self.levels[0].presmoother.loss_fn(outputs, true_outputs)
                     print("After {} cycles, training loss is {}".format(cycle, total_loss))
+                    # if total_loss < self.stop_loss:
+                    #     break
+                with torch.no_grad():
+                    total_test_loss = 0.0
+                    for inputs, true_outputs in self.test_loader:
+                        outputs = self.levels[0].net(inputs)
+                        total_test_loss += self.levels[0].presmoother.loss_fn(outputs, true_outputs)
+                    print("After {} cycles, validation loss is {}".format(cycle, total_test_loss))
         # Return the fine net
         # if trainer.verbose:
         #     log.info(printer.format_header(f'Finished FAS Cycle'))

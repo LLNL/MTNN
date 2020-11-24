@@ -40,7 +40,7 @@ class PairwiseAggRestriction(_BaseRestriction):
     def __init__(self, matching_alg):
         self.matching_alg = matching_alg
 
-    def apply(self, fine_level, coarse_level, dataloader, corrector, verbose=False) -> None:
+    def apply(self, fine_level, coarse_level, dataloader, verbose=False) -> None:
         """
         Apply Restriction on the fine_level to return a restricted coarse-level net
         and compute the coarse-level's residual tau correction.
@@ -59,11 +59,15 @@ class PairwiseAggRestriction(_BaseRestriction):
         # setup
         # TODO: refactor setup
         assert fine_level.id < coarse_level.id
-        if fine_level.interpolation_data is None:
+        if fine_level.interpolation_data is None or self.resetup == 100:
             fine_level.interpolation_data = interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
-        assert fine_level.interpolation_data is not None
-
+            self.resetup = 0
+        else:
+            self.resetup += 1
+            
         R_op, P_op = fine_level.interpolation_data.R_op, fine_level.interpolation_data.P_op
+        R_for_grad_op = fine_level.interpolation_data.R_for_grad_op
+        P_for_grad_op = fine_level.interpolation_data.P_for_grad_op
 
         # Update coarse level's layers by applying self.restriction_operators
         # TODO: Fill with agg_interpolator.restrict
@@ -99,14 +103,50 @@ class PairwiseAggRestriction(_BaseRestriction):
             # Copy to coarse_level net
 
             with torch.no_grad():
-                coarse_level.net.layers[layer_id].weight = nn.Parameter(W_c.clone())
-                coarse_level.net.layers[layer_id].bias = nn.Parameter(B_c.clone().reshape(-1))
+                coarse_level.net.layers[layer_id].weight.copy_(W_c.clone()) # = nn.Parameter(W_c.clone())
+                coarse_level.net.layers[layer_id].bias.copy_(B_c.clone().reshape(-1)) # = nn.Parameter(B_c.clone().reshape(-1))
                 # W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
                 # B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
 
         coarse_level.net.zero_grad()
 
-        ops = operators(R_op, P_op)
-        corrector.compute_tau(fine_level, coarse_level, dataloader, ops, verbose)
+
+        # Restrict tau
+        ops = operators(R_op, P_op, R_for_grad_op, P_for_grad_op)
+        coarse_level.corrector.compute_tau(fine_level, coarse_level, dataloader, ops, verbose)
+
+
+        # Restrict momentum
+        # Momentum has the same form as the network parameters, so use the same algorithm
+        assert(len(fine_level.presmoother.optimizer.param_groups) == 1)
+        fine_optimizer = fine_level.presmoother.optimizer
+        coarse_level.Wmomentum_init = []
+        coarse_level.Bmomentum_init = []
+        coarse_level.presmoother.momentum_data = []
+        for i in range(0, len(fine_optimizer.param_groups[0]['params']), 2):
+            mW_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i]]['momentum_buffer']
+            mB_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'].reshape(-1, 1)
+
+            layer_id = int(i / 2)
+            if layer_id < num_fine_layers - 1:
+                if layer_id == 0:
+                    mW_c = R_op[layer_id] @ mW_f
+                else:
+                    mW_c = R_op[layer_id] @ mW_f @ P_op[layer_id - 1]
+                mB_c = R_op[layer_id] @ mB_f
+            elif layer_id > 0:
+                mW_c = mW_f @ P_op[-1]
+                mB_c = mB_f.clone()
+
+            # save the initial W_c and B_c
+            # NOTE: Wmomentum_init and the Bmomentum_init only used in prolongation
+            coarse_level.Wmomentum_init.append(mW_c)
+            coarse_level.Bmomentum_init.append(mB_c)
+
+            # The coarse optimizer may not exist yet, so store the
+            # momentum data to be inserted in right before smoothing.
+            with torch.no_grad():
+                coarse_level.presmoother.momentum_data.append(mW_c.clone())
+                coarse_level.presmoother.momentum_data.append(mB_c.clone().reshape(-1))
 
 

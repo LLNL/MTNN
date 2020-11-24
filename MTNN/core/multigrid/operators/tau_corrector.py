@@ -86,12 +86,16 @@ class _BaseTauCorrector(ABC):
             # R * [f^h - A^h(u^h)]
             if layer_id < num_fine_layers - 1:
                 if layer_id == 0:
-                    rhsW = operators.R_op[layer_id] @ rhsW
+                    #rhsW = operators.R_op[layer_id] @ rhsW
+                    rhsW = operators.R_for_grad_op[layer_id] @ rhsW
                 else:
-                    rhsW = operators.R_op[layer_id] @ rhsW @ operators.P_op[layer_id - 1]
-                rhsB = operators.R_op[layer_id] @ rhsB
+                    #rhsW = operators.R_op[layer_id] @ rhsW @ operators.P_op[layer_id - 1]
+                    rhsW = operators.R_for_grad_op[layer_id] @ rhsW @ operators.P_for_grad_op[layer_id - 1]
+                #rhsB = operators.R_op[layer_id] @ rhsB
+                rhsB = operators.R_for_grad_op[layer_id] @ rhsB
             elif layer_id > 0:
-                rhsW = rhsW @ operators.P_op[-1]
+                #rhsW = rhsW @ operators.P_op[-1]
+                rhsW = rhsW @ operators.P_for_grad_op[-1]
 
             # R * [f^h - A^{h}(u^h)] + A^{2h}(R*u^h)
             rhsW += dW_c
@@ -144,7 +148,7 @@ class OneAtaTimeTau(_BaseTauCorrector):
         self.tau_corrections = []
         for batch_idx, mini_batch_data in enumerate(dataloader):
             curr_rhsW, curr_rhsB = self.get_tau_for_data(fine_level, coarse_level,
-                                                         (dataloader,), operators,
+                                                         (mini_batch_data,), operators,
                                                     self.loss_fn, verbose)
             self.tau_corrections.append((curr_rhsW, curr_rhsB))
 

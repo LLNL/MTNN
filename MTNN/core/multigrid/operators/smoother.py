@@ -30,12 +30,10 @@ class _BaseSmoother(ABC):
             log_interval: <int> Controls frequency (every # of minibatches) to log
         """
         self.loss_fn = loss_fn
-        self.optim_params = optim_params       
-        # self.optimizer = optim.SGD(model.parameters(),
-        #                            lr = optim_params.lr,
-        #                            momentum = optim_params.momentum,
-        #                            weight_decay = optim_params.l2_decay)
+        self.optim_params = optim_params
         self.log_interval = log_interval
+        self.optimizer = None
+        self.momentum_data = None
 
     @abstractmethod
     def apply(self, model, dataloader, tau, verbose: bool):
@@ -66,11 +64,23 @@ class SGDSmoother(_BaseSmoother):
         Returns:
             None
         """
-                
-        self.optimizer = optim.SGD(model.parameters(),
-                                   lr = self.optim_params.lr,
-                                   momentum = self.optim_params.momentum,
-                                   weight_decay = self.optim_params.l2_decay)
+        if self.optimizer is None:
+            self.optimizer = optim.SGD(model.parameters(),
+                                       lr = self.optim_params.lr,
+                                       momentum = self.optim_params.momentum,
+                                       weight_decay = self.optim_params.l2_decay)
+        if self.momentum_data is not None:
+            # Insert momentum data
+            for i in range(0, len(self.optimizer.param_groups[0]['params']), 2):
+                self.optimizer.state[self.optimizer.param_groups[0]['params'][i]]['momentum_buffer'] = self.momentum_data[i]
+                self.optimizer.state[self.optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'] = self.momentum_data[i+1]
+            self.momentum_data = None
+            
+
+        # self.optimizer = optim.SGD(model.parameters(),
+        #                            lr = self.optim_params.lr,
+        #                            momentum = self.optim_params.momentum,
+        #                            weight_decay = self.optim_params.l2_decay)
         # TODO: Fix logging
         for epoch in range(num_epochs):
             for batch_idx, mini_batch_data in enumerate(dataloader):

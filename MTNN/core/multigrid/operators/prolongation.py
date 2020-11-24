@@ -202,7 +202,7 @@ class PairwiseAggProlongation(_BaseProlongation):
         assert fine_level.interpolation_data is not None
         num_coarse_layers = len(coarse_level.net.layers)
 
-        R_array, P_array = fine_level.interpolation_data
+        R_array, P_array, R_for_grad_array, P_for_grad_array = fine_level.interpolation_data
 
         for layer_id in range(num_coarse_layers):
             W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
@@ -227,6 +227,38 @@ class PairwiseAggProlongation(_BaseProlongation):
             with torch.no_grad():
                 fine_level.net.layers[layer_id].weight.copy_(W_f)
                 fine_level.net.layers[layer_id].bias.copy_(B_f.reshape(-1))
+
+
+        # Prolong momentum
+        # We want new_fine_m = old_fine_m + P(new_coarse_m - old_coarse_m)
+        #                    = P new_coarse_m + (I - PR) old_fine_m
+        fine_optimizer = fine_level.presmoother.optimizer
+        coarse_optimizer = coarse_level.presmoother.optimizer
+        for i in range(0, len(fine_optimizer.param_groups[0]['params']), 2):
+            mW_c = coarse_optimizer.state[coarse_optimizer.param_groups[0]['params'][i]]['momentum_buffer']
+            mB_c = coarse_optimizer.state[coarse_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'].reshape(-1, 1)
+            layer_id = int(i / 2)
+            e_mW = mW_c - coarse_level.Wmomentum_init[layer_id]
+            e_mB = mB_c - coarse_level.Bmomentum_init[layer_id]
+            if layer_id < num_coarse_layers - 1:
+                if layer_id == 0:
+                    e_mW = P_array[layer_id] @ e_mW
+                else:
+                    e_mW = P_array[layer_id] @ e_mW @ R_array[layer_id - 1]
+                e_mB = P_array[layer_id] @ e_mB
+            elif layer_id > 0:
+                e_mW = e_mW @ R_array[layer_id - 1]
+
+            mW_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i]]['momentum_buffer']
+            mB_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer']
+            assert(mW_f.shape == e_mW.shape)
+            assert(mB_f.shape == e_mB.reshape(-1).shape)
+            mW_f += e_mW
+            mB_f += e_mB.reshape(-1)
+            
+            with torch.no_grad():
+                fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i]]['momentum_buffer'].copy_(mW_f)
+                fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'].copy_(mB_f.reshape(-1))
 
 class RandomPerturbationOperator(_BaseProlongation):
     def __init__(self):

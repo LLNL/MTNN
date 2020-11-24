@@ -37,6 +37,8 @@ class PairwiseAggCoarsener:
         # Each index of Prolongation/Restriction operators corresponds to layer to which it is to be applied
         prolongation_operators = []
         restriction_operators = []
+        prolongation_for_grad_operators = []
+        restriction_for_grad_operators = []
 
         # Instantiate the coarse-level net with the coarsener dimensions
         self.coarsener.coarsen(fine_level.net)
@@ -78,8 +80,15 @@ class PairwiseAggCoarsener:
 
             # Construct prolongation operators for each layer
             # TODO - Decouple?
-            P_layer = torch.transpose(R_layer, 0, 1) * nr / d.reshape(1, -1) 
+            P_layer = (torch.transpose(R_layer, 0, 1) * nr) / d.reshape(1, -1)
             prolongation_operators.append(P_layer)
 
-        return mgdata.operators(restriction_operators, prolongation_operators)
+            R_for_grad_layer = torch.transpose(P_layer, 0, 1)
+            restriction_for_grad_operators.append(R_for_grad_layer)
+
+            P_for_grad_layer = torch.transpose(R_layer, 0, 1)
+            prolongation_for_grad_operators.append(P_for_grad_layer)
+
+        return mgdata.operators(restriction_operators, prolongation_operators, restriction_for_grad_operators,
+                                prolongation_for_grad_operators)
 
