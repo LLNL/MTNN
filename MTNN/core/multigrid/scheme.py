@@ -49,6 +49,7 @@ class Level:
         self.restriction = restriction
         self.corrector = corrector
         self.num_epochs =  num_epochs
+        self.l2_info = None
 
         # Data attributes
         # TODO: tokenize?
@@ -61,7 +62,8 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'PRESMOOTHING {self.presmoother.__class__.__name__}',))
-            self.presmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector, verbose=verbose)
+            self.presmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector,
+                                   l2_info = self.l2_info, verbose=verbose)
         except Exception:
             raise
 
@@ -69,7 +71,8 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'POSTSMOOTHING {self.postsmoother.__class__.__name__}'))
-            self.postsmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector, verbose=verbose)
+            self.postsmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector,
+                                    l2_info = self.l2_info, verbose=verbose)
         except Exception:
            raise
 
@@ -77,7 +80,8 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}', border="*"))
-            self.coarsegrid_solver.apply(model, dataloader, self.num_epochs, tau=self.corrector, verbose=verbose)
+            self.coarsegrid_solver.apply(model, dataloader, self.num_epochs, tau=self.corrector,
+                                         l2_info = self.l2_info,verbose=verbose)
         except Exception:
             raise
 
@@ -282,7 +286,7 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
 
-            if trainer.verbose:# and (cycle + 1) % 50 == 0:
+            if trainer.verbose and (cycle + 1) % 50 == 0:
                 with torch.no_grad():
                     total_loss = 0.0
                     for inputs, true_outputs in dataloader:

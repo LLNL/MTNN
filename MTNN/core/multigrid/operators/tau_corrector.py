@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import torch
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
+import MTNN.core.multigrid.operators.interpolator as interp
 
 import sys
 
@@ -64,17 +65,11 @@ class _BaseTauCorrector(ABC):
         coarse_level_grad = coarse_level.net.getGrad(dataloader, loss_fn)
 
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
-        coarse_level_rhsW = []
-        coarse_level_rhsB = []
-
-        # Compute the Tau correction
+        rhs_W_array = []
+        rhs_B_array = []
         for layer_id in range(len(fine_level.net.layers)):
-
             dW_f = fine_level_grad.weight_grad[layer_id]
             dB_f = fine_level_grad.bias_grad[layer_id]
-            dW_c = coarse_level_grad.weight_grad[layer_id]
-            dB_c = coarse_level_grad.bias_grad[layer_id]
-
             # f^h - A^h(u^h)
             if fine_level.id > 0:
                 rhsW = fine_level.corrector.rhs_W[layer_id] - dW_f
@@ -83,29 +78,17 @@ class _BaseTauCorrector(ABC):
                 rhsW = -dW_f
                 rhsB = -dB_f
 
-            # R * [f^h - A^h(u^h)]
-            if layer_id < num_fine_layers - 1:
-                if layer_id == 0:
-                    #rhsW = operators.R_op[layer_id] @ rhsW
-                    rhsW = operators.R_for_grad_op[layer_id] @ rhsW
-                else:
-                    #rhsW = operators.R_op[layer_id] @ rhsW @ operators.P_op[layer_id - 1]
-                    rhsW = operators.R_for_grad_op[layer_id] @ rhsW @ operators.P_for_grad_op[layer_id - 1]
-                #rhsB = operators.R_op[layer_id] @ rhsB
-                rhsB = operators.R_for_grad_op[layer_id] @ rhsB
-            elif layer_id > 0:
-                #rhsW = rhsW @ operators.P_op[-1]
-                rhsW = rhsW @ operators.P_for_grad_op[-1]
+            rhs_W_array.append(rhsW)
+            rhs_B_array.append(rhsB)
 
-            # R * [f^h - A^{h}(u^h)] + A^{2h}(R*u^h)
-            rhsW += dW_c
-            rhsB += dB_c
+        # R * [f^h - A^h(u^h)]
+        coarse_level_rhsW, coarse_level_rhsB = interp.transfer(
+            rhs_W_array, rhs_B_array, operators.R_for_grad_op, operators.P_for_grad_op)
 
-            coarse_level_rhsW.append(rhsW)
-            coarse_level_rhsB.append(rhsB)
-
-        # if verbose:
-        #     log.info(f"Restriction.Tau rhsW{rhsW} rhsB{rhsB}")
+        # R * [f^h - A^h(u^h)] + A^{2h}(R*u^h)
+        for layer_id in range(len(fine_level.net.layers)):
+            coarse_level_rhsW[layer_id] += coarse_level_grad.weight_grad[layer_id]
+            coarse_level_rhsB[layer_id] += coarse_level_grad.bias_grad[layer_id]
 
         return coarse_level_rhsW, coarse_level_rhsB    
 

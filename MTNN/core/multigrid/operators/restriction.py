@@ -68,6 +68,8 @@ class PairwiseAggRestriction(_BaseRestriction):
         R_op, P_op = fine_level.interpolation_data.R_op, fine_level.interpolation_data.P_op
         R_for_grad_op = fine_level.interpolation_data.R_for_grad_op
         P_for_grad_op = fine_level.interpolation_data.P_for_grad_op
+        l2reg_left_vecs = fine_level.interpolation_data.l2reg_left_vecs
+        l2reg_right_vecs = fine_level.interpolation_data.l2reg_right_vecs
 
         # Update coarse level's layers by applying self.restriction_operators
         # TODO: Fill with agg_interpolator.restrict
@@ -79,74 +81,58 @@ class PairwiseAggRestriction(_BaseRestriction):
         # ==============================
         #  coarse_level weight and bias
         # ==============================
-        for layer_id in range(num_fine_layers):
-            W_f = fine_level.net.layers[layer_id].weight.detach()
-            B_f = fine_level.net.layers[layer_id].bias.detach().reshape(-1, 1)
-
-            if layer_id < num_fine_layers - 1:
-                if layer_id == 0:
-                    W_c = R_op[layer_id] @ W_f
-                else:
-                    W_c = R_op[layer_id] @ W_f @ P_op[layer_id - 1]
-                B_c = R_op[layer_id] @ B_f
-            elif layer_id > 0:
-                W_c = W_f @ P_op[-1]
-                B_c = B_f.clone()
-
-            # save the initial W_c and B_c
-            # NOTE: Winit and the Binit only used in prolongation
-            coarse_level.Winit.append(W_c)
-            coarse_level.Binit.append(B_c)
-
-            assert coarse_level.net.layers[layer_id].weight.detach().clone().shape == W_c.shape
-            assert coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1).shape == B_c.shape
-            # Copy to coarse_level net
-
-            with torch.no_grad():
-                coarse_level.net.layers[layer_id].weight.copy_(W_c.clone()) # = nn.Parameter(W_c.clone())
-                coarse_level.net.layers[layer_id].bias.copy_(B_c.clone().reshape(-1)) # = nn.Parameter(B_c.clone().reshape(-1))
-                # W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
-                # B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
-
+        W_f_array = [fine_level.net.layers[layer_id].weight.detach() for layer_id in range(num_fine_layers)]
+        B_f_array = [fine_level.net.layers[layer_id].bias.detach().reshape(-1, 1) for layer_id in range(num_fine_layers)]
+        W_c_array, B_c_array = interp.transfer(W_f_array, B_f_array, R_op, P_op)
+        with torch.no_grad():
+            for layer_id in range(num_fine_layers):
+                coarse_level.net.layers[layer_id].weight.copy_(W_c_array[layer_id])
+                coarse_level.net.layers[layer_id].bias.copy_(B_c_array[layer_id].reshape(-1))
+        coarse_level.Winit = W_c_array
+        coarse_level.Binit = B_c_array
+            
         coarse_level.net.zero_grad()
 
 
         # Restrict tau
-        ops = operators(R_op, P_op, R_for_grad_op, P_for_grad_op)
-        coarse_level.corrector.compute_tau(fine_level, coarse_level, dataloader, ops, verbose)
+        coarse_level.corrector.compute_tau(fine_level, coarse_level, dataloader,
+                                           fine_level.interpolation_data, verbose)
 
-
+        # ===============================================================================
         # Restrict momentum
         # Momentum has the same form as the network parameters, so use the same algorithm
-        assert(len(fine_level.presmoother.optimizer.param_groups) == 1)
+        # ===============================================================================
         fine_optimizer = fine_level.presmoother.optimizer
-        coarse_level.Wmomentum_init = []
-        coarse_level.Bmomentum_init = []
+        get_p = lambda ind : fine_optimizer.state[fine_optimizer.param_groups[0]['params'][ind]]['momentum_buffer']
+        mW_f_array, mB_f_array = zip(*[(get_p(2*i), get_p(2*i+1).reshape(-1, 1)) for i in
+                                       range(int(len(fine_optimizer.param_groups[0]['params']) / 2))])
+        mW_c_array, mB_c_array = interp.transfer(mW_f_array, mB_f_array, R_op, P_op)
+        
+        assert(len(mW_c_array) == len(mB_c_array))
         coarse_level.presmoother.momentum_data = []
-        for i in range(0, len(fine_optimizer.param_groups[0]['params']), 2):
-            mW_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i]]['momentum_buffer']
-            mB_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'].reshape(-1, 1)
-
-            layer_id = int(i / 2)
-            if layer_id < num_fine_layers - 1:
-                if layer_id == 0:
-                    mW_c = R_op[layer_id] @ mW_f
-                else:
-                    mW_c = R_op[layer_id] @ mW_f @ P_op[layer_id - 1]
-                mB_c = R_op[layer_id] @ mB_f
-            elif layer_id > 0:
-                mW_c = mW_f @ P_op[-1]
-                mB_c = mB_f.clone()
-
-            # save the initial W_c and B_c
-            # NOTE: Wmomentum_init and the Bmomentum_init only used in prolongation
-            coarse_level.Wmomentum_init.append(mW_c)
-            coarse_level.Bmomentum_init.append(mB_c)
-
-            # The coarse optimizer may not exist yet, so store the
-            # momentum data to be inserted in right before smoothing.
-            with torch.no_grad():
-                coarse_level.presmoother.momentum_data.append(mW_c.clone())
-                coarse_level.presmoother.momentum_data.append(mB_c.clone().reshape(-1))
+        with torch.no_grad():
+            for i in range(len(mW_c_array)):
+                coarse_level.presmoother.momentum_data.append(mW_c_array[i].clone())
+                coarse_level.presmoother.momentum_data.append(mB_c_array[i].clone().reshape(-1))
+        coarse_level.Wmomentum_init = mW_c_array
+        coarse_level.Bmomentum_init = mB_c_array
+    
 
 
+        # ===========================================
+        # Compute l2 regularization correction vector
+        # z = 2 R (I - P Pi) x_old
+        # ===========================================
+        # z1 = P Pi x_old, already have x_c = Pi x_old
+        W_f_proj, B_f_proj = interp.transfer(W_c_array, B_c_array, P_op, R_op)
+        # z2 = 2 (I - P Pi) x_old = 2*(x_old - z1)
+        z2W = []
+        z2B = []
+        with torch.no_grad():
+            for layer_id in range(num_fine_layers):
+                z2W.append(2.0*(fine_level.net.layers[layer_id].weight.detach() - W_f_proj[layer_id]))
+                z2B.append(2.0*(fine_level.net.layers[layer_id].bias.detach() - B_f_proj[layer_id].reshape(-1)))
+        # z = R z2
+        zW, zB = interp.transfer(z2W, z2B, R_for_grad_op, P_for_grad_op)
+        coarse_level.l2_info = (zW, zB, l2reg_left_vecs, l2reg_right_vecs)        
+        
