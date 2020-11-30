@@ -124,15 +124,15 @@ class PairwiseAggRestriction(_BaseRestriction):
         # z = 2 R (I - P Pi) x_old
         # ===========================================
         # z1 = P Pi x_old, already have x_c = Pi x_old
-        W_f_proj, B_f_proj = interp.transfer(W_c_array, B_c_array, P_op, R_op)
-        # z2 = 2 (I - P Pi) x_old = 2*(x_old - z1)
-        z2W = []
-        z2B = []
-        with torch.no_grad():
-            for layer_id in range(num_fine_layers):
-                z2W.append(2.0*(fine_level.net.layers[layer_id].weight.detach() - W_f_proj[layer_id]))
-                z2B.append(2.0*(fine_level.net.layers[layer_id].bias.detach() - B_f_proj[layer_id].reshape(-1)))
-        # z = R z2
-        zW, zB = interp.transfer(z2W, z2B, R_for_grad_op, P_for_grad_op)
-        coarse_level.l2_info = (zW, zB, l2reg_left_vecs, l2reg_right_vecs)        
+        # W_f_proj, B_f_proj = interp.transfer(W_c_array, B_c_array, P_op, R_op)
+        # # z2 = 2 (I - P Pi) x_old = 2*(x_old - z1)
+        # z2W = []
+        # z2B = []
+        # with torch.no_grad():
+        #     for layer_id in range(num_fine_layers):
+        #         z2W.append(2.0*(fine_level.net.layers[layer_id].weight.detach() - W_f_proj[layer_id]))
+        #         z2B.append(2.0*(fine_level.net.layers[layer_id].bias.detach() - B_f_proj[layer_id].reshape(-1)))
+        # # z = R z2
+        # zW, zB = interp.transfer(z2W, z2B, R_for_grad_op, P_for_grad_op)
+        # coarse_level.l2_info = (zW, zB, l2reg_left_vecs, l2reg_right_vecs)        
         

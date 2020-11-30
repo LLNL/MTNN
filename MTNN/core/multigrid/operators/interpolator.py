@@ -136,10 +136,10 @@ class PairwiseAggCoarsener:
             # Compute matrix A s.t. l2 regularization on coarse level uses x_c^T A x_c
             # But we compute vectors used in the action of A, not A itself.
             # ========================================================================
-            l2reg_left = torch.diag(R_for_grad_layer @ P_layer).reshape(-1, 1)
-            l2reg_left_vecs.append(l2reg_left)
-            l2reg_right = torch.diag(R_layer @ P_for_grad_layer).reshape(1, -1)
-            l2reg_right_vecs.append(l2reg_right)
+            # l2reg_left = torch.diag(R_for_grad_layer @ P_layer).reshape(-1, 1)
+            # l2reg_left_vecs.append(l2reg_left)
+            # l2reg_right = torch.diag(R_layer @ P_for_grad_layer).reshape(1, -1)
+            # l2reg_right_vecs.append(l2reg_right)
 
         return mgdata.operators(restriction_operators, prolongation_operators, restriction_for_grad_operators,
                                 prolongation_for_grad_operators, l2reg_left_vecs, l2reg_right_vecs)
