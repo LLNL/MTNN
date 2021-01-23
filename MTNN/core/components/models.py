@@ -32,7 +32,7 @@ class _BaseModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = nn.ModuleList()
-        self.device = deviceloader.get_device(verbose=True)
+        self.device = deviceloader.get_device(verbose=False)
 
     def __len__(self):
         return len(self.layers)

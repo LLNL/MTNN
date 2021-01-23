@@ -134,7 +134,7 @@ for level_idx in range(0, num_levels):
 num_cycles = int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
-                      subsetloader = subsetloader.NextKLoader(4),
+                      subsetloader = subsetloader.WholeSetLoader(), #NextKLoader(4),
                       depth_selector = depth_selector)
 mg_scheme.test_loader = test_loader
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,

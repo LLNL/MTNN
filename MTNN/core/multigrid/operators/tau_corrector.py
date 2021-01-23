@@ -41,7 +41,7 @@ class _BaseTauCorrector(ABC):
         raise NotImplementedError
 
     def get_tau_for_data(self, fine_level, coarse_level, dataloader, operators,
-                         loss_fn, verbose=False):
+                         loss_fn, fine_rhs = None):
         """
         Compute the coarse-level residual tau correction. Returns
         Args:
@@ -67,13 +67,15 @@ class _BaseTauCorrector(ABC):
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
         rhs_W_array = []
         rhs_B_array = []
+        if fine_rhs:
+            fine_rhsW, fine_rhsB = fine_rhs
         for layer_id in range(len(fine_level.net.layers)):
             dW_f = fine_level_grad.weight_grad[layer_id]
             dB_f = fine_level_grad.bias_grad[layer_id]
             # f^h - A^h(u^h)
-            if fine_level.id > 0:
-                rhsW = fine_level.corrector.rhs_W[layer_id] - dW_f
-                rhsB = fine_level.corrector.rhs_B[layer_id] - dB_f
+            if fine_rhs:
+                rhsW = fine_rhsW[layer_id] - dW_f
+                rhsB = fine_rhsB[layer_id] - dB_f
             else:  # first level
                 rhsW = -dW_f
                 rhsB = -dB_f
@@ -100,8 +102,11 @@ class BasicTau(_BaseTauCorrector):
         super().__init__(loss_fn)
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
+        fine_rhs = None
+        if fine_level.corrector.rhs_W:
+            fine_rhs = (fine_level.corrector.rhs_W, fine_level.corrector.rhs_B)
         (rhsW, rhsB) = self.get_tau_for_data(fine_level, coarse_level, dataloader,
-                                             operators, self.loss_fn, verbose)
+                                             operators, self.loss_fn, fine_rhs)
         coarse_level.corrector.rhs_W = rhsW
         coarse_level.corrector.rhs_B = rhsB
         
@@ -130,9 +135,12 @@ class OneAtaTimeTau(_BaseTauCorrector):
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
         self.tau_corrections = []
         for batch_idx, mini_batch_data in enumerate(dataloader):
+            fine_rhs = None
+            if fine_level.corrector.tau_corrections:
+                fine_rhs = fine_level.corrector.tau_corrections[batch_idx]
             curr_rhsW, curr_rhsB = self.get_tau_for_data(fine_level, coarse_level,
                                                          (mini_batch_data,), operators,
-                                                    self.loss_fn, verbose)
+                                                         self.loss_fn, fine_rhs)
             self.tau_corrections.append((curr_rhsW, curr_rhsB))
 
     def correct(self, model, loss, batch_idx, num_batches, verbose=False):

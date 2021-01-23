@@ -14,6 +14,7 @@ import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
 import MTNN.utils.datatypes as mgdata
 from MTNN.core.components.subsetloader import WholeSetLoader
+from MTNN.utils import deviceloader
 
 log = log.get_logger(__name__, write_to_file =True)
 
@@ -286,21 +287,27 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
 
-            if trainer.verbose and (cycle + 1) % 50 == 0:
+            if trainer.verbose and (cycle + 1) % 75 == 0:
                 with torch.no_grad():
-                    total_loss = 0.0
-                    for inputs, true_outputs in dataloader:
-                        outputs = self.levels[0].net(inputs)
-                        total_loss += self.levels[0].presmoother.loss_fn(outputs, true_outputs)
-                    print("After {} cycles, training loss is {}".format(cycle, total_loss))
+                    total_loss = [0.0] * len(self.levels)
+                    for mini_batch_data in dataloader:
+                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
+                        for level_ind, level in enumerate(self.levels):
+                            outputs = level.net(inputs)
+                            total_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
+                    for level_ind in range(len(self.levels)):
+                        print("Level {}: After {} cycles, training loss is {}".format(level_ind, cycle, total_loss[level_ind]), flush=True)
                     # if total_loss < self.stop_loss:
                     #     break
                 with torch.no_grad():
-                    total_test_loss = 0.0
-                    for inputs, true_outputs in self.test_loader:
-                        outputs = self.levels[0].net(inputs)
-                        total_test_loss += self.levels[0].presmoother.loss_fn(outputs, true_outputs)
-                    print("After {} cycles, validation loss is {}".format(cycle, total_test_loss))
+                    total_test_loss = [0.0] * len(self.levels)
+                    for mini_batch_data in self.test_loader:
+                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
+                        for level_ind, level in enumerate(self.levels):
+                            outputs = level.net(inputs)
+                            total_test_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
+                    for level_ind in range(len(self.levels)):
+                        print("Level {}: After {} cycles, validation loss is {}".format(level_ind, cycle, total_test_loss[level_ind]), flush=True)
         # Return the fine net
         # if trainer.verbose:
         #     log.info(printer.format_header(f'Finished FAS Cycle'))
