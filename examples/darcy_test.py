@@ -19,11 +19,39 @@ from os import path
 from MTNN.core.components import data, models, subsetloader
 from MTNN.core.multigrid.operators import *
 from MTNN.core.alg import trainer, evaluator
+from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
 # Darcy problem imports
-sys.path.append("./data_darcy_multilevel")
+sys.path.append("./datasets/darcy")
 from PDEDataSet import *
+
+def read_args(args):
+    int_reader = lambda x : int(x)
+    float_reader = lambda x : float(x)
+    string_reader = lambda x : x
+    ensure_trailing_reader = lambda tr : lambda x : x.rstrip(tr) + tr
+    array_reader = lambda element_reader : \
+                   lambda x : [element_reader(z) for z in x.split(',')]
+
+    # Define reader functions for each parameter                                                                                                                                                                                              
+    reader_fns = { "num_cycles" : int_reader,
+                   "num_levels": int_reader,
+                   "width" : array_reader(int_reader),
+                   "momentum": float_reader,
+                   "learning_rate": float_reader,
+                   "weight_decay": float_reader}
+
+    params_dict = dict()
+    try:
+        for a in args[1:]:
+            tokens = a.split('=')
+            params_dict[tokens[0]] = reader_fns[tokens[0]](tokens[1])
+    except Exception as e:
+        exit(str(e) + "\n\nCommand line format: python generate_linsys_data.py num_rows=[int] "
+             "num_agents=[int] data_directory=[dir] config_directory=[dir]")
+    return params_dict
+
 
 # For reproducibility
 torch.manual_seed(0)
@@ -37,10 +65,10 @@ torch.set_printoptions(precision=5)
 # Set up data
 #=====================================
 
-train_filename = 'data_darcy_multilevel/train_data_32.npz'
-test_filename = 'data_darcy_multilevel/test_data_32.npz'
+train_filename = 'datasets/darcy/train_data_32.npz'
+test_filename = 'datasets/darcy/test_data_32.npz'
 percent_train = 0.8
-orig_filename = 'data_darcy_multilevel/match_pde_data_u_Q_32_50000.npz'
+orig_filename = 'datasets/darcy/match_pde_data_u_Q_32_50000.npz'
 
 if not path.exists(train_filename):
     print("Generating training and testing files.")
@@ -79,11 +107,14 @@ test_loader = DataLoader(pde_dataset_test, batch_size=test_batch_size, shuffle=T
 
 print(len(train_loader))
 
+params = read_args(sys.argv)
+print(params)
+
 #=====================================
 # Set up network architecture
 #=====================================
 
-net = models.MultiLinearNet([1024, 2048, 1024, 1], F.relu, lambda x : x)
+net = models.MultiLinearNet([1024, params["width"][0], params["width"][1], 1], F.relu, lambda x : x)
 
 
 #=====================================
@@ -100,12 +131,12 @@ restriction_op = restriction.PairwiseAggRestriction
 tau = tau_corrector.BasicTau
 
 # Build Multigrid Hierarchy Levels/Grids
-num_levels = int(sys.argv[1])
+num_levels = params["num_levels"]
 FAS_levels = []
 # Control number of pochs and learning rate per level
-lr = 0.01
-momentum = float(sys.argv[3])
-l2_decay = 0.0001 #316
+lr = params["learning_rate"] #0.01
+momentum = params["momentum"] #float(sys.argv[3])
+l2_decay = params["weight_decay"] #1.0e-4 #316
 l2_scaling = [1.0, 1.0, 0.0]
 smooth_pattern = [1, 2, 4, 8]
 for level_idx in range(0, num_levels):
@@ -131,7 +162,7 @@ for level_idx in range(0, num_levels):
     FAS_levels.append(aLevel)
 
 
-num_cycles = int(sys.argv[2])
+num_cycles = params["num_cycles"] #int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
                       subsetloader = subsetloader.WholeSetLoader(), #NextKLoader(4),
@@ -166,20 +197,18 @@ print('Finished Training (%.3fs)' % (stop - start))
 #=====================================
 print('Starting Testing')
 start = time.perf_counter()
-total_err = 0.0
+total_loss = 0.0
 num_samples = 0
+loss_fn = nn.MSELoss()
 with torch.no_grad():
-    for images, labels in test_loader:
-        true_Q= np.asarray(labels)
-        outputs = net(images)
-        dnn_Q = np.asarray(outputs)
-        err_Q = np.abs(true_Q-dnn_Q)
-
-        total_err += np.sum(err_Q)
+    for batch_idx, mini_batch_data in enumerate(test_loader):
+        input_data, target_data = deviceloader.load_data(mini_batch_data, net.device)
+        outputs = net(input_data)
+        total_loss += loss_fn(target_data, outputs)
         num_samples += test_batch_size
 stop = time.perf_counter()
 print('Finished Testing (%.3fs)' % (stop-start))
-print('Total and average error on the test set: {0}, {1}'.format(total_err, total_err / num_samples))
+print('Total and average loss on the test set: {0}, {1}'.format(total_loss, total_loss / num_samples))
 
 
 
