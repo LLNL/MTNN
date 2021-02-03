@@ -14,6 +14,7 @@ import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
 import MTNN.utils.datatypes as mgdata
 from MTNN.core.components.subsetloader import WholeSetLoader
+from MTNN.utils import deviceloader
 
 log = log.get_logger(__name__, write_to_file =True)
 
@@ -28,7 +29,7 @@ __all__ = ['Level',
 class Level:
     """A level or grid  in an Multigrid hierarchy"""
     def __init__(self, id: int, presmoother, postsmoother, prolongation, restriction,
-                 coarsegrid_solver, corrector=None):
+                 coarsegrid_solver, num_epochs, corrector=None):
         """
         Args:
             id: <int> level id (assumed to be unique)
@@ -48,6 +49,8 @@ class Level:
         self.prolongation = prolongation
         self.restriction = restriction
         self.corrector = corrector
+        self.num_epochs =  num_epochs
+        self.l2_info = None
 
         # Data attributes
         # TODO: tokenize?
@@ -60,7 +63,8 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'PRESMOOTHING {self.presmoother.__class__.__name__}',))
-            self.presmoother.apply(model, dataloader, tau=self.corrector, verbose=verbose)
+            self.presmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector,
+                                   l2_info = self.l2_info, verbose=verbose)
         except Exception:
             raise
 
@@ -68,7 +72,8 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'POSTSMOOTHING {self.postsmoother.__class__.__name__}'))
-            self.postsmoother.apply(model, dataloader, tau=self.corrector, verbose=verbose)
+            self.postsmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector,
+                                    l2_info = self.l2_info, verbose=verbose)
         except Exception:
            raise
 
@@ -76,7 +81,8 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}', border="*"))
-            self.coarsegrid_solver.apply(model, dataloader, tau=self.corrector, verbose=verbose)
+            self.coarsegrid_solver.apply(model, dataloader, self.num_epochs, tau=self.corrector,
+                                         l2_info = self.l2_info,verbose=verbose)
         except Exception:
             raise
 
@@ -93,7 +99,7 @@ class Level:
         try:
             if verbose:
                 log.info(printer.format_header(f'RESTRICTING {self.restriction.__class__.__name__}'))
-            self.restriction.apply(fine_level, coarse_level,  dataloader, self.corrector,  verbose)
+            self.restriction.apply(fine_level, coarse_level,  dataloader,  verbose)
         except Exception:
             raise
 
@@ -119,7 +125,8 @@ class _BaseMultigridScheme(ABC):
     """
     Base Multigrid Hierarchy
     """
-    def __init__(self, levels=None, cycles=1, subsetloader = WholeSetLoader()):
+    def __init__(self, levels=None, cycles=1, subsetloader = WholeSetLoader(),
+                 depth_selector = None):
         """
         Args:
             levels: List of <core.alg.multigrid.multigrid.Level> Level objects
@@ -127,12 +134,18 @@ class _BaseMultigridScheme(ABC):
             subsetloader: <core.alg.multigrid.operators.subsetloader> Create a
                            new dataloader focused on a subset of data for each 
                            cycle.
+            depth_selector: A function that takes the cycle index as input and 
+                            returns the hierarchy depth for this cycle.
         """
         if levels is None:
             levels = []
         self.levels = levels
         self.cycles = cycles
         self.subsetloader = subsetloader
+        if depth_selector is None:
+            self.depth_selector = lambda c : len(self.levels)
+        else:
+            self.depth_selector = depth_selector
 
     def setup(self, model):
         """Set the first level's model"""
@@ -227,7 +240,6 @@ class VCycle(_BaseMultigridScheme):
 
         """
         # Initiate first level
-        num_levels = len(self.levels)
         self.levels[0].net = model
 
         if trainer.verbose:
@@ -242,7 +254,10 @@ class VCycle(_BaseMultigridScheme):
             #############################################
             # Down cycle - Coarsen/Restrict all levels
             ############################################
-            for level_idx, level in enumerate(self.levels[:-1]):
+
+            num_levels = self.depth_selector(cycle)
+            for level_idx in range(num_levels-1):
+                level = self.levels[level_idx]
                 if trainer.verbose:
                     printer.print_levelstats(cycle, self.cycles, level_idx, num_levels, f"DOWN CYCLING ")
 
@@ -256,7 +271,7 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.restrict(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
 
             # Smoothing with coarse-solver at the coarsest level
-            self.levels[-1].coarse_solve(self.levels[-1].net, cycle_dataloader, trainer.verbose)
+            self.levels[num_levels-1].coarse_solve(self.levels[num_levels-1].net, cycle_dataloader, trainer.verbose)
 
             ##############################################
             # Up Cycle - Interpolate/Prolongate back up to  all levels
@@ -271,10 +286,32 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.prolong(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
+
+            if trainer.verbose and (cycle + 1) % 5 == 0:
+                with torch.no_grad():
+                    total_loss = [0.0] * len(self.levels)
+                    for mini_batch_data in dataloader:
+                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
+                        for level_ind, level in enumerate(self.levels):
+                            outputs = level.net(inputs)
+                            total_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
+                    for level_ind in range(len(self.levels)):
+                        print("Level {}: After {} cycles, training loss is {}".format(level_ind, cycle, total_loss[level_ind]), flush=True)
+                    # if total_loss < self.stop_loss:
+                    #     break
+                with torch.no_grad():
+                    total_test_loss = [0.0] * len(self.levels)
+                    for mini_batch_data in self.test_loader:
+                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
+                        for level_ind, level in enumerate(self.levels):
+                            outputs = level.net(inputs)
+                            total_test_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
+                    for level_ind in range(len(self.levels)):
+                        print("Level {}: After {} cycles, validation loss is {}".format(level_ind, cycle, total_test_loss[level_ind]), flush=True)
         # Return the fine net
-        if trainer.verbose:
-            log.info(printer.format_header(f'Finished FAS Cycle'))
-            printer.print_level(self.levels)
+        # if trainer.verbose:
+        #     log.info(printer.format_header(f'Finished FAS Cycle'))
+        #     printer.print_level(self.levels)
 
         return self.levels[0].net
 

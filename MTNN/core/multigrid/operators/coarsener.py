@@ -105,7 +105,6 @@ class HEMCoarsener():
             for i in range(nf):
                 similarity[i, i] = 0
             f2c, num_ColIn = self.get_heavyedgematching(similarity)
-
             self.coarseLevelDim.append(num_ColIn)
             self.Fine2CoarsePerLayer.append(f2c)
             

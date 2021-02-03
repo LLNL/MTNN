@@ -26,6 +26,8 @@ Currently supports:
 
 Additional Confluence documentation on [how to set-up PyTorch on LC](https://lc.llnl.gov/confluence/display/LC/PyTorch+in+LC)
 
+Confluence page on installing PyTorch on Lassen/Sierra: https://lc.llnl.gov/confluence/display/LC/IBM+PowerAI+in+LC
+
 ### Recommended: With Conda 
 **The following assumes Bash shell and that Anaconda is already installed on the system.** 
 

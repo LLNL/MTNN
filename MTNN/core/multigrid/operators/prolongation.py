@@ -13,6 +13,7 @@ import torch.nn as nn
 
 # local
 from MTNN.utils import logger, printer
+import MTNN.core.multigrid.operators.interpolator as interp
 
 log = logger.get_logger(__name__, write_to_file = True)
 
@@ -202,31 +203,74 @@ class PairwiseAggProlongation(_BaseProlongation):
         assert fine_level.interpolation_data is not None
         num_coarse_layers = len(coarse_level.net.layers)
 
-        R_array, P_array = fine_level.interpolation_data
+        R_op, P_op = fine_level.interpolation_data.R_op, fine_level.interpolation_data.P_op
+        R_for_grad_op = fine_level.interpolation_data.R_for_grad_op
+        P_for_grad_op = fine_level.interpolation_data.P_for_grad_op
 
+        eW_array = []
+        eB_array = []
         for layer_id in range(num_coarse_layers):
             W_c = coarse_level.net.layers[layer_id].weight.detach().clone()
             B_c = coarse_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
-            e_W = W_c - coarse_level.Winit[layer_id]  # W_c = self.R_array[layer_id] @ W_f @ self.P_array[layer_id-1]
+            e_W = W_c - coarse_level.Winit[layer_id]  # W_c = self.R_op[layer_id] @ W_f @ self.P_op[layer_id-1]
             e_B = B_c - coarse_level.Binit[layer_id]
-            if layer_id < num_coarse_layers - 1:
-                if layer_id == 0:
-                    e_W = P_array[layer_id] @ e_W
-                else:
-                    e_W = P_array[layer_id] @ e_W @ R_array[layer_id - 1]
-                e_B = P_array[layer_id] @ e_B
-            elif layer_id > 0:
-                e_W = e_W @ R_array[layer_id - 1]
+            eW_array.append(e_W)
+            eB_array.append(e_B)
+        eW_array, eB_array = interp.transfer(eW_array, eB_array, P_op, R_op)
 
-            W_f = fine_level.net.layers[layer_id].weight.detach().clone()
-            B_f = fine_level.net.layers[layer_id].bias.detach().clone().reshape(-1, 1)
-            W_f += e_W
-            B_f += e_B
+        with torch.no_grad():
+            for layer_id in range(num_coarse_layers):
+                fine_level.net.layers[layer_id].weight.add_(eW_array[layer_id])
+                fine_level.net.layers[layer_id].bias.add_(eB_array[layer_id].reshape(-1))
 
-            # Update fine-level net
-            with torch.no_grad():
-                fine_level.net.layers[layer_id].weight.copy_(W_f)
-                fine_level.net.layers[layer_id].bias.copy_(B_f.reshape(-1))
+        # ========================================================
+        # Prolong momentum
+        # new_fine_m = old_fine_m + P(new_coarse_m - old_coarse_m)
+        #            = P new_coarse_m + (I - PR) old_fine_m
+        # ========================================================
+        fine_optimizer = fine_level.presmoother.optimizer
+        coarse_optimizer = coarse_level.presmoother.optimizer
+        get_p = lambda ind : coarse_optimizer.state[coarse_optimizer.param_groups[0]['params'][ind]]['momentum_buffer']
+        emW_array = [get_p(2*layer_id) - coarse_level.Wmomentum_init[layer_id] for
+                      layer_id in range(int(len(coarse_optimizer.param_groups[0]['params']) / 2))]
+        emB_array = [get_p(2*layer_id + 1).reshape(-1, 1) - coarse_level.Bmomentum_init[layer_id] for
+                      layer_id in range(int(len(coarse_optimizer.param_groups[0]['params']) / 2))]
+        
+        emW_array, emB_array = interp.transfer(emW_array, emB_array, P_op, R_op)
+        get_fine_p = lambda ind : fine_optimizer.state[fine_optimizer.param_groups[0]['params'][ind]]['momentum_buffer']
+        with torch.no_grad():
+            for layer_id in range(num_coarse_layers):
+                get_fine_p(2*layer_id).add_(emW_array[layer_id])
+                get_fine_p(2*layer_id + 1).add_(emB_array[layer_id].reshape(-1))
+
+
+                
+        
+        # for i in range(0, len(fine_optimizer.param_groups[0]['params']), 2):
+        #     mW_c = coarse_optimizer.state[coarse_optimizer.param_groups[0]['params'][i]]['momentum_buffer']
+        #     mB_c = coarse_optimizer.state[coarse_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'].reshape(-1, 1)
+        #     layer_id = int(i / 2)
+        #     e_mW = mW_c - coarse_level.Wmomentum_init[layer_id]
+        #     e_mB = mB_c - coarse_level.Bmomentum_init[layer_id]
+        #     if layer_id < num_coarse_layers - 1:
+        #         if layer_id == 0:
+        #             e_mW = P_op[layer_id] @ e_mW
+        #         else:
+        #             e_mW = P_op[layer_id] @ e_mW @ R_op[layer_id - 1]
+        #         e_mB = P_op[layer_id] @ e_mB
+        #     elif layer_id > 0:
+        #         e_mW = e_mW @ R_op[layer_id - 1]
+
+        #     mW_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i]]['momentum_buffer']
+        #     mB_f = fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer']
+        #     assert(mW_f.shape == e_mW.shape)
+        #     assert(mB_f.shape == e_mB.reshape(-1).shape)
+        #     mW_f += e_mW
+        #     mB_f += e_mB.reshape(-1)
+            
+        #     with torch.no_grad():
+        #         fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i]]['momentum_buffer'].copy_(mW_f)
+        #         fine_optimizer.state[fine_optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'].copy_(mB_f.reshape(-1))
 
 class RandomPerturbationOperator(_BaseProlongation):
     def __init__(self):

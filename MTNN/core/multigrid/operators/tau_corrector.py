@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import torch
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
+import MTNN.core.multigrid.operators.interpolator as interp
 
 import sys
 
@@ -40,7 +41,7 @@ class _BaseTauCorrector(ABC):
         raise NotImplementedError
 
     def get_tau_for_data(self, fine_level, coarse_level, dataloader, operators,
-                         loss_fn, verbose=False):
+                         loss_fn, fine_rhs = None):
         """
         Compute the coarse-level residual tau correction. Returns
         Args:
@@ -64,44 +65,32 @@ class _BaseTauCorrector(ABC):
         coarse_level_grad = coarse_level.net.getGrad(dataloader, loss_fn)
 
         # coarse level: grad_{W,B} = R * [f^h - A^{h}(u)] + A^{2h}(R*u)
-        coarse_level_rhsW = []
-        coarse_level_rhsB = []
-
-        # Compute the Tau correction
+        rhs_W_array = []
+        rhs_B_array = []
+        if fine_rhs:
+            fine_rhsW, fine_rhsB = fine_rhs
         for layer_id in range(len(fine_level.net.layers)):
-
             dW_f = fine_level_grad.weight_grad[layer_id]
             dB_f = fine_level_grad.bias_grad[layer_id]
-            dW_c = coarse_level_grad.weight_grad[layer_id]
-            dB_c = coarse_level_grad.bias_grad[layer_id]
-
             # f^h - A^h(u^h)
-            if fine_level.id > 0:
-                rhsW = fine_level.corrector.rhs_W[layer_id] - dW_f
-                rhsB = fine_level.corrector.rhs_B[layer_id] - dB_f
+            if fine_rhs:
+                rhsW = fine_rhsW[layer_id] - dW_f
+                rhsB = fine_rhsB[layer_id] - dB_f
             else:  # first level
                 rhsW = -dW_f
                 rhsB = -dB_f
 
-            # R * [f^h - A^h(u^h)]
-            if layer_id < num_fine_layers - 1:
-                if layer_id == 0:
-                    rhsW = operators.R_op[layer_id] @ rhsW
-                else:
-                    rhsW = operators.R_op[layer_id] @ rhsW @ operators.P_op[layer_id - 1]
-                rhsB = operators.R_op[layer_id] @ rhsB
-            elif layer_id > 0:
-                rhsW = rhsW @ operators.P_op[-1]
+            rhs_W_array.append(rhsW)
+            rhs_B_array.append(rhsB)
 
-            # R * [f^h - A^{h}(u^h)] + A^{2h}(R*u^h)
-            rhsW += dW_c
-            rhsB += dB_c
+        # R * [f^h - A^h(u^h)]
+        coarse_level_rhsW, coarse_level_rhsB = interp.transfer(
+            rhs_W_array, rhs_B_array, operators.R_for_grad_op, operators.P_for_grad_op)
 
-            coarse_level_rhsW.append(rhsW)
-            coarse_level_rhsB.append(rhsB)
-
-        if verbose:
-            log.info(f"Restriction.Tau rhsW{rhsW} rhsB{rhsB}")
+        # R * [f^h - A^h(u^h)] + A^{2h}(R*u^h)
+        for layer_id in range(len(fine_level.net.layers)):
+            coarse_level_rhsW[layer_id] += coarse_level_grad.weight_grad[layer_id]
+            coarse_level_rhsB[layer_id] += coarse_level_grad.bias_grad[layer_id]
 
         return coarse_level_rhsW, coarse_level_rhsB    
 
@@ -113,8 +102,11 @@ class BasicTau(_BaseTauCorrector):
         super().__init__(loss_fn)
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
+        fine_rhs = None
+        if fine_level.corrector.rhs_W:
+            fine_rhs = (fine_level.corrector.rhs_W, fine_level.corrector.rhs_B)
         (rhsW, rhsB) = self.get_tau_for_data(fine_level, coarse_level, dataloader,
-                                             operators, self.loss_fn, verbose)
+                                             operators, self.loss_fn, fine_rhs)
         coarse_level.corrector.rhs_W = rhsW
         coarse_level.corrector.rhs_B = rhsB
         
@@ -126,7 +118,7 @@ class BasicTau(_BaseTauCorrector):
                     loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.rhs_B[layer_id]))
 
                 if verbose:
-                    printer.print_tau(self, loss, msg="\tApplying Tau Correction: ")
+                    printer.print_tau(self, loss.item(), msg="\tApplying Tau Correction: ")
             except Exception as e:
                 print("Exception in tau_corrector.py:BasicTau.correct.", file=sys.stderr)
                 raise e
@@ -138,17 +130,21 @@ class OneAtaTimeTau(_BaseTauCorrector):
 
     def __init__(self, loss_fn):
         super().__init__(loss_fn)
+        self.tau_corrections = None
 
     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
         self.tau_corrections = []
         for batch_idx, mini_batch_data in enumerate(dataloader):
+            fine_rhs = None
+            if fine_level.corrector.tau_corrections:
+                fine_rhs = fine_level.corrector.tau_corrections[batch_idx]
             curr_rhsW, curr_rhsB = self.get_tau_for_data(fine_level, coarse_level,
-                                                         (dataloader,), operators,
-                                                    self.loss_fn, verbose)
+                                                         (mini_batch_data,), operators,
+                                                         self.loss_fn, fine_rhs)
             self.tau_corrections.append((curr_rhsW, curr_rhsB))
 
     def correct(self, model, loss, batch_idx, num_batches, verbose=False):
-        if self.tau_corrections[batch_idx] is not None:
+        if self.tau_corrections is not None:
             rhsW, rhsB = self.tau_corrections[batch_idx]
             try:
                 for layer_id in range(len(model.layers)):

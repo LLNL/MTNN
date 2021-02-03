@@ -10,6 +10,47 @@ import MTNN.utils.datatypes as mgdata
 
 log = log.get_logger(__name__, write_to_file = True)
 
+def transfer(Wmats, Bmats, R_ops, P_ops):
+    num_layers = len(Wmats)
+    Wdest_array = []
+    Bdest_array = []
+    for layer_id in range(num_layers):
+        Wsrc = Wmats[layer_id]
+        Bsrc = Bmats[layer_id]
+        if layer_id < num_layers - 1:
+            if layer_id == 0:
+                Wdest = R_ops[layer_id] @ Wsrc
+            else:
+                Wdest = R_ops[layer_id] @ Wsrc @ P_ops[layer_id - 1]
+            Bdest = R_ops[layer_id] @ Bsrc
+        elif layer_id > 0:
+            Wdest = Wsrc @ P_ops[layer_id-1]
+            Bdest = Bsrc.clone()
+
+        Wdest_array.append(Wdest)
+        Bdest_array.append(Bdest)
+    return Wdest_array, Bdest_array
+
+def transfer_star(Wmats, Bmats, R_ops, P_ops):
+    num_layers = len(Wmats)
+    Wdest_array = []
+    Bdest_array = []
+    for layer_id in range(num_layers):
+        Wsrc = Wmats[layer_id]
+        Bsrc = Bmats[layer_id]
+        if layer_id < num_layers - 1:
+            if layer_id == 0:
+                Wdest = R_ops[layer_id] * Wsrc
+            else:
+                Wdest = R_ops[layer_id] * Wsrc * P_ops[layer_id - 1]
+            Bdest = R_ops[layer_id] * Bsrc
+        elif layer_id > 0:
+            Wdest = Wsrc * P_ops[layer_id-1]
+            Bdest = Bsrc.clone()
+
+        Wdest_array.append(Wdest)
+        Bdest_array.append(Bdest)
+    return Wdest_array, Bdest_array
 
 class PairwiseAggCoarsener:
     """
@@ -37,6 +78,10 @@ class PairwiseAggCoarsener:
         # Each index of Prolongation/Restriction operators corresponds to layer to which it is to be applied
         prolongation_operators = []
         restriction_operators = []
+        prolongation_for_grad_operators = []
+        restriction_for_grad_operators = []
+        l2reg_left_vecs = []
+        l2reg_right_vecs = []
 
         # Instantiate the coarse-level net with the coarsener dimensions
         self.coarsener.coarsen(fine_level.net)
@@ -78,8 +123,24 @@ class PairwiseAggCoarsener:
 
             # Construct prolongation operators for each layer
             # TODO - Decouple?
-            P_layer = torch.transpose(R_layer, 0, 1) * nr / d.reshape(1, -1) 
+            P_layer = (torch.transpose(R_layer, 0, 1) * nr) / d.reshape(1, -1)
             prolongation_operators.append(P_layer)
 
-        return mgdata.operators(restriction_operators, prolongation_operators)
+            R_for_grad_layer = torch.transpose(P_layer, 0, 1)
+            restriction_for_grad_operators.append(R_for_grad_layer)
+
+            P_for_grad_layer = torch.transpose(R_layer, 0, 1)
+            prolongation_for_grad_operators.append(P_for_grad_layer)
+
+            # ========================================================================
+            # Compute matrix A s.t. l2 regularization on coarse level uses x_c^T A x_c
+            # But we compute vectors used in the action of A, not A itself.
+            # ========================================================================
+            # l2reg_left = torch.diag(R_for_grad_layer @ P_layer).reshape(-1, 1)
+            # l2reg_left_vecs.append(l2reg_left)
+            # l2reg_right = torch.diag(R_layer @ P_for_grad_layer).reshape(1, -1)
+            # l2reg_right_vecs.append(l2reg_right)
+
+        return mgdata.operators(restriction_operators, prolongation_operators, restriction_for_grad_operators,
+                                prolongation_for_grad_operators, l2reg_left_vecs, l2reg_right_vecs)
 
