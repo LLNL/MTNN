@@ -68,9 +68,11 @@ class NextKLoader(_BaseSubsetLoader):
             if self.curr_ind >= len(dataloader.dataset):
                 self.curr_ind = 0
         else:
-            amount_from_front = nextksize - (len(dataloader.dataset) - self.curr_ind)
-            indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, amount_from_front))
-            self.curr_ind = amount_from_front
+            # amount_from_front = nextksize - (len(dataloader.dataset) - self.curr_ind)
+            # indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, amount_from_front))
+            # self.curr_ind = amount_from_front
+            indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, nextksize))
+            self.curr_ind = nextksize
         return torch.utils.data.DataLoader(dataloader.dataset, batch_size = dataloader.batch_size,
                                            sampler=torch.utils.data.SubsetRandomSampler(indices))
 
@@ -84,3 +86,19 @@ class WholeSetLoader(_BaseSubsetLoader):
 
     def get_subset_dataloader(self, dataloader):
         return dataloader
+
+class CyclingNextKLoader(NextKLoader):
+    """ Like the NextKLoader, but change how many minibatches each time.
+    """
+
+    def __init__(self, num_minibatch_array) -> None:
+        super().__init__(num_minibatch_array[0])
+        self.num_minibatch_array = num_minibatch_array
+        self.minibatch_array_ind = 0
+
+    def get_subset_dataloader(self, dataloader):
+        self.num_minibatches = self.num_minibatch_array[self.minibatch_array_ind]
+        self.minibatch_array_ind += 1
+        if self.minibatch_array_ind == len(self.num_minibatch_array):
+            self.minibatch_array_ind = 0
+        return super().get_subset_dataloader(dataloader)

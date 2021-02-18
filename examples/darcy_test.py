@@ -38,6 +38,7 @@ def read_args(args):
     reader_fns = { "num_cycles" : int_reader,
                    "num_levels": int_reader,
                    "width" : array_reader(int_reader),
+                   "loader_sizes" : array_reader(int_reader),
                    "momentum": float_reader,
                    "learning_rate": float_reader,
                    "weight_decay": float_reader}
@@ -138,7 +139,7 @@ lr = params["learning_rate"] #0.01
 momentum = params["momentum"] #float(sys.argv[3])
 l2_decay = params["weight_decay"] #1.0e-4 #316
 l2_scaling = [1.0, 1.0, 0.0]
-smooth_pattern = [1, 2, 4, 8]
+smooth_pattern = [1, 1, 1, 8]
 for level_idx in range(0, num_levels):
     if level_idx == 0:
         optim_params = SGDparams(lr=lr, momentum=momentum, l2_decay=l2_decay)
@@ -165,7 +166,7 @@ for level_idx in range(0, num_levels):
 num_cycles = params["num_cycles"] #int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
-                      subsetloader = subsetloader.WholeSetLoader(), #NextKLoader(4),
+                      subsetloader = subsetloader.WholeSetLoader(), #CyclingNextKLoader(params["loader_sizes"]), #NextKLoader(4),
                       depth_selector = depth_selector)
 mg_scheme.test_loader = test_loader
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,

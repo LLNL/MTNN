@@ -52,6 +52,10 @@ class SGDSmoother(_BaseSmoother):
         """
         super().__init__(model, loss_fn, optim_params, log_interval)
 
+    def reduce_lr(self, scaling_factor):
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = scaling_factor * param_group['lr']
+
     def apply(self, model, dataloader, num_epochs, tau=None, l2_info = None, verbose=False) -> None:
         """
         Apply forward pass and backward pass to the model until stopping criteria is met.
@@ -111,8 +115,8 @@ class SGDSmoother(_BaseSmoother):
                 #     loss += (self.optim_params.l2_decay / 2.0) * l2_term
                     
                 # Apply Tau Correction
-                if tau:
-                    tau.correct(model, loss, batch_idx, len(dataloader), verbose)
+                # if tau:
+                #     tau.correct(model, loss, batch_idx, len(dataloader), verbose)
 
                 # Backward
                 loss.backward()

@@ -59,9 +59,9 @@ class PairwiseAggRestriction(_BaseRestriction):
         # setup
         # TODO: refactor setup
         assert fine_level.id < coarse_level.id
-        if fine_level.interpolation_data is None or self.resetup == 100:
-            fine_level.interpolation_data = interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
-            self.resetup = 0
+        if True: #fine_level.interpolation_data is None:# or self.resetup == 300:
+            fine_level.interpolation_data = self.matching_alg.setup(fine_level, coarse_level) # interp.PairwiseAggCoarsener().setup(fine_level, coarse_level)
+            self.resetup = 1
         else:
             self.resetup += 1
             
@@ -95,8 +95,8 @@ class PairwiseAggRestriction(_BaseRestriction):
 
 
         # Restrict tau
-        coarse_level.corrector.compute_tau(fine_level, coarse_level, dataloader,
-                                           fine_level.interpolation_data, verbose)
+        # coarse_level.corrector.compute_tau(fine_level, coarse_level, dataloader,
+        #                                    fine_level.interpolation_data, verbose)
 
         # ===============================================================================
         # Restrict momentum
@@ -116,6 +116,7 @@ class PairwiseAggRestriction(_BaseRestriction):
                 coarse_level.presmoother.momentum_data.append(mB_c_array[i].clone().reshape(-1))
         coarse_level.Wmomentum_init = mW_c_array
         coarse_level.Bmomentum_init = mB_c_array
+        coarse_level.presmoother.optimizer = None
     
 
 

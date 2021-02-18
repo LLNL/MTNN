@@ -152,6 +152,23 @@ class MultiLinearNet(_BaseModel):
 
         return x
 
+    def all_hidden_forward(self, x):
+        # Flatten Input
+        x = x.view(x.size(0), -1)
+
+        outputs = [x.detach().clone()]
+        with torch.no_grad():
+            for idx, layer in enumerate(self.layers):
+                if idx != (len(self.layers) - 1):
+                    x = self.layers[idx](x)
+                    x = self.activation(x)
+                elif layer == self.layers[-1]:
+                    x = self.layers[idx](x)
+                    x = self.output(x)
+                outputs.append(x.detach().clone())
+
+        return outputs
+
 class BasicMnistModel(_BaseModel):
     """A basic image classifier."""
     # https://github.com/pytorch/examples/blob/master/mnist/main.py

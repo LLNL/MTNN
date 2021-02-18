@@ -58,10 +58,8 @@ class PairwiseAggCoarsener:
         * Uses Heavy Edge matching from similarity matrix of source_model's Weight and Bias
     """
 
-    def __init__(self):
-        # A list of restriction operators(matrices) to use
-        # for each fine_level network's hidden layer
-        self.coarsener = coarsener.HEMCoarsener()
+    def __init__(self, coarsener):
+        self.coarsener = coarsener
 
 
     def setup(self, fine_level: mg.Level, coarse_level: mg.Level):

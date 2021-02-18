@@ -93,7 +93,7 @@ class MnistData(_BaseDataLoader):
                                         pin_memory=True)
         self.testloader = td.DataLoader(self.testset,
                                         batch_size=testbatch_size,
-                                        shuffle=True,
+                                        shuffle=False,
                                         num_workers=self.num_workers,
                                         pin_memory=True)
 
@@ -127,7 +127,7 @@ class CIFAR10Data(_BaseDataLoader):
                                         pin_memory=True)
         self.testloader = td.DataLoader(self.testset,
                                         batch_size = testbatch_size,
-                                        shuffle = True,
+                                        shuffle = False,
                                         num_workers = self.num_workers,
                                         pin_memory=True)
 
