@@ -80,6 +80,12 @@ TransferOps = col.namedtuple("TransferOps", "R_ops P_ops R_for_grad_ops P_for_gr
 ####################################################################
 
 def transfer(Wmats, Bmats, R_ops, P_ops):
+    # Matrix multiplication broadcasting:
+    # T of shape (a, b, c, N, M)
+    # Matrix A of shape (k, N)
+    # Matrix B of shape (M, p)
+    # A @ T @ B computes a tensor of shape (a, b, c, k, p) such that
+    # (i, j, l, :, :) = A @ T(i,j,l,:,:) @ B
     num_layers = len(Wmats)
     Wdest_array = []
     Bdest_array = []
@@ -89,15 +95,11 @@ def transfer(Wmats, Bmats, R_ops, P_ops):
         if layer_id < num_layers - 1:
             if layer_id == 0:
                 Wdest = R_ops[layer_id] @ Wsrc
-#                print(layer_id, "Before: ", R_ops[layer_id].shape, Wsrc.shape, "After: ", Wdest.shape)
             else:
-#                print(layer_id, "Before: ", R_ops[layer_id].shape, Wsrc.shape, P_ops[layer_id-1].shape, end=" ")
                 Wdest = R_ops[layer_id] @ Wsrc @ P_ops[layer_id - 1]
-#                print("After: ", Wdest.shape)
             Bdest = R_ops[layer_id] @ Bsrc
         elif layer_id > 0:            
             Wdest = Wsrc @ P_ops[layer_id-1]
-#            print(layer_id, "Before: ", Wsrc.shape, P_ops[layer_id-1].shape, "After: ", Wdest.shape)
             Bdest = Bsrc.clone()
 
         Wdest_array.append(Wdest)
