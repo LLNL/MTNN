@@ -246,11 +246,13 @@ class VCycle(_BaseMultigridScheme):
             printer.print_cycleheader(self)
             printer.print_level(self.levels)
 
+        self.best_seen = [10000] * len(self.levels)
+        
         # Iteratively restrict each level's grid
         for cycle in range(0, self.cycles):
-            # if cycle == 10:
+            # if cycle == 2000:
             #     for level in self.levels:
-            #         level.presmoother.reduce_lr(0.1)
+            #         level.presmoother.reduce_lr(0.5)
             if trainer.verbose:
                 printer.print_cycle_status(self, cycle)
             #############################################
@@ -291,34 +293,32 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
 
-            if trainer.verbose and (cycle + 1) % 20 == 0:
+            if trainer.verbose and (cycle + 1) % 10 == 0:
                 for level in self.levels:
                     level.net.eval()
-                with torch.no_grad():
-                    total_loss = [0.0] * len(self.levels)
-                    for mini_batch_data in dataloader:
-                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
-                        for level_ind, level in enumerate(self.levels):
-                            outputs = level.net(inputs)
-                            total_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
-                    for level_ind in range(len(self.levels)):
-                        print("Level {}: After {} cycles, training loss is {}".format(level_ind, cycle, total_loss[level_ind]), flush=True)
+                # with torch.no_grad():
+                #     total_loss = [0.0] * len(self.levels)
+                #     for mini_batch_data in dataloader:
+                #         inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
+                #         for level_ind, level in enumerate(self.levels):
+                #             outputs = level.net(inputs)
+                #             total_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
+                #     for level_ind in range(len(self.levels)):
+                #         print("Level {}: After {} cycles, training loss is {}".format(level_ind, cycle, total_loss[level_ind]), flush=True)
                 with torch.no_grad():
                     total_test_loss = [0.0] * len(self.levels)
-                    test_linf_loss = [0.0] * len(self.levels)
+#                    test_linf_loss = [0.0] * len(self.levels)
                     for mini_batch_data in self.test_loader:
                         inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
                         for level_ind, level in enumerate(self.levels):
                             outputs = level.net(inputs)
                             total_test_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
-                            test_linf_loss[level_ind] = torch.mean(torch.max(torch.abs(true_outputs - outputs), dim=1).values)
-                            # if level_ind == 0:
-                            #     for z in range(4):
-                            #         print(true_outputs[z,:])
-                            #         print(outputs[z,:])
-                            #         print()
+#                            test_linf_loss[level_ind] = torch.max (torch.max(torch.abs(true_outputs - outputs), dim=1).values)
                     for level_ind in range(len(self.levels)):
-                        print("Level {}: After {} cycles, validation loss is {}, mean max loss is {}".format(level_ind, cycle, total_test_loss[level_ind], test_linf_loss[level_ind]), flush=True)
+                        if total_test_loss[level_ind] < self.best_seen[level_ind]:
+                            self.best_seen[level_ind] = total_test_loss[level_ind]
+#                        print("Level {}: After {} cycles, validation loss is {}, best seen is {}, max err is {}".format(level_ind, cycle, total_test_loss[level_ind], self.best_seen[level_ind], test_linf_loss[level_ind]), flush=True)
+                        print("Level {}: After {} cycles, validation loss is {}, best seen is {}".format(level_ind, cycle, total_test_loss[level_ind], self.best_seen[level_ind]), flush=True)
                 for level in self.levels:
                     level.net.train()
 

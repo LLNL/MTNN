@@ -5,20 +5,33 @@ import pdb
 
 #local
 from MTNN.utils import logger
+from MTNN.utils import deviceloader
+from MTNN.core.multigrid.operators.SecondOrderRestriction import CoarseMapping
 log = logger.get_logger(__name__, write_to_file =True)
 
 class StandardSimilarity:
+    """ sim(i,j) = w_i^T w_j
+    """
     def __init__(self):
         pass
 
     def calculate_similarity(self, WB, model, layer_ind):
+        nr = torch.norm(WB, p=2, dim=1, keepdim=True)
+        WB = WB / nr
         return torch.mm(WB, torch.transpose(WB, dim0=0, dim1=1))
 
 class HSimilarity:
+    """
+    Like StandardSimilarity, but instead of comparing vectors
+    direclty, we feed a set of training data U through the network,
+    and compare the output vectors of each internal layer.
+    """
     def __init__(self, U):
         self.U = U
 
     def calculate_similarity(self, WB, model, layer_id):
+        nr = torch.norm(WB, p=2, dim=1, keepdim=True)
+        WB = WB / nr
         if layer_id == 0:
             self.hidden_outputs = model.all_hidden_forward(self.U)
             H = self.hidden_outputs[layer_id]
@@ -42,6 +55,8 @@ class ExpHSimilarity:
         self.scale = scale
 
     def calculate_similarity(self, WB, model, layer_id):
+        nr = torch.norm(WB, p=2, dim=1, keepdim=True)
+        WB = WB / nr
         if layer_id == 0:
             self.hidden_outputs = model.all_hidden_forward(self.U)
             H = self.hidden_outputs[layer_id]
@@ -62,7 +77,19 @@ class ExpHSimilarity:
         inner_product_mat[-1,-1] = 1.0
         inner_product_mat[:-1,:-1] = eS
         return torch.mm(WB, torch.mm(inner_product_mat, torch.transpose(WB, dim0=0, dim1=1)))
-        
+
+class RadialBasisSimilarity:
+    """ sim(i,j) = exp(-\lambda ||w_i - w_j||^2) = exp(-lambda ((w_i, w_i) + (w_j, w_j) - 2 (w_i, w_j)))
+    """
+    def __init__(self, scale=1.0):
+        self.scale = scale
+
+    def calculate_similarity(self, W, B, model, layer_id):
+        S = torch.mm(WB, torch.transpose(WB, dim0=0, dim1=1))
+        D = torch.diag(S) * torch.ones(S.shape)
+        to_ret = torch.exp(self.scale * (2 * S - D - D.T))
+        return to_ret
+    
 
 class HEMCoarsener():
     """
@@ -85,16 +112,19 @@ class HEMCoarsener():
         n = similarityMatrix.shape[0]
         P = torch.argsort(-similarityMatrix, 1)
         match = P[:,0] # Best match
-        range_n = torch.tensor(range(n), device="cuda")
+        range_n = torch.tensor(range(n), device=deviceloader.get_device())
 
         # A node has a paired match if it is its match's match AND
         # their similarity is at least the threshold
         is_paired = (range_n == match[match]) * (similarityMatrix[range_n, match[range_n]] > threshold)
 
         # Try again for the loners
+        last_num_paired = -1
         for i in range(100):
-            if torch.sum(is_paired) == n:
+            curr_num_paired = torch.sum(is_paired)
+            if curr_num_paired == n or curr_num_paired == last_num_paired:
                 break
+            last_num_paired = curr_num_paired
             similarityMatrix[:, is_paired] = -1.0
             P = torch.argsort(-similarityMatrix, 1)
             match[~is_paired] = P[~is_paired,0]
@@ -120,63 +150,35 @@ class HEMCoarsener():
         n_coarse = n - n_pair # = n_pair + (n - 2 * n_pair)
         return fine2coarse, n_coarse
         
-    def coarsen(self, fine_level_net):
+    def __call__(self, param_matrix_list, net):
         """
-        Coarsens a model
-        Args:
-            fine_level_net:
-
-        Returns:
-
         """
-        num_layers = len(fine_level_net.layers)
+        W_array, B_array = param_matrix_list
+        
+        num_layers = len(W_array)
         # number columns
-        self.coarseLevelDim = [fine_level_net.layers[0].in_features]
+        num_coarse_array = []
 
         # fine2coarse array
-        self.Fine2CoarsePerLayer = []
-
-#        hidden_outputs = fine_level_net.all_hidden_forward(self.training_data)
+        fine2CoarsePerLayer = []
 
         # coarsen layers
         for layer_id in range(num_layers - 1):
-            w = fine_level_net.layers[layer_id].weight.detach()
-            b = fine_level_net.layers[layer_id].bias.detach().reshape(-1, 1)
+            w = W_array[layer_id].transpose(0, -2).flatten(1)
+            b = B_array[layer_id]
             wb = torch.cat([w, b], dim=1)
-            nr = torch.norm(wb, p=2, dim=1, keepdim=True)
-            wb = wb / nr
+
             # f-size (w.shape[0])
-            nf = fine_level_net.layers[layer_id].out_features
+            nf = W_array[0].shape[0]
 
-            similarity = self.similarity_calculator.calculate_similarity(wb, fine_level_net, layer_id)
+            similarity = self.similarity_calculator.calculate_similarity(wb, net, layer_id)
 
-#             H = hidden_outputs[layer_id]
-#             # print(H.shape)
-#             # print(torch.mean(H, dim=0), torch.norm(H, dim=0), torch.std(H, dim=0))
-#             print(torch.min(torch.norm(H, dim=0)))
-#             if layer_id > 0:
-#                 H = H - torch.mean(H, dim=0)                
-#                 stdvec = torch.std(H, dim=0)
-#                 stdvec[stdvec==0] = 1.0
-#                 H = H / stdvec
-#             ipm_size = H.shape[1] + 1
-#             inner_product_mat = torch.empty((ipm_size, ipm_size), device="cuda:0")
-#             inner_product_mat[-1,:] = 0
-#             inner_product_mat[:,-1] = 0
-#             inner_product_mat[-1,-1] = 1.0
-#             inner_product_mat[:-1,:-1] = torch.mm(torch.transpose(H, dim0=0, dim1=1), H)
-# #            print(inner_product_mat.shape, torch.norm(inner_product_mat))
-#             # similarity strength
-#             similarity = torch.mm(wb, torch.mm(inner_product_mat, torch.transpose(wb, dim0=0, dim1=1)))
-# #            similarity = abs(torch.mm(wb, torch.transpose(wb, dim0=0, dim1=1)))
-#             # print(inner_product_mat)
-#             # print(similarity)
-            similarity.fill_diagonal_(0)
+            similarity.fill_diagonal_(-999.0)
             f2c, num_ColIn = self.get_heavyedgematching(similarity)
             print("Layer {} has {} coarse neurons".format(layer_id, num_ColIn))
             print()
-            self.coarseLevelDim.append(num_ColIn)
-            self.Fine2CoarsePerLayer.append(f2c)
-            
-        self.coarseLevelDim.append(fine_level_net.layers[num_layers - 1].out_features)
+            num_coarse_array.append(num_ColIn)
+            fine2CoarsePerLayer.append(f2c)
+
+        return CoarseMapping(fine2CoarsePerLayer, num_coarse_array)
 

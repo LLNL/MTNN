@@ -1,7 +1,7 @@
 # Public
 __all__ = ['smoother',
-           'interpolator',
-           'prolongation',
-           'restriction',
-           'coarsener',
+           'SecondOrderRestriction',
+           'SecondOrderConverter',
+           'SimilarityMatcher',
+           'TransferOpsBuilder',
            'tau_corrector']

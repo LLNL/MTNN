@@ -10,7 +10,6 @@ import torch.optim as optim
 
 # local
 from MTNN.utils import logger, printer, deviceloader
-from MTNN.core.multigrid.operators.interpolator import transfer_star
 
 log = logger.get_logger(__name__, write_to_file =True)
 
@@ -94,25 +93,6 @@ class SGDSmoother(_BaseSmoother):
                 # Forward
                 outputs = model(input_data)
                 loss = self.loss_fn(outputs, target_data)
-
-                # # Apply l2 regularization
-                # l2_term = 0.0
-                # if l2_info is None:
-                #     for layer in model.layers:
-                #         l2_term += torch.sum(layer.weight * layer.weight)
-                #         l2_term += torch.sum(layer.bias * layer.bias)
-                #     loss += (self.optim_params.l2_decay / 2.0) * l2_term
-                # else:
-                #     zW, zB, l2_reg_left_vecs, l2_reg_right_vecs = l2_info
-                #     weights = [layer.weight for layer in model.layers]
-                #     biases = [layer.bias for layer in model.layers]
-                #     otherW, otherB = transfer_star(weights, biases, l2_reg_left_vecs, l2_reg_right_vecs)
-                #     for layer_idx, layer in enumerate(model.layers):
-                #         l2_term += torch.sum(layer.weight * otherW[layer_idx])
-                #         l2_term += torch.sum(layer.bias * otherB[layer_idx])
-                #         l2_term += torch.sum(layer.weight * zW[layer_idx])
-                #         l2_term += torch.sum(layer.bias * zB[layer_idx])
-                #     loss += (self.optim_params.l2_decay / 2.0) * l2_term
                     
                 # Apply Tau Correction
                 # if tau:

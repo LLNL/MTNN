@@ -5,7 +5,8 @@ from abc import ABC, abstractmethod
 import torch
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
-import MTNN.core.multigrid.operators.interpolator as interp
+from MTNN.core.multigrid.operators.SecondOrderRestriction import transfer
+#import MTNN.core.multigrid.operators.interpolator as interp
 
 import sys
 
@@ -84,7 +85,7 @@ class _BaseTauCorrector(ABC):
             rhs_B_array.append(rhsB)
 
         # R * [f^h - A^h(u^h)]
-        coarse_level_rhsW, coarse_level_rhsB = interp.transfer(
+        coarse_level_rhsW, coarse_level_rhsB = transfer(
             rhs_W_array, rhs_B_array, operators.R_for_grad_op, operators.P_for_grad_op)
 
         # R * [f^h - A^h(u^h)] + A^{2h}(R*u^h)

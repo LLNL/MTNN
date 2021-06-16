@@ -15,7 +15,11 @@ import numpy as np
 
 # local
 from MTNN.core.components import data, models, subsetloader
-from MTNN.core.multigrid.operators import *
+from MTNN.core.multigrid.operators import tau_corrector, smoother
+import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
+import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
+import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
+import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
 from MTNN.core.alg import trainer, evaluator
 import MTNN.core.multigrid.scheme as mg
 from MTNN.utils import deviceloader
@@ -31,8 +35,11 @@ def read_args(args):
     # Define reader functions for each parameter                                                                                                                                                                                              
     reader_fns = { "num_cycles" : int_reader,
                    "num_levels": int_reader,
-                   "width" : array_reader(int_reader),
-                   "loader_sizes" : array_reader(int_reader),
+                   "conv_ch" : array_reader(int_reader),
+                   "conv_kernel_width" : array_reader(int_reader),
+                   "conv_stride" : array_reader(int_reader),
+                   "fc_width" : array_reader(int_reader),
+                   "smooth_iters" : int_reader,
                    "momentum": float_reader,
                    "learning_rate": float_reader,
                    "weight_decay": float_reader}
@@ -78,9 +85,10 @@ print("Running on {}".format(deviceloader.get_device()))
 # Set up network architecture
 #============================
 
-net = models.MultiLinearNet([784, params["width"][0], params["width"][1], 10], F.relu, F.log_softmax)
-
-
+conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
+print("conv_info: ", conv_info)
+net = models.ConvolutionalNet(conv_info, params["fc_width"] + [10], F.relu, F.log_softmax)
+#net = models.MultiLinearNet([784, params["width"][0], params["width"][1], 10], F.relu, F.log_softmax)
 
 #=====================================
 # Multigrid Hierarchy Components
@@ -91,8 +99,8 @@ class SGDparams:
         self.momentum = momentum
         self.l2_decay = l2_decay
 #SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-prolongation_op = prolongation.PairwiseAggProlongation
-restriction_op = restriction.PairwiseAggRestriction
+#prolongation_op = prolongation.PairwiseAggProlongation
+#restriction_op = restriction.PairwiseAggRestriction
 tau = tau_corrector.OneAtaTimeTau #BasicTau
 
 # Build Multigrid Hierarchy Levels/Grids
@@ -115,13 +123,16 @@ for level_idx in range(0, num_levels):
                                         optim_params = optim_params,
                                         log_interval = 1)
 
-    mycoarsener = coarsener.HEMCoarsener(similarity_calculator=coarsener.StandardSimilarity())
-    aggregator = interpolator.PairwiseAggCoarsener(mycoarsener)
+    parameter_extractor = SOC.ParameterExtractor(SOC.ConvolutionalConverter(net.num_conv_layers))
+    matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity())
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder()
+    restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
+    prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,
                       presmoother = sgd_smoother,
                       postsmoother = sgd_smoother,
-                      prolongation = prolongation_op(),
-                      restriction = restriction_op(aggregator), #interpolator.PairwiseAggCoarsener),
+                      prolongation = prolongation, #prolongation_op(),
+                      restriction = restriction, #restriction_op(aggregator), #interpolator.PairwiseAggCoarsener),
                       coarsegrid_solver = sgd_smoother,
                       num_epochs = smooth_pattern[level_idx],
                       corrector = tau(loss_fn))
@@ -132,7 +143,7 @@ for level_idx in range(0, num_levels):
 num_cycles = params["num_cycles"]
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
-                      subsetloader = subsetloader.CyclingNextKLoader(params["loader_sizes"]), #NextKLoader(4),
+                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
                       depth_selector = depth_selector)
 mg_scheme.test_loader = test_loader
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
@@ -141,27 +152,15 @@ training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
                                         save=False,
                                         load=False)
 
-#====================================
-# One-Level Initialization
-#====================================
-# print("Starting initial smoothing...")
-# oneLevel_smoother = smoother.SGDSmoother(model = net, loss_fn = nn.CrossEntropyLoss(),
-#                                          optim_params = SGDparams(lr=lr, momentum=momentum,l2_decay=l2_decay),
-#                                          log_interval = 1)
-# num_initial_epochs = 3
-# oneLevel_smoother.apply(net, train_loader, num_initial_epochs)
-# print("Finishing initial smoothing...")
-with torch.no_grad():
-    total_test_loss = 0.0
-    loss_fn = nn.CrossEntropyLoss()
-    for mini_batch_data in test_loader:
-        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, net.device)
-        outputs = net(inputs)
-        total_test_loss += loss_fn(outputs, true_outputs)
-    print("Level 0: Initial validation loss is {}".format(total_test_loss), flush=True)
 
-
-
+# with torch.no_grad():
+#     total_test_loss = 0.0
+#     loss_fn = nn.CrossEntropyLoss()
+#     for mini_batch_data in test_loader:
+#         inputs, true_outputs  = deviceloader.load_data(mini_batch_data, net.device)
+#         outputs = net(inputs)
+#         total_test_loss += loss_fn(outputs, true_outputs)
+#     print("Level 0: Initial validation loss is {}".format(total_test_loss), flush=True)
 
 #=====================================
 # Train
