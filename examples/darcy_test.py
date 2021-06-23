@@ -17,13 +17,17 @@ from os import path
 
 # local
 from MTNN.core.components import data, models, subsetloader
-from MTNN.core.multigrid.operators import *
+from MTNN.core.multigrid.operators import tau_corrector, smoother
+import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
+import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
+import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
+import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
 from MTNN.core.alg import trainer, evaluator
 from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
 # Darcy problem imports
-sys.path.append("./datasets/darcy")
+sys.path.append("./data_darcy_multilevel")
 from PDEDataSet import *
 
 def read_args(args):
@@ -37,7 +41,11 @@ def read_args(args):
     # Define reader functions for each parameter                                                                                                                                                                                              
     reader_fns = { "num_cycles" : int_reader,
                    "num_levels": int_reader,
-                   "width" : array_reader(int_reader),
+                   "smooth_iters": int_reader,
+                   "conv_ch" : array_reader(int_reader),
+                   "conv_kernel_width" : array_reader(int_reader),
+                   "conv_stride" : array_reader(int_reader),
+                   "fc_width" : array_reader(int_reader),
                    "loader_sizes" : array_reader(int_reader),
                    "momentum": float_reader,
                    "learning_rate": float_reader,
@@ -66,10 +74,10 @@ torch.set_printoptions(precision=5)
 # Set up data
 #=====================================
 
-train_filename = 'datasets/darcy/train_data_32.npz'
-test_filename = 'datasets/darcy/test_data_32.npz'
+train_filename = 'data_darcy_multilevel/train_data_32.npz'
+test_filename = 'data_darcy_multilevel/test_data_32.npz'
 percent_train = 0.8
-orig_filename = 'datasets/darcy/match_pde_data_u_Q_32_50000.npz'
+orig_filename = 'data_darcy_multilevel/match_pde_data_u_Q_32_50000.npz'
 
 if not path.exists(train_filename):
     print("Generating training and testing files.")
@@ -80,7 +88,7 @@ if not path.exists(train_filename):
     y_coord = input_data['y']
     u_input = input_data['u']
     Q_output = input_data['Q']
-    training_set_size = int(percent_train * u_input.shape[-1])
+    training_set_size = int(percent_train * u_input.shape[0])
 
     np.savez(train_filename, nx=nx, ny=ny, x_coord=x_coord, y_coord=y_coord,
              u=u_input[:training_set_size, ], Q=Q_output[:training_set_size, :])
@@ -89,8 +97,8 @@ if not path.exists(train_filename):
 
 #define pytorch datset
 print("Loading training and testing files.")
-pde_dataset_train = PDEDataset(train_filename,transform=None, reshape=False)
-pde_dataset_test = PDEDataset(test_filename,transform=None, reshape=False)
+pde_dataset_train = PDEDataset(train_filename,transform=None, reshape=True)
+pde_dataset_test = PDEDataset(test_filename,transform=None, reshape=True)
     
 
 u0, Q0 = pde_dataset_train.__getitem__(index =0)
@@ -106,7 +114,7 @@ test_batch_size = 2000
 train_loader = DataLoader(pde_dataset_train, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(pde_dataset_test, batch_size=test_batch_size, shuffle=True)
 
-print(len(train_loader))
+print("Train loader has size {}".format(len(train_loader)))
 
 params = read_args(sys.argv)
 print(params)
@@ -115,7 +123,10 @@ print(params)
 # Set up network architecture
 #=====================================
 
-net = models.MultiLinearNet([1024, params["width"][0], params["width"][1], 1], F.relu, lambda x : x)
+conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
+print("conv_info: ", conv_info)
+net = models.ConvolutionalNet(conv_info, params["fc_width"] + [1], F.relu, lambda x : x)
+#net = models.MultiLinearNet([1024, params["width"][0], params["width"][1], 1], F.relu, lambda x : x)
 
 
 #=====================================
@@ -127,8 +138,6 @@ class SGDparams:
         self.momentum = momentum
         self.l2_decay = l2_decay
 #SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-prolongation_op = prolongation.PairwiseAggProlongation
-restriction_op = restriction.PairwiseAggRestriction
 tau = tau_corrector.BasicTau
 
 # Build Multigrid Hierarchy Levels/Grids
@@ -151,11 +160,16 @@ for level_idx in range(0, num_levels):
                                         optim_params = optim_params,
                                         log_interval = 1)
 
+    parameter_extractor = SOC.ParameterExtractor(SOC.ConvolutionalConverter(net.num_conv_layers))
+    matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity())
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder()
+    restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
+    prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,
                       presmoother = sgd_smoother,
                       postsmoother = sgd_smoother,
-                      prolongation = prolongation_op(),
-                      restriction = restriction_op(interpolator.PairwiseAggCoarsener),
+                      prolongation = prolongation, #prolongation_op(),
+                      restriction = restriction, #restriction_op(interpolator.PairwiseAggCoarsener),
                       coarsegrid_solver = sgd_smoother,
                       num_epochs = smooth_pattern[level_idx],
                       corrector = tau(loss_fn))
@@ -166,7 +180,7 @@ for level_idx in range(0, num_levels):
 num_cycles = params["num_cycles"] #int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
-                      subsetloader = subsetloader.WholeSetLoader(), #CyclingNextKLoader(params["loader_sizes"]), #NextKLoader(4),
+                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
                       depth_selector = depth_selector)
 mg_scheme.test_loader = test_loader
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
