@@ -27,7 +27,7 @@ from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
 # Example execution:
-# python circle_test_refactored.py rand_seed=0 width=24 num_levels=3 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 num_cycles=200
+# python circle_test.py rand_seed=0 width=24 num_levels=3 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 num_cycles=200
 #
 
 def read_args(args):
@@ -159,7 +159,7 @@ for level_idx in range(0, num_levels):
 
     parameter_extractor = SOC.ParameterExtractor(SOC.MultiLinearConverter())
     matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity())
-    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder()
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(restriction_weighting_power=0.0, weighted_projection=False)
     restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
     prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,

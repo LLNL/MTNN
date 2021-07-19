@@ -145,7 +145,7 @@ class SecondOrderRestriction:
 
     """
 
-    def __init__(self, parameter_extractor, matching_method, transfer_operator_builder):
+    def __init__(self, parameter_extractor, matching_method, transfer_operator_builder, adjust_bias = False):
         """Construct the SecondOrderRestrcition.
 
         Inputs: 
@@ -157,10 +157,46 @@ class SecondOrderRestriction:
         transfer_operator_builder <Callable>. Takes as input a
         ParamLibrary, a CoarseMapping, and a torch.device, and
         produces a TransferOps object.
+
+        adjust_bias <bool>. Whether or not to adjust the coarse biases
+        by cos(theta/2), where theta is the weight vector angle
+        between the two matched neurons.
+
         """
         self.parameter_extractor = parameter_extractor
         self.matching_method = matching_method
         self.transfer_operator_builder = transfer_operator_builder
+        self.adjust_bias = adjust_bias
+
+    def get_bias_adjustments(self, W_f_array, B_f_array, W_c_array, B_c_array, coarse_mapping):
+        fine2coarse, num_coarse_array = coarse_mapping
+        adjustments_array = []
+        for layer_id in range(len(W_f_array)-1):
+            F2C_layer = fine2coarse[layer_id]
+            nF = len(F2C_layer)
+            nC = num_coarse_array[layer_id]
+            currW = W_f_array[layer_id].transpose(0, -2).flatten(1)
+            norms = torch.norm(currW, p=2, dim=1, keepdim=True)
+            activation_distances = -B_f_array[layer_id] / norms
+            Cnorms = torch.norm(W_c_array[layer_id], p=2, dim=1, keepdim=True)
+            C2F = [[] for _ in range(nC)]
+            for i in range(nF):
+                C2F[F2C_layer[i]].append(i)
+            adjustments = torch.ones((nC,1))
+            for i in range(nC):
+                if len(C2F[i]) > 1:
+                    new_bias = -np.mean([activation_distances[j] for j in C2F[i]]) * Cnorms[i,0]
+                    adjustments[i,0] = new_bias / B_c_array[layer_id][i,0]
+                    # cos_theta = currW[C2F[i][0],:] @ currW[C2F[i][1],:]
+                    # adjustments[i] = torch.sqrt((1 + cos_theta) / 2) # half angle formula
+            # print("\n".join(map(str, [(adjustments[i],
+            #                            norms[C2F[i][0]], norms[C2F[i][1]],
+            #                            activation_distances[C2F[i][0]], activation_distances[C2F[i][1]])
+            #                           for i in range(len(adjustments)) if len(C2F[i]) > 1])))
+            # print(torch.mm(currW, torch.transpose(currW, dim0=0, dim1=1)))
+            # print("\n")
+            adjustments_array.append(adjustments)
+        return adjustments_array
 
     def apply(self, fine_level, coarse_level, dataloader, verbose=False):
         fine_param_library, fine_momentum_library = self.parameter_extractor.extract_from_network(fine_level)
@@ -175,9 +211,18 @@ class SecondOrderRestriction:
 
         W_f_array, B_f_array = fine_param_library
         W_c_array, B_c_array = transfer(W_f_array, B_f_array, R_ops, P_ops)
+#        B_c_array[0] *= 1.04
 
         mW_f_array, mB_f_array = fine_momentum_library
         mW_c_array, mB_c_array = transfer(mW_f_array, mB_f_array, R_ops, P_ops)
+
+#        print(B_c_array[0])
+#         adjustments_array = self.get_bias_adjustments(W_f_array, B_f_array, W_c_array, B_c_array, coarse_mapping)
+#         for layer_id in range(len(adjustments_array)):
+#             B_c_array[layer_id] = B_c_array[layer_id] * adjustments_array[layer_id]
+# #            print(-B_c_array[layer_id] / torch.norm(W_c_array[layer_id], p=2, dim=1, keepdim=True))
+#             mB_c_array[layer_id] = mB_c_array[layer_id] * adjustments_array[layer_id]
+# #        print(B_c_array[0])
 
         coarse_param_library = ParamLibrary(W_c_array, B_c_array)
         coarse_momentum_library = ParamLibrary(mW_c_array, mB_c_array)
@@ -228,6 +273,7 @@ class SecondOrderProlongation:
         """
         self.parameter_extractor = parameter_extractor
         self.restriction = restriction
+        self.adjust_bias = self.restriction.adjust_bias
 
     def apply(self, fine_level, coarse_level, dataloader, verbose):
         assert(fine_level.id < coarse_level.id)

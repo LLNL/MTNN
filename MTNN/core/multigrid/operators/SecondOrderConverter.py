@@ -256,3 +256,79 @@ class ConvolutionalConverter(SecondOrderConverter):
         mW = torch.flatten(mW.permute(1, 2, 0), 1)
         param_library.weights[layer_id] = W
         momentum_library.weights[layer_id] = mW
+
+        
+class ActivationDistanceConverter(SecondOrderConverter):
+    """ActivationDistanceConverter
+
+    A neuron's activation distance (for a ReLU activation function) is
+    the distance from the origin at which the input crosses the zero
+    threshold, allowing the neuron to "activate." That distance is
+    given by the formula
+    activation_distance = -bias / ||neuron_weights||
+
+    This converter acts as a modifier around another primary
+    converter. After the primary converter performs its conversion,
+    this class will convert biases into activation distances. The
+    reason to do this is if you would like to consider activation
+    distance to be the true parameter that we coarsen instead of bias.
+    """
+    
+    def __init__(self, primary_converter, half_for_average = True):
+        """Constructor
+
+        Inputs: 
+        primary_converter (SecondOrderConverter) The primary
+                          conversion method around which this wraps.
+        half_for_average (bool) If true, cut activation distances in 
+                          half so when they are summed we get an average.
+        """
+        self.primary_converter = primary_converter
+        self.half_for_average = half_for_average
+
+    def convert_biases_to_activation_distances(self, library):
+        """ Convert biases in a ParamLibrary into activation distances.
+        Place activation distance in what is normally the bias spot.
+
+        Inputs:
+        library (ParamLibrary)
+        """
+        for layer_id in range(len(library.weights)):
+            W = library.weights[layer_id]
+            W = W.view(W.shape).transpose(dim0=0, dim1=-2)
+            W = W.reshape(W.shape[0], -1) # This call induces a copy, which is inefficient
+            B = library.biases[layer_id]
+            library.biases[layer_id] = -B / torch.norm(W, p=2, dim=1, keepdim=True)
+            if self.half_for_average:
+                library.biases[layer_id] /= 2.0
+
+    def convert_network_format_to_MTNN(self, param_library, momentum_library):
+        """ Perform conversion.
+        First primary conversion. Then bias to activation distance.
+        """
+        self.primary_converter.convert_network_format_to_MTNN(param_library, momentum_library)
+        self.convert_biases_to_activation_distances(param_library)
+        self.convert_biases_to_activation_distances(momentum_library)
+
+    def convert_activation_distances_to_biases(self, library):
+        """ Convert activation distances in a ParamLibrary back into biases.
+
+        Inputs:
+        library (ParamLibrary)
+        """
+        for layer_id in range(len(library.weights)):
+            W = library.weights[layer_id]
+            W = W.view(W.shape).transpose(dim0=0, dim1=-2)
+            W = W.reshape(W.shape[0], -1) # This call induces a copy, which is inefficient
+            AD = library.biases[layer_id]
+            library.biases[layer_id] = -AD * torch.norm(W, p=2, dim=1, keepdim=True)
+            if self.half_for_average:
+                library.biases[layer_id] *= 2.0
+
+    def convert_MTNN_format_to_network(self, param_library, momentum_library):
+        """ Perform conversion back.
+        First activation distance back to bias. Then primary conversion.
+        """
+        self.convert_activation_distances_to_biases(param_library)
+        self.convert_activation_distances_to_biases(momentum_library)
+        self.primary_converter.convert_MTNN_format_to_network(param_library, momentum_library)

@@ -293,7 +293,7 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
 
-            if trainer.verbose and (cycle + 1) % 5 == 0:
+            if trainer.verbose and (cycle + 1) % 1 == 0:
                 for level in self.levels:
                     level.net.eval()
                 # with torch.no_grad():
