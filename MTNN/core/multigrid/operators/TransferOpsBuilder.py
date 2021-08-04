@@ -5,8 +5,7 @@ import torch
 # local
 import MTNN.core.multigrid.scheme as mg
 import MTNN.utils.logger as log
-import MTNN.utils.datatypes as mgdata
-from MTNN.core.multigrid.operators.SecondOrderRestriction import ParamLibrary, CoarseMapping, TransferOps
+from MTNN.utils.datatypes import ParamVector, CoarseMapping, TransferOps
 
 log = log.get_logger(__name__, write_to_file = True)
 
@@ -47,7 +46,7 @@ class PairwiseOpsBuilder:
     def __call__(self, param_library, coarse_mapping, op_device):
         """
         Inputs:
-        param_library <ParamLibrary> - The parameters associated with the network.
+        param_library <ParamVector> - The parameters associated with the network.
         coarse_mapping <CoarseMapping> - The mapping from fine to coarse channels.
         op_device <torch.device> - The device on which the ops matrices should reside.
         """
@@ -60,7 +59,7 @@ class PairwiseOpsBuilder:
 
         fine2coarse, num_coarse_array = coarse_mapping
         with torch.no_grad():
-            W_f_array, B_f_array = param_library
+            W_f_array, B_f_array = param_library.weights, param_library.biases
             for layer_id in range(len(W_f_array)-1):
                 F2C_layer = fine2coarse[layer_id]
                 nF = len(F2C_layer)
@@ -73,9 +72,9 @@ class PairwiseOpsBuilder:
 
                 if self.weighted_projection:
                     WB = torch.cat((currW, currB), dim=1)
-                    nr = torch.norm(WB, p=2, dim=1, keepdim=True)
+                    nr = torch.norm(WB, p=2, dim=1, keepdim=True).to(op_device)
                 else:
-                    nr = torch.ones(currW.shape[0], 1)
+                    nr = torch.ones(currW.shape[0], 1).to(op_device)
                 
                 R_layer = torch.zeros([nC, nF]).to(op_device)
                 for i in range(nF):
@@ -88,17 +87,7 @@ class PairwiseOpsBuilder:
                 # P = diag(nr) * R^T * diag(1./d)^(1-rwp)
                 P_layer = (torch.transpose(R_layer, 0, 1) * nr) / torch.pow(d, 1.0 - self.rwp).reshape(1, -1)
                 
-                # if self.sum_on_restriction:
-                #     # Construct prolongation operators for each layer
-                #     # TODO - Decouple?
-
-                #     P_layer = (torch.transpose(R_layer, 0, 1) * nr) / d.reshape(1, -1)
-                # else:
-                #     R_layer = R_layer / d.reshape(-1, 1)
-                #     P_layer = torch.transpose(R_layer, 0, 1) * nr
-
                 restriction_operators.append(R_layer)
-
                 prolongation_operators.append(P_layer)
 
                 R_for_grad_layer = torch.transpose(P_layer, 0, 1)
@@ -111,6 +100,5 @@ class PairwiseOpsBuilder:
                 #     bias_restriction_operators(adjustments * R_layer)
                 #     bias_prolongation_operators(P_layer / adjustments)
                     
-        return TransferOps(restriction_operators, prolongation_operators,
-                           restriction_for_grad_operators, prolongation_for_grad_operators)
+        return TransferOps(restriction_operators, prolongation_operators), TransferOps(restriction_for_grad_operators, prolongation_for_grad_operators)
 

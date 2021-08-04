@@ -3,7 +3,6 @@ Restriction Operators
 """
 import torch
 import torch.nn as nn
-import numpy as np
 import collections as col
 from abc import ABC, abstractmethod
 
@@ -11,7 +10,7 @@ from abc import ABC, abstractmethod
 import MTNN.core.multigrid.scheme as mg
 #import MTNN.core.multigrid.operators.interpolator as interp
 import MTNN.core.components.models as models
-from MTNN.utils.datatypes import operators
+from MTNN.utils.datatypes import operators, ParamVector
 import MTNN.utils.logger as log
 import MTNN.utils.printer as printer
 import MTNN.utils.deviceloader as deviceloader
@@ -21,111 +20,6 @@ log = log.get_logger(__name__, write_to_file =True)
 __all__ = ['SecondOrderRestriction',
            'SecondOrderProlongation']
 
-############################################
-# Data types
-#############################################
-
-"""ParamLibrary - a data store of parameters associated with a neural network
-
-weights_list and bias_list are each lists of length equal to the
-number of layers in a network.
-
-Each element of weights_list is a tensor of order >=2 such that
-dimension -2 is the number of output channels and dimension -1 is the
-number of input channels. Note that for fully-connected layers, this
-tensor will be of order 2 exactly, in which case dimension -2 is the
-rows and dimension -1 is the columns.
-
-Each element of bias_list is a tensor of order 1 of length equal to
-the number of output channels.
-"""
-ParamLibrary = col.namedtuple("ParamLibrary", "weights biases")
-
-
-"""CoarseMapping - specifies a mapping from fine channels to coarse channels.
-
-fine2coarse_map <List(List)> - A list of length equal to the number of
-network layers. Each element is itself a list, of length equal to the
-number of channels in the fine-level network. Each element specifies
-the index of the coarse channel to which this fine channel is mapped.
-
-num_coarse_channels <List> - A list of length equal to the number of
-network layers. Each element contains the number of coarse channels at
-that layer.
-"""
-CoarseMapping = col.namedtuple("CoarseMapping", "fine2coarse_map, num_coarse_channels")
-
-
-"""TransferOps - The matrix operators used in restriction and prolongation.
-
-R_ops <List> - A list, of length equal to the number of layers minus
-1, containing the R matrices used in restriction.
-
-P_ops <List> - A list, of length equal to the number of layers minus
-1, containing the P matrices used in restriction.
-
-R_for_grad_ops <List> - A list, of length equal to the number of
-layers minus 1, containing the R matrices used in restriction of
-gradients in a tau correction.
-
-P_for_grad_ops <List> - A list, of length equal to the number of
-layers minus 1, containing the P matrices used in restriction of
-gradients in a tau correction.
-"""
-TransferOps = col.namedtuple("TransferOps", "R_ops P_ops R_for_grad_ops P_for_grad_ops")
-
-
-####################################################################
-# Transfer Operator Templates
-####################################################################
-
-def transfer(Wmats, Bmats, R_ops, P_ops):
-    # Matrix multiplication broadcasting:
-    # T of shape (a, b, c, N, M)
-    # Matrix A of shape (k, N)
-    # Matrix B of shape (M, p)
-    # A @ T @ B computes a tensor of shape (a, b, c, k, p) such that
-    # (i, j, l, :, :) = A @ T(i,j,l,:,:) @ B
-    num_layers = len(Wmats)
-    Wdest_array = []
-    Bdest_array = []
-    for layer_id in range(num_layers):
-        Wsrc = Wmats[layer_id]
-        Bsrc = Bmats[layer_id]
-        if layer_id < num_layers - 1:
-            if layer_id == 0:
-                Wdest = R_ops[layer_id] @ Wsrc
-            else:
-                Wdest = R_ops[layer_id] @ Wsrc @ P_ops[layer_id - 1]
-            Bdest = R_ops[layer_id] @ Bsrc
-        elif layer_id > 0:            
-            Wdest = Wsrc @ P_ops[layer_id-1]
-            Bdest = Bsrc.clone()
-
-        Wdest_array.append(Wdest)
-        Bdest_array.append(Bdest)
-    return Wdest_array, Bdest_array
-
-def transfer_star(Wmats, Bmats, R_ops, P_ops):
-    num_layers = len(Wmats)
-    Wdest_array = []
-    Bdest_array = []
-    for layer_id in range(num_layers):
-        Wsrc = Wmats[layer_id]
-        Bsrc = Bmats[layer_id]
-        if layer_id < num_layers - 1:
-            if layer_id == 0:
-                Wdest = R_ops[layer_id] * Wsrc
-            else:
-                Wdest = R_ops[layer_id] * Wsrc * P_ops[layer_id - 1]
-            Bdest = R_ops[layer_id] * Bsrc
-        elif layer_id > 0:
-            Wdest = Wsrc * P_ops[layer_id-1]
-            Bdest = Bsrc.clone()
-
-        Wdest_array.append(Wdest)
-        Bdest_array.append(Bdest)
-    return Wdest_array, Bdest_array
 
 ####################################################################
 # Restriction
@@ -151,11 +45,11 @@ class SecondOrderRestriction:
         Inputs: 
         parameter_extractor <ParameterExtractor>
 
-        matching_method <Callable>. Takes as input a ParamLibrary and
+        matching_method <Callable>. Takes as input a ParamVector and
         a Level, produces as output a CoarseMapping object.
 
         transfer_operator_builder <Callable>. Takes as input a
-        ParamLibrary, a CoarseMapping, and a torch.device, and
+        ParamVector, a CoarseMapping, and a torch.device, and
         produces a TransferOps object.
 
         adjust_bias <bool>. Whether or not to adjust the coarse biases
@@ -200,32 +94,13 @@ class SecondOrderRestriction:
 
     def apply(self, fine_level, coarse_level, dataloader, verbose=False):
         fine_param_library, fine_momentum_library = self.parameter_extractor.extract_from_network(fine_level)
-
         coarse_mapping = self.matching_method(fine_param_library, fine_level.net)
 
-        self.transfer_ops = self.transfer_operator_builder(fine_param_library,
-                                                           coarse_mapping,
-                                                           deviceloader.get_device())
-        R_ops = self.transfer_ops.R_ops
-        P_ops = self.transfer_ops.P_ops
-
-        W_f_array, B_f_array = fine_param_library
-        W_c_array, B_c_array = transfer(W_f_array, B_f_array, R_ops, P_ops)
-#        B_c_array[0] *= 1.04
-
-        mW_f_array, mB_f_array = fine_momentum_library
-        mW_c_array, mB_c_array = transfer(mW_f_array, mB_f_array, R_ops, P_ops)
-
-#        print(B_c_array[0])
-#         adjustments_array = self.get_bias_adjustments(W_f_array, B_f_array, W_c_array, B_c_array, coarse_mapping)
-#         for layer_id in range(len(adjustments_array)):
-#             B_c_array[layer_id] = B_c_array[layer_id] * adjustments_array[layer_id]
-# #            print(-B_c_array[layer_id] / torch.norm(W_c_array[layer_id], p=2, dim=1, keepdim=True))
-#             mB_c_array[layer_id] = mB_c_array[layer_id] * adjustments_array[layer_id]
-# #        print(B_c_array[0])
-
-        coarse_param_library = ParamLibrary(W_c_array, B_c_array)
-        coarse_momentum_library = ParamLibrary(mW_c_array, mB_c_array)
+        self.transfer_ops, self.tau_transfer_ops = self.transfer_operator_builder(fine_param_library, 
+                                                                                  coarse_mapping,
+                                                                                  deviceloader.get_device())
+        coarse_param_library = self.transfer_ops @ fine_param_library
+        coarse_momentum_library = self.transfer_ops @ fine_momentum_library
 
         # So this is some terrible software design right here. :-D
         # TODO: Refactor for architecture extensibility.
@@ -241,8 +116,8 @@ class SecondOrderRestriction:
             out_ch, kernel_widths, strides = zip(*fine_level.net.conv_channels)
             out_ch = [out_ch[0]] + coarse_mapping.num_coarse_channels[:num_conv_layers]
             conv_channels = list(zip(out_ch, kernel_widths, strides))
-            fc_dims = [conv_channels[-1][0] * W_c_array[num_conv_layers].shape[0]] + \
-                      coarse_mapping.num_coarse_channels[num_conv_layers:] + \
+            first_fc_width = conv_channels[-1][0] * coarse_param_library.weights[num_conv_layers].shape[0]
+            fc_dims = [first_fc_width] + coarse_mapping.num_coarse_channels[num_conv_layers:] + \
                       [fine_level.net.layers[-1].out_features]
             coarse_level.net = fine_level.net.__class__(conv_channels,
                                                         fc_dims,
@@ -253,6 +128,8 @@ class SecondOrderRestriction:
         
         self.parameter_extractor.insert_into_network(coarse_level, coarse_param_library,
                                                      coarse_momentum_library)
+
+#        coarse_level.corrector.compute_tau(coarse_level, fine_level, dataloader, self.transfer_ops)
 
 ####################################################################
 # Prolongation
@@ -278,29 +155,14 @@ class SecondOrderProlongation:
     def apply(self, fine_level, coarse_level, dataloader, verbose):
         assert(fine_level.id < coarse_level.id)
 
-        R_ops = self.restriction.transfer_ops.R_ops
-        P_ops = self.restriction.transfer_ops.P_ops
-
         coarse_param_library, coarse_momentum_library = self.parameter_extractor.extract_from_network(coarse_level)
-        W_c_array, B_c_array = coarse_param_library
-        mW_c_array, mB_c_array = coarse_momentum_library
-        c_init_params = coarse_level.init_params
-        c_init_momentum = coarse_level.init_momentum
-        eW_array = []
-        eB_array = []
-        emW_array = []
-        emB_array = []
-        for layer_id in range(len(W_c_array)):
-#            print("{}: W_c and Winit shapes are {}, {}"
-#                  .format(layer_id, W_c_array[layer_id].shape, c_init_params.weights[layer_id].shape))
-            eW_array.append(W_c_array[layer_id] - c_init_params.weights[layer_id])
-            eB_array.append(B_c_array[layer_id] - c_init_params.biases[layer_id])
-            emW_array.append(mW_c_array[layer_id] - c_init_momentum.weights[layer_id])
-            emB_array.append(mB_c_array[layer_id] - c_init_momentum.biases[layer_id])
-        eW_array, eB_array = transfer(eW_array, eB_array, P_ops, R_ops)
-        emW_array, emB_array = transfer(emW_array, emB_array, P_ops, R_ops)
+        prolongation_ops = self.restriction.transfer_ops.swap_transfer_ops()
 
-        fine_param_diff_library = ParamLibrary(eW_array, eB_array)
-        fine_momentum_diff_library = ParamLibrary(emW_array, emB_array)
+        coarse_param_diff_library = coarse_param_library - coarse_level.init_params
+        coarse_momentum_diff_library = coarse_momentum_library - coarse_level.init_momentum
+
+        fine_param_diff_library = prolongation_ops @ coarse_param_diff_library
+        fine_momentum_diff_library = prolongation_ops @ coarse_momentum_diff_library
+
         self.parameter_extractor.add_to_network(fine_level, fine_param_diff_library,
                                                 fine_momentum_diff_library)

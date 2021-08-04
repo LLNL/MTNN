@@ -17,9 +17,10 @@ from os import path
 
 # local
 from MTNN.core.components import data, models, subsetloader
-from MTNN.core.multigrid.operators import tau_corrector, smoother
+from MTNN.core.multigrid.operators import TauCorrector, smoother
 import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
 import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
+import MTNN.core.multigrid.operators.ParameterExtractor as PE
 import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
 import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
 from MTNN.core.alg import trainer, evaluator
@@ -27,7 +28,8 @@ from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
 # Darcy problem imports
-sys.path.append("./data_darcy_multilevel")
+darcy_path = "./datasets/darcy"
+sys.path.append(darcy_path)
 from PDEDataSet import *
 
 def read_args(args):
@@ -74,10 +76,10 @@ torch.set_printoptions(precision=5)
 # Set up data
 #=====================================
 
-train_filename = 'data_darcy_multilevel/train_data_32.npz'
-test_filename = 'data_darcy_multilevel/test_data_32.npz'
+train_filename = darcy_path + '/train_data_32.npz'
+test_filename = darcy_path + '/test_data_32.npz'
 percent_train = 0.8
-orig_filename = 'data_darcy_multilevel/match_pde_data_u_Q_32_50000.npz'
+orig_filename = darcy_path + '/match_pde_data_u_Q_32_50000.npz'
 
 if not path.exists(train_filename):
     print("Generating training and testing files.")
@@ -138,7 +140,7 @@ class SGDparams:
         self.momentum = momentum
         self.l2_decay = l2_decay
 #SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-tau = tau_corrector.BasicTau
+tau = TauCorrector.BasicTau
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = params["num_levels"]
@@ -160,9 +162,12 @@ for level_idx in range(0, num_levels):
                                         optim_params = optim_params,
                                         log_interval = 1)
 
-    parameter_extractor = SOC.ParameterExtractor(SOC.ConvolutionalConverter(net.num_conv_layers))
-    matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity())
-    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder()
+    converter = SOC.ConvolutionalConverter(net.num_conv_layers)
+    parameter_extractor = PE.ParamMomentumExtractor(converter)
+    gradient_extractor = PE.GradientExtractor(converter)
+    matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
+                                                     coarsen_on_layer=None)#[False, False, True, True])
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(restriction_weighting_power=0.0, weighted_projection=True)
     restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
     prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,
@@ -172,7 +177,7 @@ for level_idx in range(0, num_levels):
                       restriction = restriction, #restriction_op(interpolator.PairwiseAggCoarsener),
                       coarsegrid_solver = sgd_smoother,
                       num_epochs = smooth_pattern[level_idx],
-                      corrector = tau(loss_fn))
+                      corrector = tau(loss_fn, gradient_extractor))
 
     FAS_levels.append(aLevel)
 

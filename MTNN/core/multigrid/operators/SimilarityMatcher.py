@@ -6,7 +6,7 @@ import pdb
 #local
 from MTNN.utils import logger
 from MTNN.utils import deviceloader
-from MTNN.core.multigrid.operators.SecondOrderRestriction import CoarseMapping
+from MTNN.utils.datatypes import CoarseMapping
 log = logger.get_logger(__name__, write_to_file =True)
 
 class StandardSimilarity:
@@ -97,15 +97,17 @@ class HEMCoarsener():
     Takes a fine-level and constructs the coarsening layer to be used
     for building the restriction operator
     """
-    def __init__(self, similarity_calculator):
+    def __init__(self, similarity_calculator, coarsen_on_layer = None):
         """
         Args:
-            theta:
-            randseq:
+            similarity_calculator (class) Class that measures similarity between two neurons.
+            coarsen_on_layer (array[bool]) For each layer, if False, return identity matching. 
+                                           If arg is None, coarsen every layer.
         """
         self.similarity_calculator = similarity_calculator
         self.coarseLevelDim = None
         self.Fine2CoarsePerLayer = None
+        self.coarsen_on_layer = coarsen_on_layer
 
     def get_heavyedgematching(self, similarityMatrix, random_seq=False):
         threshold = 0.0
@@ -153,7 +155,7 @@ class HEMCoarsener():
     def __call__(self, param_matrix_list, net):
         """
         """
-        W_array, B_array = param_matrix_list
+        W_array, B_array = param_matrix_list.weights, param_matrix_list.biases
         
         num_layers = len(W_array)
         # number columns
@@ -169,16 +171,20 @@ class HEMCoarsener():
             wb = torch.cat([w, b], dim=1)
 
             # f-size (w.shape[0])
-            nf = W_array[0].shape[0]
+            nf = wb.shape[0]
 
-            similarity = self.similarity_calculator.calculate_similarity(wb, net, layer_id)
+            if self.coarsen_on_layer is None or self.coarsen_on_layer[layer_id]:
+                similarity = self.similarity_calculator.calculate_similarity(wb, net, layer_id)
 
-            similarity.fill_diagonal_(-999.0)
-            f2c, num_ColIn = self.get_heavyedgematching(similarity)
-            print("Layer {} has {} coarse neurons".format(layer_id, num_ColIn))
+                similarity.fill_diagonal_(-999.0)
+                f2c, num_ColIn = self.get_heavyedgematching(similarity)
+                num_coarse_array.append(num_ColIn)
+                fine2CoarsePerLayer.append(f2c)
+            else:
+                num_coarse_array.append(nf)
+                fine2CoarsePerLayer.append(torch.arange(0, nf, dtype=int))
+            print("Layer {} has {} coarse neurons".format(layer_id, num_coarse_array[-1]))
             print()
-            num_coarse_array.append(num_ColIn)
-            fine2CoarsePerLayer.append(f2c)
 
         return CoarseMapping(fine2CoarsePerLayer, num_coarse_array)
 
