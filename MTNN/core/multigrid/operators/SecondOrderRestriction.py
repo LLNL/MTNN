@@ -62,6 +62,10 @@ class SecondOrderRestriction:
         self.transfer_operator_builder = transfer_operator_builder
         self.adjust_bias = adjust_bias
 
+        self.coarse_mapping = None
+        self.redo_matching_frequency = 10
+        self.cycles_since_last_matching = self.redo_matching_frequency
+
     def get_bias_adjustments(self, W_f_array, B_f_array, W_c_array, B_c_array, coarse_mapping):
         fine2coarse, num_coarse_array = coarse_mapping
         adjustments_array = []
@@ -94,10 +98,14 @@ class SecondOrderRestriction:
 
     def apply(self, fine_level, coarse_level, dataloader, verbose=False):
         fine_param_library, fine_momentum_library = self.parameter_extractor.extract_from_network(fine_level)
-        coarse_mapping = self.matching_method(fine_param_library, fine_level.net)
+        if self.cycles_since_last_matching >= self.redo_matching_frequency:
+            self.coarse_mapping = self.matching_method(fine_param_library, fine_level.net)
+            self.cycles_since_last_matching = 1
+        else:
+            self.cycles_since_last_matching += 1
 
         self.transfer_ops, self.tau_transfer_ops = self.transfer_operator_builder(fine_param_library, 
-                                                                                  coarse_mapping,
+                                                                                  self.coarse_mapping,
                                                                                   deviceloader.get_device())
         coarse_param_library = self.transfer_ops @ fine_param_library
         coarse_momentum_library = self.transfer_ops @ fine_momentum_library
@@ -105,7 +113,7 @@ class SecondOrderRestriction:
         # So this is some terrible software design right here. :-D
         # TODO: Refactor for architecture extensibility.
         if fine_level.net.__class__.__name__ == "MultiLinearNet":
-            coarse_level_dims = [fine_level.net.layers[0].in_features] + coarse_mapping.num_coarse_channels + \
+            coarse_level_dims = [fine_level.net.layers[0].in_features] + self.coarse_mapping.num_coarse_channels + \
                 [fine_level.net.layers[-1].out_features]
             coarse_level.net = fine_level.net.__class__(coarse_level_dims,
                                                         fine_level.net.activation,
@@ -114,10 +122,10 @@ class SecondOrderRestriction:
         elif fine_level.net.__class__.__name__ == "ConvolutionalNet":
             num_conv_layers = fine_level.net.num_conv_layers
             out_ch, kernel_widths, strides = zip(*fine_level.net.conv_channels)
-            out_ch = [out_ch[0]] + coarse_mapping.num_coarse_channels[:num_conv_layers]
+            out_ch = [out_ch[0]] + self.coarse_mapping.num_coarse_channels[:num_conv_layers]
             conv_channels = list(zip(out_ch, kernel_widths, strides))
             first_fc_width = conv_channels[-1][0] * coarse_param_library.weights[num_conv_layers].shape[0]
-            fc_dims = [first_fc_width] + coarse_mapping.num_coarse_channels[num_conv_layers:] + \
+            fc_dims = [first_fc_width] + self.coarse_mapping.num_coarse_channels[num_conv_layers:] + \
                       [fine_level.net.layers[-1].out_features]
             coarse_level.net = fine_level.net.__class__(conv_channels,
                                                         fc_dims,
@@ -129,7 +137,7 @@ class SecondOrderRestriction:
         self.parameter_extractor.insert_into_network(coarse_level, coarse_param_library,
                                                      coarse_momentum_library)
 
-#        coarse_level.corrector.compute_tau(coarse_level, fine_level, dataloader, self.transfer_ops)
+        coarse_level.corrector.compute_tau(coarse_level, fine_level, dataloader, self.transfer_ops)
 
 ####################################################################
 # Prolongation

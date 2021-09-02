@@ -155,9 +155,6 @@ class GradientExtractor(ParameterExtractor):
             # get the inputs. data is a list of [inputs, labels]
             inputs, labels = deviceloader.load_data(mini_batch_data, net.device)
 
-            # if len(inputs.size()) == 4:
-            #     inputs = inputs.view(inputs.size()[0], inputs.size()[1] * inputs.size()[2] * inputs.size()[3])
-
             # forward: get the loss w.r.t this batch
             outputs = net(inputs)
 
@@ -166,11 +163,20 @@ class GradientExtractor(ParameterExtractor):
             else:
                 total_loss += loss_fn(outputs, labels)
 
-        total_loss.backward()
-
         W_grad_array, B_grad_array = [], []
-        for layer_id in range(len(net.layers)):
-            W_grad_array.append(net.layers[layer_id].weight.grad.detach().clone())
-            B_grad_array.append(net.layers[layer_id].bias.grad.detach().clone())
+        if total_loss is None:
+            # If this was an empty dataloader, total_loss will still be
+            # None, so grad should be all 0s
+            for layer_id in range(len(net.layers)):
+                W_grad_array.append(torch.zeros(net.layers[layer_id].weight.shape).to(level.net.device))
+                B_grad_array.append(torch.zeros(net.layers[layer_id].bias.shape).to(level.net.device))
+        else:
+            # dataloader wasn't empty, so have a nontrivial gradient
+            # to compute.
+            total_loss.backward()
+            for layer_id in range(len(net.layers)):
+                W_grad_array.append(net.layers[layer_id].weight.grad.detach().clone())
+                B_grad_array.append(net.layers[layer_id].bias.grad.detach().clone())
+
         return ParamVector(W_grad_array, B_grad_array)
 

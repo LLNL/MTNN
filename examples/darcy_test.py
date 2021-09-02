@@ -36,6 +36,7 @@ def read_args(args):
     int_reader = lambda x : int(x)
     float_reader = lambda x : float(x)
     string_reader = lambda x : x
+    bool_reader = lambda x : x.lower() in ("yes", "true", "t", "1")
     ensure_trailing_reader = lambda tr : lambda x : x.rstrip(tr) + tr
     array_reader = lambda element_reader : \
                    lambda x : [element_reader(z) for z in x.split(',')]
@@ -51,7 +52,9 @@ def read_args(args):
                    "loader_sizes" : array_reader(int_reader),
                    "momentum": float_reader,
                    "learning_rate": float_reader,
-                   "weight_decay": float_reader}
+                   "weight_decay": float_reader,
+                   "tau_corrector": string_reader,
+                   "weighted_projection": bool_reader}
 
     params_dict = dict()
     try:
@@ -139,8 +142,13 @@ class SGDparams:
         self.lr = lr
         self.momentum = momentum
         self.l2_decay = l2_decay
-#SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-tau = TauCorrector.BasicTau
+
+if params["tau_corrector"] == "null":
+    tau = TauCorrector.NullTau
+elif params["tau_corrector"] == "wholeset":
+    tau = TauCorrector.WholeSetTau
+elif params["tau_corrector"] == "minibatch":
+    tau = TauCorrector.MinibatchTau
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = params["num_levels"]
@@ -167,7 +175,7 @@ for level_idx in range(0, num_levels):
     gradient_extractor = PE.GradientExtractor(converter)
     matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
                                                      coarsen_on_layer=None)#[False, False, True, True])
-    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(restriction_weighting_power=0.0, weighted_projection=True)
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(restriction_weighting_power=0.0, weighted_projection=params["weighted_projection"])
     restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
     prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,
@@ -182,17 +190,55 @@ for level_idx in range(0, num_levels):
     FAS_levels.append(aLevel)
 
 
+class ValidationCallback:
+    def __init__(self, val_dataloader, test_frequency = 1):
+        self.val_dataloader = val_dataloader
+        self.test_frequency = test_frequency
+        self.best_seen_init = 100000.0
+        self.best_seen = None
+        self.best_seen_linf = None
+
+    def __call__(self, levels, cycle):
+        if (cycle + 1) % self.test_frequency != 0:
+            return
+        if self.best_seen is None:
+            self.best_seen = [self.best_seen_init] * len(levels)
+            self.best_seen_linf = [self.best_seen_init] * len(levels)
+        for level in levels:
+            level.net.eval()
+
+        with torch.no_grad():
+            total_test_loss = [0.0] * len(levels)
+            test_linf_loss = [0.0] * len(levels)
+            for mini_batch_data in self.val_dataloader:
+                inputs, true_outputs  = deviceloader.load_data(mini_batch_data, levels[0].net.device)
+                for level_ind, level in enumerate(levels):
+                    outputs = level.net(inputs)
+                    total_test_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
+                    linf_temp = torch.max (torch.max(torch.abs(true_outputs - outputs), dim=1).values)
+                    test_linf_loss[level_ind] = max(linf_temp, test_linf_loss[level_ind])
+                for level_ind in range(len(levels)):
+                    if total_test_loss[level_ind] < self.best_seen[level_ind]:
+                        self.best_seen[level_ind] = total_test_loss[level_ind]
+                    if test_linf_loss[level_ind] < self.best_seen_linf[level_ind]:
+                        self.best_seen_linf[level_ind] = test_linf_loss[level_ind]
+                    print("Level {}: After {} cycles, validation loss is {}, best seen is {}, linf loss is {}, best seen linf is {}".format(level_ind, cycle, total_test_loss[level_ind], self.best_seen[level_ind], test_linf_loss[level_ind], self.best_seen_linf[level_ind]), flush=True)
+
+        for level in levels:
+            level.net.train()
+
 num_cycles = params["num_cycles"] #int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
-                      depth_selector = depth_selector)
-mg_scheme.test_loader = test_loader
+                      depth_selector = depth_selector, 
+                      validation_callback=ValidationCallback(((pde_dataset_test.u, pde_dataset_test.Q),), 1))
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
                                         verbose=True,
                                         log=True,
                                         save=False,
                                         load=False)
+
 
 #=====================================
 # Train
@@ -201,13 +247,6 @@ print('Starting Training')
 start = time.perf_counter()
 mg_scheme.stop_loss = 0.00
 trained_model = training_alg.train(model=net, dataloader=train_loader)
-# print("Dropping learning rate")
-# for level in FAS_levels:
-#     level.presmoother.optim_params.lr = lr / 10.0
-#     level.postsmoother.optim_params.lr = lr / 10.0
-#     level.coarsegrid_solver.optim_params.lr = lr / 10.0
-# #mg_scheme.depth_selector = lambda x : 4
-# trained_model = training_alg.train(model=trained_model, dataloader=train_loader)
 stop = time.perf_counter()
 print('Finished Training (%.3fs)' % (stop - start))
 
@@ -217,18 +256,19 @@ print('Finished Training (%.3fs)' % (stop - start))
 #=====================================
 print('Starting Testing')
 start = time.perf_counter()
-total_loss = 0.0
-num_samples = 0
 loss_fn = nn.MSELoss()
 with torch.no_grad():
-    for batch_idx, mini_batch_data in enumerate(test_loader):
-        input_data, target_data = deviceloader.load_data(mini_batch_data, net.device)
-        outputs = net(input_data)
-        total_loss += loss_fn(target_data, outputs)
-        num_samples += test_batch_size
+    for level in range(len(FAS_levels)):
+        total_loss = 0.0
+        num_samples = 0
+        for batch_idx, mini_batch_data in enumerate(test_loader):
+            input_data, target_data = deviceloader.load_data(mini_batch_data, net.device)
+            outputs = FAS_levels[level].net(input_data)
+            total_loss += loss_fn(target_data, outputs)
+            num_samples += test_batch_size
+        print('Level {}: Total and average loss on the test set are {}, {}'.format(level, total_loss, total_loss / num_samples))
 stop = time.perf_counter()
 print('Finished Testing (%.3fs)' % (stop-start))
-print('Total and average loss on the test set: {0}, {1}'.format(total_loss, total_loss / num_samples))
 
 
 

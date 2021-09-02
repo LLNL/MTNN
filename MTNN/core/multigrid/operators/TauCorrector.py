@@ -8,6 +8,7 @@ import MTNN.utils.printer as printer
 from MTNN.utils.datatypes import ParamVector, TransferOps
 #import MTNN.core.multigrid.operators.interpolator as interp
 
+import copy
 import sys
 
 log = log.get_logger(__name__, write_to_file =True)
@@ -128,7 +129,20 @@ class _BaseTauCorrector(ABC):
 ###################################################################
 # Implementation
 ####################################################################
-class BasicTau(_BaseTauCorrector):
+class NullTau(_BaseTauCorrector):
+    def __init__(self, loss_fn, gradient_extractor):
+        super().__init__(loss_fn, gradient_extractor)
+
+    def get_fine_tau(self, batch_idx = None, mini_dataloader = None):
+        return 0.0
+
+    def compute_tau(self, coarse_level, fine_level, dataloader, operators):
+        pass
+
+    def correct(self, model, loss, batch_idx, num_batches, verbose = False):
+        pass
+
+class WholeSetTau(_BaseTauCorrector):
     def __init__(self, loss_fn, gradient_extractor):
         super().__init__(loss_fn, gradient_extractor)
         self.tau = None
@@ -143,17 +157,21 @@ class BasicTau(_BaseTauCorrector):
         fine_tau = fine_level.corrector.get_fine_tau() # of type ParamVector
         fine_grad = self.gradient_extractor.extract_from_network(fine_level, dataloader, self.loss_fn) #ParamVector
         coarse_grad = self.gradient_extractor.extract_from_network(coarse_level, dataloader, self.loss_fn)
+        # We're breaking encapsulation of the gradient extractor to
+        # get at the converter underneath. Perhaps this suggests a refactor should happen.
         self.tau = put_tau_together(fine_tau, fine_grad, coarse_grad, operators)
+        self.tau_network_format = copy.deepcopy(self.tau)
+        self.gradient_extractor.converter.convert_MTNN_format_to_network(self.tau_network_format)
 
         
     def correct(self, model, loss, batch_idx, num_batches, verbose=False):
         if self.tau is not None:
             for layer_id in range(len(model.layers)):
-                loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].weight, self.tau.weights[layer_id]))
-                loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.tau.biases[layer_id]))
+                loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].weight, self.tau_network_format.weights[layer_id]))
+                loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.tau_network_format.biases[layer_id]))
 
 
-class OneAtaTimeTau(_BaseTauCorrector):
+class MinibatchTau(_BaseTauCorrector):
     """A tau corrector that computes a tau correction for each minibatch,
     and cycles through the corrections one at a time.
     """
@@ -177,7 +195,9 @@ class OneAtaTimeTau(_BaseTauCorrector):
         coarse_grad = self.gradient_extractor.extract_from_network(coarse_level, mini_dataloader, self.loss_fn)
         # fine_grad = self.fine_level.net.getGrad(mini_dataloader, self.loss_fn)
         # coarse_grad = self.coarse_level.net.getGrad(mini_dataloader, self.loss_fn)
-        return put_tau_together(fine_tau, fine_grad, coarse_grad, self.operators)
+        tau = put_tau_together(fine_tau, fine_grad, coarse_grad, self.operators)
+        self.gradient_extractor.corrector.convert_MTNN_format_to_network(tau)
+        return tau
 
     def compute_tau(self, coarse_level, fine_level, dataloader, operators, verbose=False):
         # Ensure the coarse corrector can reach back to this one,

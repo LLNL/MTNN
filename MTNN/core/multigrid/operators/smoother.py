@@ -55,6 +55,11 @@ class SGDSmoother(_BaseSmoother):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = scaling_factor * param_group['lr']
 
+    def increase_momentum(self, scaling_factor_from_1):
+        for param_group in self.optimizer.param_groups:
+            param_group['momentum'] = 1.0 - scaling_factor_from_1 * (1.0 - param_group['momentum'])
+    
+
     def apply(self, model, dataloader, num_epochs, tau=None, l2_info = None, verbose=False) -> None:
         """
         Apply forward pass and backward pass to the model until stopping criteria is met.
@@ -97,6 +102,7 @@ class SGDSmoother(_BaseSmoother):
                 # Apply Tau Correction
                 # if tau:
                 #     tau.correct(model, loss, batch_idx, len(dataloader), verbose)
+                tau.correct(model, loss, batch_idx, len(dataloader), verbose)
 
                 # Backward
                 loss.backward()

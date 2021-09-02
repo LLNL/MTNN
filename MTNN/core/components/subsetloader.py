@@ -57,6 +57,17 @@ class NextKLoader(_BaseSubsetLoader):
         self.num_minibatches = num_minibatches
         self.curr_ind = 0
 
+    # def get_subset_dataloader(self, dataloader):
+    #     subset_dataloader = []
+    #     count = 0
+    #     for minibatch in dataloader:
+    #         print(type(minibatch), len(minibatch), minibatch[0][0][0][0][0])
+    #         subset_dataloader.append(minibatch)
+    #         count += 1
+    #         if count >= self.num_minibatches:
+    #             break
+    #     return subset_dataloader
+
     def get_subset_dataloader(self, dataloader):
         nextksize = self.num_minibatches * dataloader.batch_size
         if (nextksize > len(dataloader.dataset)):
@@ -73,8 +84,27 @@ class NextKLoader(_BaseSubsetLoader):
             # self.curr_ind = amount_from_front
             indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, nextksize))
             self.curr_ind = nextksize
-        return torch.utils.data.DataLoader(dataloader.dataset, batch_size = dataloader.batch_size,
-                                           sampler=torch.utils.data.SubsetRandomSampler(indices))
+        subdataset = torch.utils.data.Subset(dataloader.dataset, indices)
+        return torch.utils.data.DataLoader(subdataset, batch_size = dataloader.batch_size, shuffle=False)
+
+    # def get_subset_dataloader(self, dataloader):
+    #     nextksize = self.num_minibatches * dataloader.batch_size
+    #     if (nextksize > len(dataloader.dataset)):
+    #         raise ValueError("Trying to make a subset of size {} but whole dataset is only of size {}".
+    #                          format(nextksize, len(dataloader.dataset)))
+    #     if self.curr_ind + nextksize <= len(dataloader.dataset):
+    #         indices = list(range(self.curr_ind, self.curr_ind + self.num_minibatches * dataloader.batch_size))
+    #         self.curr_ind += nextksize
+    #         if self.curr_ind >= len(dataloader.dataset):
+    #             self.curr_ind = 0
+    #     else:
+    #         # amount_from_front = nextksize - (len(dataloader.dataset) - self.curr_ind)
+    #         # indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, amount_from_front))
+    #         # self.curr_ind = amount_from_front
+    #         indices = list(range(self.curr_ind, len(dataloader.dataset))) + list(range(0, nextksize))
+    #         self.curr_ind = nextksize
+    #     return torch.utils.data.DataLoader(dataloader.dataset, batch_size = dataloader.batch_size,
+    #                                        sampler=torch.utils.data.SubsetRandomSampler(indices))
 
     
 class WholeSetLoader(_BaseSubsetLoader):
