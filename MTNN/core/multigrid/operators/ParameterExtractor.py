@@ -169,14 +169,14 @@ class GradientExtractor(ParameterExtractor):
             # None, so grad should be all 0s
             for layer_id in range(len(net.layers)):
                 W_grad_array.append(torch.zeros(net.layers[layer_id].weight.shape).to(level.net.device))
-                B_grad_array.append(torch.zeros(net.layers[layer_id].bias.shape).to(level.net.device))
+                B_grad_array.append(torch.zeros(net.layers[layer_id].bias.shape).reshape(-1, 1).to(level.net.device))
         else:
             # dataloader wasn't empty, so have a nontrivial gradient
             # to compute.
             total_loss.backward()
             for layer_id in range(len(net.layers)):
                 W_grad_array.append(net.layers[layer_id].weight.grad.detach().clone())
-                B_grad_array.append(net.layers[layer_id].bias.grad.detach().clone())
+                B_grad_array.append(net.layers[layer_id].bias.grad.detach().reshape(-1, 1).clone())
 
         return ParamVector(W_grad_array, B_grad_array)
 

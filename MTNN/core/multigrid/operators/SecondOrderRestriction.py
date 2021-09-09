@@ -66,36 +66,6 @@ class SecondOrderRestriction:
         self.redo_matching_frequency = 10
         self.cycles_since_last_matching = self.redo_matching_frequency
 
-    def get_bias_adjustments(self, W_f_array, B_f_array, W_c_array, B_c_array, coarse_mapping):
-        fine2coarse, num_coarse_array = coarse_mapping
-        adjustments_array = []
-        for layer_id in range(len(W_f_array)-1):
-            F2C_layer = fine2coarse[layer_id]
-            nF = len(F2C_layer)
-            nC = num_coarse_array[layer_id]
-            currW = W_f_array[layer_id].transpose(0, -2).flatten(1)
-            norms = torch.norm(currW, p=2, dim=1, keepdim=True)
-            activation_distances = -B_f_array[layer_id] / norms
-            Cnorms = torch.norm(W_c_array[layer_id], p=2, dim=1, keepdim=True)
-            C2F = [[] for _ in range(nC)]
-            for i in range(nF):
-                C2F[F2C_layer[i]].append(i)
-            adjustments = torch.ones((nC,1))
-            for i in range(nC):
-                if len(C2F[i]) > 1:
-                    new_bias = -np.mean([activation_distances[j] for j in C2F[i]]) * Cnorms[i,0]
-                    adjustments[i,0] = new_bias / B_c_array[layer_id][i,0]
-                    # cos_theta = currW[C2F[i][0],:] @ currW[C2F[i][1],:]
-                    # adjustments[i] = torch.sqrt((1 + cos_theta) / 2) # half angle formula
-            # print("\n".join(map(str, [(adjustments[i],
-            #                            norms[C2F[i][0]], norms[C2F[i][1]],
-            #                            activation_distances[C2F[i][0]], activation_distances[C2F[i][1]])
-            #                           for i in range(len(adjustments)) if len(C2F[i]) > 1])))
-            # print(torch.mm(currW, torch.transpose(currW, dim0=0, dim1=1)))
-            # print("\n")
-            adjustments_array.append(adjustments)
-        return adjustments_array
-
     def apply(self, fine_level, coarse_level, dataloader, verbose=False):
         fine_param_library, fine_momentum_library = self.parameter_extractor.extract_from_network(fine_level)
         if self.cycles_since_last_matching >= self.redo_matching_frequency:
@@ -137,7 +107,7 @@ class SecondOrderRestriction:
         self.parameter_extractor.insert_into_network(coarse_level, coarse_param_library,
                                                      coarse_momentum_library)
 
-        coarse_level.corrector.compute_tau(coarse_level, fine_level, dataloader, self.transfer_ops)
+        coarse_level.corrector.compute_tau(coarse_level, fine_level, dataloader, self.tau_transfer_ops)
 
 ####################################################################
 # Prolongation

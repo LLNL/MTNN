@@ -16,64 +16,6 @@ log = log.get_logger(__name__, write_to_file =True)
 # Public
 __all__ = ['BasicTau']
 
-# TODO: remove
-# def transfer(Wmats, Bmats, R_ops, P_ops):
-#     # Matrix multiplication broadcasting:
-#     # T of shape (a, b, c, N, M)
-#     # Matrix A of shape (k, N)
-#     # Matrix B of shape (M, p)
-#     # A @ T @ B computes a tensor of shape (a, b, c, k, p) such that
-#     # (i, j, l, :, :) = A @ T(i,j,l,:,:) @ B
-#     num_layers = len(Wmats)
-#     Wdest_array = []
-#     Bdest_array = []
-#     for layer_id in range(num_layers):
-#         Wsrc = Wmats[layer_id]
-#         Bsrc = Bmats[layer_id]
-#         if layer_id < num_layers - 1:
-#             if layer_id == 0:
-#                 Wdest = R_ops[layer_id] @ Wsrc
-#             else:
-#                 Wdest = R_ops[layer_id] @ Wsrc @ P_ops[layer_id - 1]
-#             Bdest = R_ops[layer_id] @ Bsrc
-#         elif layer_id > 0:            
-#             Wdest = Wsrc @ P_ops[layer_id-1]
-#             Bdest = Bsrc.clone()
-
-#         Wdest_array.append(Wdest)
-#         Bdest_array.append(Bdest)
-#     return Wdest_array, Bdest_array
-
-# def put_tau_together(fine_tau, fine_grad, coarse_grad, ops):
-#     """ Numerical work to construct the tau correction vector.
-
-#     Inputs:
-#     fine_tau (ParamVector) - The tau correction vector from the next-finer level. [f^h]
-#     fine_grad (ParamVector) - The gradient from the next-finer level. [A^h(u)]
-#     coarse_grad (ParamVector) - The gradient from the current, coarse level. [A^{2h}(R*u)]
-#     ops (TransferOps) - The transfer operators from the fine to the current, coarse level.
-
-#     Output:
-#     (ParamVector) - The tau correction vector for the current, coarse level.
-#     """
-#     num_fine_layers = len(fine_tau.weights)
-#     W_rhs_array, B_rhs_array = [], []
-
-#     # Construct [f^h - A^h(u)]
-#     for layer_id in range(num_fine_layers):
-#         W_rhs_array.append(fine_tau.weights[layer_id] - fine_grad.weights[layer_id])
-#         B_rhs_array.append(fine_tau.biases[layer_id] - fine_grad.biases[layer_id])
-
-#     # Apply restriction to construct R * [f^h - A^h(u)]
-#     W_c_rhs_array, B_c_rhs_array = transfer(W_rhs_array, B_rhs_array, ops.R_for_grad_op, ops.P_for_grad_op)
-
-#     # Add final term to construct R * [f^h - A^h(u^h)] + A^{2h}(R*u^h)
-#     for layer_id in range(num_fine_layers):
-#         W_c_rhs_array[layer_id] += coarse_grad.weights[layer_id]
-#         B_c_rhs_array[layer_id] += coarse_grad.biases[layer_id]
-
-#     return ParamVector(W_c_rhs_array, B_c_rhs_array)
-
 def put_tau_together(fine_tau, fine_grad, coarse_grad, ops):
     """ Numerical work to construct the tau correction vector.
 
@@ -168,7 +110,7 @@ class WholeSetTau(_BaseTauCorrector):
         if self.tau is not None:
             for layer_id in range(len(model.layers)):
                 loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].weight, self.tau_network_format.weights[layer_id]))
-                loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.tau_network_format.biases[layer_id]))
+                loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.tau_network_format.biases[layer_id].reshape(-1)))
 
 
 class MinibatchTau(_BaseTauCorrector):

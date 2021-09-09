@@ -135,6 +135,22 @@ class HEMCoarsener():
             # to -1
             is_paired = (range_n == match[match]) * (is_paired + (similarityMatrix[range_n, match[range_n]] > threshold))
 
+        # Unpaired neurons get matched to themselves
+        match[~is_paired] = range_n[~is_paired]
+
+        # fine2coarse = -1
+        # n_coarse = int(n - (torch.sum(is_paired) / 2))
+
+        # fine2coarse = torch.full([n], -1, dtype=int)
+        # curr_coarse = 0
+        # for i in range(n):
+        #     if match[i] < i:
+        #         fine2coarse[i] = fine2coarse[match[i]]
+        #     else:
+        #         fine2coarse[i] = curr_coarse
+        #         curr_coarse += 1
+        # # n_coarse = curr_coarse
+
         # For each paired match, choose a "base" which is by
         # convention the fine neuron with lower index.
         bases_of_pairs = torch.unique(torch.min(match[is_paired], match[match[is_paired]]))
@@ -150,7 +166,7 @@ class HEMCoarsener():
         fine2coarse[~is_paired] = n_pair + torch.tensor(range(n - 2 * n_pair), dtype=int)
 
         n_coarse = n - n_pair # = n_pair + (n - 2 * n_pair)
-        return fine2coarse, n_coarse
+        return match, fine2coarse, n_coarse
         
     def __call__(self, param_matrix_list, net):
         """
@@ -163,6 +179,9 @@ class HEMCoarsener():
 
         # fine2coarse array
         fine2CoarsePerLayer = []
+
+        # neuron matchings. another way of writing the same information as in fine2CoarsePerLayer
+        match_per_layer = []
 
         # coarsen layers
         for layer_id in range(num_layers - 1):
@@ -177,14 +196,15 @@ class HEMCoarsener():
                 similarity = self.similarity_calculator.calculate_similarity(wb, net, layer_id)
 
                 similarity.fill_diagonal_(-999.0)
-                f2c, num_ColIn = self.get_heavyedgematching(similarity)
+                match, fine2coarse, num_ColIn = self.get_heavyedgematching(similarity)
                 num_coarse_array.append(num_ColIn)
-                fine2CoarsePerLayer.append(f2c)
+                fine2CoarsePerLayer.append(fine2coarse)
+                match_per_layer.append(match)
             else:
                 num_coarse_array.append(nf)
                 fine2CoarsePerLayer.append(torch.arange(0, nf, dtype=int))
             print("Layer {} has {} coarse neurons".format(layer_id, num_coarse_array[-1]))
             print()
 
-        return CoarseMapping(fine2CoarsePerLayer, num_coarse_array)
+        return CoarseMapping(fine2CoarsePerLayer, num_coarse_array, match_per_layer)
 

@@ -1,5 +1,7 @@
 """Holds namedtuples definitions"""
 from collections import namedtuple
+from functools import singledispatch
+import torch
 
 ############################################
 # Data types
@@ -10,19 +12,23 @@ level_data = namedtuple('level_data', ['R', 'P', 'W', 'b', 'rhsW', 'rhsB'])
 operators = namedtuple("operators", "R_op P_op R_for_grad_op P_for_grad_op, l2reg_left_vecs, l2reg_right_vecs")
 
 
-"""CoarseMapping - specifies a mapping from fine channels to coarse channels.
-
-fine2coarse_map <List(List)> - A list of length equal to the number of
-network layers. Each element is itself a list, of length equal to the
-number of channels in the fine-level network. Each element specifies
-the index of the coarse channel to which this fine channel is mapped.
-
-num_coarse_channels <List> - A list of length equal to the number of
-network layers. Each element contains the number of coarse channels at
-that layer.
-"""
-CoarseMapping = namedtuple("CoarseMapping", "fine2coarse_map, num_coarse_channels")
-
+class CoarseMapping:
+    """CoarseMapping - specifies a mapping from fine channels to coarse channels.
+    
+    fine2coarse_map <List(List)> - A list of length equal to the number of
+    network layers. Each element is itself a list, of length equal to the
+    number of channels in the fine-level network. Each element specifies
+    the index of the coarse channel to which this fine channel is mapped.
+    
+    num_coarse_channels <List> - A list of length equal to the number of
+    network layers. Each element contains the number of coarse channels at
+    that layer.
+    """
+    def __init__(self, fine2coarse_map, num_coarse_channels, match_per_layer):
+        self.fine2coarse_map = fine2coarse_map
+        self.num_coarse_channels = num_coarse_channels
+        self.match_per_layer = match_per_layer
+#CoarseMapping = namedtuple("CoarseMapping", "fine2coarse_map, num_coarse_channels")
 
 
 class TransferOps:
@@ -134,6 +140,14 @@ class ParamVector:
         # Matrix B of shape (M, p)
         # A @ T @ B computes a tensor of shape (a, b, c, k, p) such that
         # (i, j, l, :, :) = A @ T(i,j,l,:,:) @ B
+        def mul(A, B):
+            try:
+                # works for anything except where first param is
+                # Tensor and second param isn't...
+                return A @ B
+            except TypeError:
+                # ...in which case a TypeError gets thrown and we call this
+                return B.__rmatmul__(A)
         Wdest_array = []
         Bdest_array = []
         for layer_id in range(self.num_layers):
@@ -141,12 +155,12 @@ class ParamVector:
             Bsrc = self.biases[layer_id]
             if layer_id < self.num_layers - 1:
                 if layer_id == 0:
-                    Wdest = R.R_ops[layer_id] @ Wsrc
+                    Wdest = mul(R.R_ops[layer_id], Wsrc)
                 else:
-                    Wdest = R.R_ops[layer_id] @ Wsrc @ R.P_ops[layer_id - 1]
-                Bdest = R.R_ops[layer_id] @ Bsrc
+                    Wdest = mul(mul(R.R_ops[layer_id], Wsrc), R.P_ops[layer_id - 1])
+                Bdest = mul(R.R_ops[layer_id], Bsrc)
             elif layer_id > 0:            
-                Wdest = Wsrc @ R.P_ops[layer_id-1]
+                Wdest = mul(Wsrc, R.P_ops[layer_id-1])
                 Bdest = Bsrc.clone()
 
             Wdest_array.append(Wdest)
