@@ -4,4 +4,4 @@ __all__ = ['smoother',
            'SecondOrderConverter',
            'SimilarityMatcher',
            'TransferOpsBuilder',
-           'tau_corrector']
+           'TauCorrector']
