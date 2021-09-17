@@ -138,8 +138,8 @@ class HEMCoarsener():
         # Unpaired neurons get matched to themselves
         match[~is_paired] = range_n[~is_paired]
 
-        # fine2coarse = -1
-        # n_coarse = int(n - (torch.sum(is_paired) / 2))
+        fine2coarse = -1
+        n_coarse = int(n - (torch.sum(is_paired) / 2))
 
         # fine2coarse = torch.full([n], -1, dtype=int)
         # curr_coarse = 0
@@ -153,19 +153,19 @@ class HEMCoarsener():
 
         # For each paired match, choose a "base" which is by
         # convention the fine neuron with lower index.
-        bases_of_pairs = torch.unique(torch.min(match[is_paired], match[match[is_paired]]))
-        n_pair = len(bases_of_pairs)
+        # bases_of_pairs = torch.unique(torch.min(match[is_paired], match[match[is_paired]]))
+        # n_pair = len(bases_of_pairs)
 
-        fine2coarse = torch.full([n], -1, dtype=int)
-        # Each base is associated with a coarse neuron index
-        fine2coarse[bases_of_pairs] = torch.tensor(range(n_pair), dtype=int)
-        # Each match is associated with the same coarse index as its base.
-        fine2coarse[match[bases_of_pairs]] = fine2coarse[bases_of_pairs]
+        # fine2coarse = torch.full([n], -1, dtype=int)
+        # # Each base is associated with a coarse neuron index
+        # fine2coarse[bases_of_pairs] = torch.tensor(range(n_pair), dtype=int)
+        # # Each match is associated with the same coarse index as its base.
+        # fine2coarse[match[bases_of_pairs]] = fine2coarse[bases_of_pairs]
 
-        # Each singleton gets its own coarse neuron.
-        fine2coarse[~is_paired] = n_pair + torch.tensor(range(n - 2 * n_pair), dtype=int)
+        # # Each singleton gets its own coarse neuron.
+        # fine2coarse[~is_paired] = n_pair + torch.tensor(range(n - 2 * n_pair), dtype=int)
 
-        n_coarse = n - n_pair # = n_pair + (n - 2 * n_pair)
+        # n_coarse = n - n_pair # = n_pair + (n - 2 * n_pair)
         return match, fine2coarse, n_coarse
         
     def __call__(self, param_matrix_list, net):
