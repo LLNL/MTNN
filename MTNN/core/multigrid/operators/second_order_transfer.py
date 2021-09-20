@@ -1,18 +1,8 @@
 """
 Restriction Operators
 """
-import torch
-import torch.nn as nn
-import collections as col
-from abc import ABC, abstractmethod
-
 # local
-import MTNN.core.multigrid.scheme as mg
-#import MTNN.core.multigrid.operators.interpolator as interp
-import MTNN.core.components.models as models
-from MTNN.utils.datatypes import operators, ParamVector
 import MTNN.utils.logger as log
-import MTNN.utils.printer as printer
 import MTNN.utils.deviceloader as deviceloader
 
 log = log.get_logger(__name__, write_to_file =True)

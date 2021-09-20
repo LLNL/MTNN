@@ -1,5 +1,4 @@
 import time
-from collections import namedtuple
 
 # PyTorch
 import torch.nn as nn
@@ -11,19 +10,17 @@ from torch.utils.data import Dataset, DataLoader
 # system imports
 import sys
 sys.path.append("../../mtnnpython")
-from os import path
 import matplotlib.pyplot as plt
 
 # local
-from MTNN.core.components import data, models, subsetloader
+from MTNN.core.components import models, subsetloader
 #from MTNN.core.multigrid.operators import *
 from MTNN.core.multigrid.operators import tau_corrector, smoother
-import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
-import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
-import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
-import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
-from MTNN.core.alg import trainer, evaluator
-from MTNN.utils import deviceloader
+import core.multigrid.operators.second_order_transfer as SOR
+import core.multigrid.operators.data_converter as SOC
+import MTNN.core.multigrid.operators.similarity_matcher as SimilarityMatcher
+import MTNN.core.multigrid.operators.transfer_ops_builder as TransferOpsBuilder
+from MTNN.core.alg import trainer
 import MTNN.core.multigrid.scheme as mg
 
 # Example execution:

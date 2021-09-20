@@ -1,13 +1,22 @@
+"""
+Algorithms to calculate similarity between layers
+"""
 # standard
 import torch
-import numpy as np
-import pdb
 
 #local
 from MTNN.utils import logger
 from MTNN.utils import deviceloader
 from MTNN.utils.datatypes import CoarseMapping
+
 log = logger.get_logger(__name__, write_to_file =True)
+
+# Public
+__all__ = ['StandardSimilarity',
+           'HSimilarity',
+           'ExpHSimilarity',
+           'RadialBasisSimilarity',
+           'HEMCoarsener']
 
 class StandardSimilarity:
     """ sim(i,j) = w_i^T w_j
@@ -19,6 +28,7 @@ class StandardSimilarity:
         nr = torch.norm(WB, p=2, dim=1, keepdim=True)
         WB = WB / nr
         return torch.mm(WB, torch.transpose(WB, dim0=0, dim1=1))
+
 
 class HSimilarity:
     """
@@ -49,6 +59,7 @@ class HSimilarity:
         inner_product_mat[:-1,:-1] = torch.mm(torch.transpose(H, dim0=0, dim1=1), H)
         return torch.mm(WB, torch.mm(inner_product_mat, torch.transpose(WB, dim0=0, dim1=1)))
 
+
 class ExpHSimilarity:
     def __init__(self, U, scale=1.0):
         self.U = U
@@ -78,6 +89,7 @@ class ExpHSimilarity:
         inner_product_mat[:-1,:-1] = eS
         return torch.mm(WB, torch.mm(inner_product_mat, torch.transpose(WB, dim0=0, dim1=1)))
 
+
 class RadialBasisSimilarity:
     """ sim(i,j) = exp(-\lambda ||w_i - w_j||^2) = exp(-lambda ((w_i, w_i) + (w_j, w_j) - 2 (w_i, w_j)))
     """
@@ -93,6 +105,7 @@ class RadialBasisSimilarity:
 
 class HEMCoarsener():
     """
+    TODO: Decouple
     Heavy Edge Matching Coarsener
     Takes a fine-level and constructs the coarsening layer to be used
     for building the restriction operator
@@ -140,32 +153,6 @@ class HEMCoarsener():
 
         fine2coarse = -1
         n_coarse = int(n - (torch.sum(is_paired) / 2))
-
-        # fine2coarse = torch.full([n], -1, dtype=int)
-        # curr_coarse = 0
-        # for i in range(n):
-        #     if match[i] < i:
-        #         fine2coarse[i] = fine2coarse[match[i]]
-        #     else:
-        #         fine2coarse[i] = curr_coarse
-        #         curr_coarse += 1
-        # # n_coarse = curr_coarse
-
-        # For each paired match, choose a "base" which is by
-        # convention the fine neuron with lower index.
-        # bases_of_pairs = torch.unique(torch.min(match[is_paired], match[match[is_paired]]))
-        # n_pair = len(bases_of_pairs)
-
-        # fine2coarse = torch.full([n], -1, dtype=int)
-        # # Each base is associated with a coarse neuron index
-        # fine2coarse[bases_of_pairs] = torch.tensor(range(n_pair), dtype=int)
-        # # Each match is associated with the same coarse index as its base.
-        # fine2coarse[match[bases_of_pairs]] = fine2coarse[bases_of_pairs]
-
-        # # Each singleton gets its own coarse neuron.
-        # fine2coarse[~is_paired] = n_pair + torch.tensor(range(n - 2 * n_pair), dtype=int)
-
-        # n_coarse = n - n_pair # = n_pair + (n - 2 * n_pair)
         return match, fine2coarse, n_coarse
         
     def __call__(self, param_matrix_list, net):

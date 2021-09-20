@@ -2,13 +2,10 @@
 Example of FAS VCycle
 """
 import time
-from collections import namedtuple
 
 # PyTorch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-import numpy as np
 
 # system imports
 import sys
@@ -16,14 +13,14 @@ sys.path.append("../../mtnnpython")
 from os import path
 
 # local
-from MTNN.core.components import data, models, subsetloader
-from MTNN.core.multigrid.operators import TauCorrector, smoother
-import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
-import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
-import MTNN.core.multigrid.operators.ParameterExtractor as PE
-import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
-import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
-from MTNN.core.alg import trainer, evaluator
+from MTNN.core.components import models, subsetloader
+from MTNN.core.multigrid.operators import taucorrector, smoother
+import core.multigrid.operators.second_order_transfer as SOR
+import core.multigrid.operators.data_converter as SOC
+import MTNN.core.multigrid.operators.paramextractor as PE
+import MTNN.core.multigrid.operators.similarity_matcher as SimilarityMatcher
+import MTNN.core.multigrid.operators.transfer_ops_builder as TransferOpsBuilder
+from MTNN.core.alg import trainer
 from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
@@ -144,11 +141,11 @@ class SGDparams:
         self.l2_decay = l2_decay
 
 if params["tau_corrector"] == "null":
-    tau = TauCorrector.NullTau
+    tau = taucorrector.NullTau
 elif params["tau_corrector"] == "wholeset":
-    tau = TauCorrector.WholeSetTau
+    tau = taucorrector.WholeSetTau
 elif params["tau_corrector"] == "minibatch":
-    tau = TauCorrector.MinibatchTau
+    tau = taucorrector.MinibatchTau
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = params["num_levels"]

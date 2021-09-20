@@ -1,7 +1,6 @@
 """
 Example of cascadic multigrid with MTNN
 """
-from collections import namedtuple
 import time
 
 import sys
@@ -16,11 +15,11 @@ import numpy as np
 # local
 from MTNN.core.components import data, models, subsetloader
 from MTNN.core.multigrid.operators import tau_corrector, smoother
-import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
-import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
-import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
-import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
-from MTNN.core.alg import trainer, evaluator
+import core.multigrid.operators.second_order_transfer as SOR
+import core.multigrid.operators.data_converter as SOC
+import MTNN.core.multigrid.operators.similarity_matcher as SimilarityMatcher
+import MTNN.core.multigrid.operators.transfer_ops_builder as TransferOpsBuilder
+from MTNN.core.alg import trainer
 import MTNN.core.multigrid.scheme as mg
 from MTNN.utils import deviceloader
 

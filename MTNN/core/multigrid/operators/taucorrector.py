@@ -1,20 +1,23 @@
 """
 Holds Tau correction definitions
 """
+# standard
 from abc import ABC, abstractmethod
-import torch
-import MTNN.utils.logger as log
-import MTNN.utils.printer as printer
-from MTNN.utils.datatypes import ParamVector, TransferOps
-#import MTNN.core.multigrid.operators.interpolator as interp
-
 import copy
-import sys
+
+# PyTorch
+import torch
+
+# local
+import MTNN.utils.logger as log
 
 log = log.get_logger(__name__, write_to_file =True)
 
 # Public
-__all__ = ['BasicTau']
+__all__ = ['NullTau',
+           'WholeSetTau',
+           'MinibatchTau']
+
 
 def put_tau_together(fine_tau, fine_grad, coarse_grad, ops):
     """ Numerical work to construct the tau correction vector.
@@ -131,7 +134,7 @@ class MinibatchTau(_BaseTauCorrector):
         else:
             return self.finer_level_corrector.compute_tau_for_one_minibatch(mini_dataloader)
 
-    def compute_tau_for_one_minibatch(self, mini_dataloader):
+    def compute_tau_for_one_minibatch(self, fine_level, coarse_level, batch_idx, mini_dataloader):
         fine_tau = self.fine_level.corrector.get_fine_tau(batch_idx, mini_dataloader)
         fine_grad = self.gradient_extractor.extract_from_network(fine_level, mini_dataloader, self.loss_fn)
         coarse_grad = self.gradient_extractor.extract_from_network(coarse_level, mini_dataloader, self.loss_fn)
@@ -167,87 +170,3 @@ class MinibatchTau(_BaseTauCorrector):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-# ###################################################################
-# # Implementation
-# ####################################################################
-# class BasicTau(_BaseTauCorrector):
-#     def __init__(self, loss_fn):
-#         super().__init__(loss_fn)
-#         self.tau = None
-
-#     def get_fine_tau(self, batch_idx = None):
-#         if self.rhs is None:
-#             return 0.0
-#         else:
-#             return self.tau
-
-#     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
-#         # When restricting from L0 to L1, the rhs of the problem is 0,
-#         # but at coarser levels of the hierarchy, there is a nonzero
-#         # rhs due to previous tau corrections. In that case, that
-#         # nonzero rhs must be part of the correction as well.
-#         fine_rhs = None
-#         if fine_level.corrector.rhs_W:
-#             fine_rhs = (fine_level.corrector.rhs_W, fine_level.corrector.rhs_B)
-
-#         (rhsW, rhsB) = self.get_tau_for_data(fine_level, coarse_level, dataloader,
-#                                              operators, self.loss_fn, fine_rhs)
-#         coarse_level.corrector.rhs_W = rhsW
-#         coarse_level.corrector.rhs_B = rhsB
-        
-#     def correct(self, model, loss, batch_idx, num_batches, verbose=False):
-#         if self.rhs_W and self.rhs_B is not None:
-#             try:
-#                 for layer_id in range(len(model.layers)):
-#                     loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].weight, self.rhs_W[layer_id]))
-#                     loss -= (1.0 / num_batches) * torch.sum(torch.mul(model.layers[layer_id].bias, self.rhs_B[layer_id]))
-
-#                 if verbose:
-#                     printer.print_tau(self, loss.item(), msg="\tApplying Tau Correction: ")
-#             except Exception as e:
-#                 print("Exception in tau_corrector.py:BasicTau.correct.", file=sys.stderr)
-#                 raise e
-
-# class OneAtaTimeTau(_BaseTauCorrector):
-#     """A tau corrector that computes a tau correction for each minibatch,
-#     and cycles through the corrections one at a time.
-#     """
-
-#     def __init__(self, loss_fn):
-#         super().__init__(loss_fn)
-#         self.tau_corrections = None
-
-#     def compute_tau(self, fine_level, coarse_level, dataloader, operators, verbose=False):
-#         self.tau_corrections = []
-#         for batch_idx, mini_batch_data in enumerate(dataloader):
-#             fine_rhs = None
-#             if fine_level.corrector.tau_corrections:
-#                 fine_rhs = fine_level.corrector.tau_corrections[batch_idx]
-#             curr_rhsW, curr_rhsB = self.get_tau_for_data(fine_level, coarse_level,
-#                                                          (mini_batch_data,), operators,
-#                                                          self.loss_fn, fine_rhs)
-#             self.tau_corrections.append((curr_rhsW, curr_rhsB))
-
-#     def correct(self, model, loss, batch_idx, num_batches, verbose=False):
-#         if self.tau_corrections is not None:
-#             rhsW, rhsB = self.tau_corrections[batch_idx]
-#             try:
-#                 for layer_id in range(len(model.layers)):
-#                     loss -= torch.sum(torch.mul(model.layers[layer_id].weight, rhsW[layer_id]))
-#                     loss -= torch.sum(torch.mul(model.layers[layer_id].bias, rhsB[layer_id]))
-#             except Exception as e:
-#                 print("Exception in tau_corrector.py:OneAtaTimeTau.correct.", file=sys.stderr)
-#                 raise e
-            

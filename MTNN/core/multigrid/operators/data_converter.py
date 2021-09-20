@@ -2,29 +2,20 @@
 Restriction Operators
 """
 import torch
-import torch.nn as nn
-import numpy as np
-import copy
 from abc import ABC, abstractmethod
 
 # local
-import MTNN.core.multigrid.scheme as mg
-import MTNN.core.components.models as models
-from MTNN.utils.datatypes import operators, ParamVector
 import MTNN.utils.logger as log
-import MTNN.utils.printer as printer
-import MTNN.utils.deviceloader as deviceloader
 
 log = log.get_logger(__name__, write_to_file =True)
 
 __all__ = ['SecondOrderConverter',
-           'MultilinearConverter',
+           'MultiLinearConverter',
            'ConvolutionalConverter']    
 
 ############################################
 # Converters
 ############################################
-
 class SecondOrderConverter:
     """Converts parameter libraries between format.
 
@@ -213,92 +204,3 @@ class ActivationDistanceConverter(SecondOrderConverter):
         self.convert_activation_distances_to_biases(param_library)
         self.convert_activation_distances_to_biases(momentum_library)
         self.primary_converter.convert_MTNN_format_to_network(param_library, momentum_library)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class ConvolutionalConverter(SecondOrderConverter):
-#     """ConvolutionalConverter
-
-#     A SecondOrderConverter for convolutional networks that consist of
-#     1 or more convolutional layers followed by 0 or more
-#     fully-connected layers.
-#     """
-#     def __init__(self, num_conv_layers):
-#         self.num_conv_layers = num_conv_layers
-    
-#     def convert_network_format_to_MTNN(self, param_library, momentum_library):
-#         # Reorder convolutional tensors
-#         for layer_id in range(self.num_conv_layers):
-#             # Has shape (out_ch x in_ch x kernel_d1 x kernel_d2 x ... x kernel_dk)
-#             W = param_library.weights[layer_id]
-#             mW = momentum_library.weights[layer_id]
-#             # Convert to shape (kernel_d1 x kernel_d2 x ... x kernel_dk x out_ch x in_ch)
-#             param_library.weights[layer_id] = W.permute(*range(2, len(W.shape)), 0, 1)
-#             momentum_library.weights[layer_id] = mW.permute(*range(2, len(W.shape)), 0, 1)
-
-#         # Each neuron in the first FC layer after convolutional layers
-#         # has a separate weight for each pixel and channel. For each
-#         # pixel, there is a set of columns in the FC weight matrix
-#         # associated with that pixel's channels, and we need to merge
-#         # those columns acoording to our coarsening. Thus, we need to
-#         # convert this weight matrix into a 3rd order tensor with
-#         # dimensions (# pixels, # neurons, # last_layer_channnels).
-#         layer_id = self.num_conv_layers
-#         last_layer_channels = param_library.weights[layer_id-1].shape[-2]
-#         W = param_library.weights[layer_id]
-#         mW = momentum_library.weights[layer_id]
-
-#         # Last conv layer output has shape (minibatches, out_ch,
-#         # pixel_rows, pixel_cols) and gets flattened to shape
-#         # (minibatches, outch * pixels_rows * pixel_cols), which keeps
-#         # last indexed elements together. That is, it's a sort of
-#         # "channel-major order."
-        
-#         # Creates tensor of shape (neurons, last_layer_channels, # pixels)
-#         Wnew = W.reshape(W.shape[0], last_layer_channels, int(W.shape[1] / last_layer_channels))
-#         mWnew = mW.reshape(mW.shape[0], last_layer_channels, int(mW.shape[1] / last_layer_channels))
-#         # Permute to correct shape
-#         Wnew = Wnew.permute(2, 0, 1)
-#         mWnew = mWnew.permute(2, 0, 1)
-
-#         param_library.weights[layer_id] = Wnew
-#         momentum_library.weights[layer_id] = mWnew
-    
-#     def convert_MTNN_format_to_network(self, param_library, momentum_library):
-#         # Reorder convolutional tensors
-#         for layer_id in range(self.num_conv_layers):
-#             # Has shape (kernel_d1 x kernel_d2 x ... x kernel_dk x out_ch x in_ch)
-#             W = param_library.weights[layer_id]
-#             mW = momentum_library.weights[layer_id]
-#             # Convert to shape (out_ch x in_ch x kernel_d1 x kernel_d2 x ... x kernel_dk)
-#             param_library.weights[layer_id] = W.permute(-2, -1, *range(len(W.shape)-2))
-#             momentum_library.weights[layer_id] = mW.permute(-2, -1, *range(len(W.shape)-2))
-
-#         # First FC layer has shape (# pixels, out_neurons,
-#         # last_layer_channels).  Needs to have shape (out_neurons,
-#         # all_input_values) and needs to maintain "channel-major"
-#         # ordering.
-#         layer_id = self.num_conv_layers
-#         W = param_library.weights[layer_id]
-#         W = torch.flatten(W.permute(1, 2, 0), 1)
-#         mW = momentum_library.weights[layer_id]
-#         mW = torch.flatten(mW.permute(1, 2, 0), 1)
-#         param_library.weights[layer_id] = W
-#         momentum_library.weights[layer_id] = mW

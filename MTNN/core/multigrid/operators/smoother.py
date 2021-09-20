@@ -4,8 +4,7 @@ Holds Multigrid Smoothers
 # standard
 from abc import ABC, abstractmethod
 
-# torch
-import torch
+# PyTorch
 import torch.optim as optim
 
 # local
@@ -58,7 +57,6 @@ class SGDSmoother(_BaseSmoother):
     def increase_momentum(self, scaling_factor_from_1):
         for param_group in self.optimizer.param_groups:
             param_group['momentum'] = 1.0 - scaling_factor_from_1 * (1.0 - param_group['momentum'])
-    
 
     def apply(self, model, dataloader, num_epochs, tau=None, l2_info = None, verbose=False) -> None:
         """
@@ -100,18 +98,14 @@ class SGDSmoother(_BaseSmoother):
                 loss = self.loss_fn(outputs, target_data)
                     
                 # Apply Tau Correction
-                # if tau:
-                #     tau.correct(model, loss, batch_idx, len(dataloader), verbose)
-                tau.correct(model, loss, batch_idx, len(dataloader), verbose)
+                if tau:
+                    tau.correct(model, loss, batch_idx, len(dataloader), verbose)
 
                 # Backward
                 loss.backward()
                 
                 self.optimizer.step()
-                if verbose:# and (batch_idx + 1) % 50 == 0:
-                    # Show status bar
-                    #total_work = len(dataloader)
-                    #logger.progressbar(batch_idx, total_work, status = "Training")
+                if verbose:
                     printer.print_smoother(loss, batch_idx, dataloader, self.log_interval, tau)
 
 

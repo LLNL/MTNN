@@ -1,30 +1,25 @@
 """
 Example of FAS VCycle
 """
-import time
-from collections import namedtuple
 
 # PyTorch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-import numpy as np
 import matplotlib.pyplot as plt
 
 # system imports
 import sys
 sys.path.append("../")
-from os import path
 
 # local
-from MTNN.core.components import data, models, subsetloader
-from MTNN.core.multigrid.operators import TauCorrector, smoother
-import MTNN.core.multigrid.operators.SecondOrderRestriction as SOR
-import MTNN.core.multigrid.operators.SecondOrderConverter as SOC
-import MTNN.core.multigrid.operators.ParameterExtractor as PE
-import MTNN.core.multigrid.operators.SimilarityMatcher as SimilarityMatcher
-import MTNN.core.multigrid.operators.TransferOpsBuilder as TransferOpsBuilder
-from MTNN.core.alg import trainer, evaluator
+from MTNN.core.components import models, subsetloader
+from MTNN.core.multigrid.operators import taucorrector, smoother
+import core.multigrid.operators.second_order_transfer as SOR
+import core.multigrid.operators.data_converter as SOC
+import MTNN.core.multigrid.operators.paramextractor as PE
+import MTNN.core.multigrid.operators.similarity_matcher as SimilarityMatcher
+import MTNN.core.multigrid.operators.transfer_ops_builder as TransferOpsBuilder
+from MTNN.core.alg import trainer
 from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
@@ -164,7 +159,7 @@ matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=Similarit
 transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(weighted_projection=params["weighted_projection"])
 restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
 prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
-tau = TauCorrector.WholeSetTau
+tau = taucorrector.WholeSetTau
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = params["num_levels"]
