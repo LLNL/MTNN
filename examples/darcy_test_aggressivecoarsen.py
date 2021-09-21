@@ -41,7 +41,7 @@ def read_args(args):
     # Define reader functions for each parameter                                                                                                                                                                                              
     reader_fns = { "num_cycles" : int_reader,
                    "num_levels": int_reader,
-                   "smooth_iters": int_reader,
+                   "smooth_iters": array_reader(int_reader),
                    "conv_ch" : array_reader(int_reader),
                    "conv_kernel_width" : array_reader(int_reader),
                    "conv_stride" : array_reader(int_reader),
@@ -70,7 +70,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(0)
 torch.set_printoptions(precision=5)
-
+torch.set_default_dtype(torch.float64)
 
 #=======================================
 # Set up data
@@ -172,7 +172,7 @@ for level_idx in range(0, num_levels):
     gradient_extractor = PE.GradientExtractor(converter)
     matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
                                                      coarsen_on_layer=None)#[False, False, True, True])
-    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(restriction_weighting_power=0.0, weighted_projection=params["weighted_projection"])
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"])
     restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
     prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,
@@ -227,7 +227,7 @@ class ValidationCallback:
 num_cycles = params["num_cycles"] #int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
 mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
-                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
+                      subsetloader = subsetloader.CyclingNextKLoader(params["smooth_iters"]),
                       depth_selector = depth_selector, 
                       validation_callback=ValidationCallback(((pde_dataset_test.u, pde_dataset_test.Q),), 1))
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,

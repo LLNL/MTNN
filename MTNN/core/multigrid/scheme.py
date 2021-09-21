@@ -126,7 +126,7 @@ class _BaseMultigridScheme(ABC):
     Base Multigrid Hierarchy
     """
     def __init__(self, levels=None, cycles=1, subsetloader = WholeSetLoader(),
-                 depth_selector = None):
+                 depth_selector = None, validation_callback = None):
         """
         Args:
             levels: List of <core.alg.multigrid.multigrid.Level> Level objects
@@ -146,6 +146,7 @@ class _BaseMultigridScheme(ABC):
             self.depth_selector = lambda c : len(self.levels)
         else:
             self.depth_selector = depth_selector
+        self.validation_callback = validation_callback
 
     def setup(self, model):
         """Set the first level's model"""
@@ -246,9 +247,13 @@ class VCycle(_BaseMultigridScheme):
             printer.print_cycleheader(self)
             printer.print_level(self.levels)
 
+        self.best_seen = [10000] * len(self.levels)
+        
         # Iteratively restrict each level's grid
         for cycle in range(0, self.cycles):
-            cycle_dataloader = self.subsetloader.get_subset_dataloader(dataloader)
+            # if cycle in (200, 400, 800, 1600):
+            #     for level in self.levels:
+            #         level.presmoother.increase_momentum(0.5)
             if trainer.verbose:
                 printer.print_cycle_status(self, cycle)
             #############################################
@@ -257,11 +262,11 @@ class VCycle(_BaseMultigridScheme):
 
             num_levels = self.depth_selector(cycle)
             for level_idx in range(num_levels-1):
-                level = self.levels[level_idx]
                 if trainer.verbose:
                     printer.print_levelstats(cycle, self.cycles, level_idx, num_levels, f"DOWN CYCLING ")
+                cycle_dataloader = self.subsetloader.get_subset_dataloader(dataloader)
 
-                fine_level = level
+                fine_level = self.levels[level_idx]
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # next level if it exists
 
                 # Presmooth
@@ -271,6 +276,7 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.restrict(fine_level, coarse_level, cycle_dataloader, trainer.verbose)
 
             # Smoothing with coarse-solver at the coarsest level
+            cycle_dataloader = self.subsetloader.get_subset_dataloader(dataloader)
             self.levels[num_levels-1].coarse_solve(self.levels[num_levels-1].net, cycle_dataloader, trainer.verbose)
 
             ##############################################
@@ -279,6 +285,7 @@ class VCycle(_BaseMultigridScheme):
             for level_idx in range(num_levels - 2, -1, -1):
                 if trainer.verbose:
                     printer.print_levelstats(cycle, self.cycles, level_idx, num_levels, f"\nUP CYCLING")
+                cycle_dataloader = self.subsetloader.get_subset_dataloader(dataloader)
 
                 fine_level = self.levels[level_idx]
                 coarse_level = self.levels[(level_idx + 1) % len(self.levels)]  # mod gets next level if it exists
@@ -287,31 +294,8 @@ class VCycle(_BaseMultigridScheme):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader, trainer.verbose)
 
 
-            if trainer.verbose and (cycle + 1) % 5 == 0:
-                with torch.no_grad():
-                    total_loss = [0.0] * len(self.levels)
-                    for mini_batch_data in dataloader:
-                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
-                        for level_ind, level in enumerate(self.levels):
-                            outputs = level.net(inputs)
-                            total_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
-                    for level_ind in range(len(self.levels)):
-                        print("Level {}: After {} cycles, training loss is {}".format(level_ind, cycle, total_loss[level_ind]), flush=True)
-                    # if total_loss < self.stop_loss:
-                    #     break
-                with torch.no_grad():
-                    total_test_loss = [0.0] * len(self.levels)
-                    for mini_batch_data in self.test_loader:
-                        inputs, true_outputs  = deviceloader.load_data(mini_batch_data, self.levels[0].net.device)
-                        for level_ind, level in enumerate(self.levels):
-                            outputs = level.net(inputs)
-                            total_test_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
-                    for level_ind in range(len(self.levels)):
-                        print("Level {}: After {} cycles, validation loss is {}".format(level_ind, cycle, total_test_loss[level_ind]), flush=True)
-        # Return the fine net
-        # if trainer.verbose:
-        #     log.info(printer.format_header(f'Finished FAS Cycle'))
-        #     printer.print_level(self.levels)
+            if self.validation_callback is not None:
+                self.validation_callback(self.levels, cycle)
 
         return self.levels[0].net
 

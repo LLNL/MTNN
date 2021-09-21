@@ -1,16 +1,15 @@
 """
 Example of FAS VCycle
 """
-import time
 
 # PyTorch
 import torch.nn as nn
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 # system imports
 import sys
-sys.path.append("../../mtnnpython")
-from os import path
+sys.path.append("../")
 
 # local
 from MTNN.core.components import models, subsetloader
@@ -25,8 +24,7 @@ from MTNN.utils import deviceloader
 import MTNN.core.multigrid.scheme as mg
 
 # Darcy problem imports
-darcy_path = "./datasets/darcy"
-sys.path.append(darcy_path)
+sys.path.append("../data")
 from PDEDataSet import *
 
 def read_args(args):
@@ -38,22 +36,18 @@ def read_args(args):
     array_reader = lambda element_reader : \
                    lambda x : [element_reader(z) for z in x.split(',')]
 
-    # Define reader functions for each parameter                                                                                                                                                                                              
+    # Define reader functions for each parameter
     reader_fns = { "num_cycles" : int_reader,
                    "num_levels": int_reader,
                    "smooth_iters": int_reader,
-                   "conv_ch" : array_reader(int_reader),
-                   "conv_kernel_width" : array_reader(int_reader),
-                   "conv_stride" : array_reader(int_reader),
-                   "fc_width" : array_reader(int_reader),
-                   "loader_sizes" : array_reader(int_reader),
+                   "width" : array_reader(int_reader),
                    "momentum": float_reader,
                    "learning_rate": float_reader,
                    "weight_decay": float_reader,
                    "tau_corrector": string_reader,
                    "weighted_projection": bool_reader}
 
-    params_dict = dict()
+    params_dict = dict(width=[400,500], num_levels=2, smooth_iters=4, learning_rate=0.01, momentum=0.9, weight_decay=0.0, num_cycles=1, weighted_projection=True)
     try:
         for a in args[1:]:
             tokens = a.split('=')
@@ -71,52 +65,38 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(0)
 torch.set_printoptions(precision=5)
 
-
 #=======================================
 # Set up data
 #=====================================
 
-train_filename = darcy_path + '/train_data_32.npz'
-test_filename = darcy_path + '/test_data_32.npz'
-percent_train = 0.8
-orig_filename = darcy_path + '/match_pde_data_u_Q_32_50000.npz'
+filename = '/usr/workspace/mtnn/poisson_data/Poisson4.npz'
+data = np.load(filename)
+Ndata = len(data['Kappa'])
+Ntest = int(Ndata/10)
+Ntrain = Ndata - Ntest
+nx = 32
 
-if not path.exists(train_filename):
-    print("Generating training and testing files.")
-    input_data = np.load(orig_filename)
-    nx = input_data['nx']
-    ny = input_data['ny']
-    x_coord = input_data['x']
-    y_coord = input_data['y']
-    u_input = input_data['u']
-    Q_output = input_data['Q']
-    training_set_size = int(percent_train * u_input.shape[0])
-
-    np.savez(train_filename, nx=nx, ny=ny, x_coord=x_coord, y_coord=y_coord,
-             u=u_input[:training_set_size, ], Q=Q_output[:training_set_size, :])
-    np.savez(test_filename, nx=nx, ny=ny, x_coord=x_coord, y_coord=y_coord,
-             u=u_input[training_set_size:, ], Q=Q_output[training_set_size:, :])
+perm = np.random.permutation(Ndata)
 
 #define pytorch datset
 print("Loading training and testing files.")
-pde_dataset_train = PDEDataset(train_filename,transform=None, reshape=True)
-pde_dataset_test = PDEDataset(test_filename,transform=None, reshape=True)
-    
+pde_dataset_train = PDEDataset(data, perm[0:Ntrain], transform=None, reshape=True, job=2)
+pde_dataset_test = PDEDataset(data, perm[Ntrain:Ndata], transform=None, reshape=True, job=2)
 
-u0, Q0 = pde_dataset_train.__getitem__(index =0)
+#u0, Q0 = pde_dataset_train.__getitem__(index =0)
 
 #next: https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html, part II
 
 #perform dataloader
-print('u shape at the first row : {}'.format(u0.size()))
-print('u unsqueeze shape at the first row : {}'.format(u0.unsqueeze(0).size()))
+#print('u shape at the first row : {}'.format(u0.size()))
+#print('u unsqueeze shape at the first row : {}'.format(u0.unsqueeze(0).size()))
 
 BATCH_SIZE = 200
-test_batch_size = 2000
+test_batch_size = 1
 train_loader = DataLoader(pde_dataset_train, batch_size=BATCH_SIZE, shuffle=True)
-test_loader = DataLoader(pde_dataset_test, batch_size=test_batch_size, shuffle=True)
+test_loader = DataLoader(pde_dataset_test, batch_size=test_batch_size, shuffle=False)
 
-print("Train loader has size {}".format(len(train_loader)))
+#print(len(train_loader))
 
 params = read_args(sys.argv)
 print(params)
@@ -125,11 +105,42 @@ print(params)
 # Set up network architecture
 #=====================================
 
-conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
-print("conv_info: ", conv_info)
-net = models.ConvolutionalNet(conv_info, params["fc_width"] + [1], F.relu, lambda x : x)
-#net = models.MultiLinearNet([1024, params["width"][0], params["width"][1], 1], F.relu, lambda x : x)
+net = models.MultiLinearNet([3*nx*nx, params["width"][0], params["width"][1], nx*nx], F.relu, lambda x : x)
+#net = models.MultiLinearNet([3*nx*nx, params["width"][0], params["width"][1], 1], F.relu, lambda x : x)
 
+print(net)
+
+# plot
+def test_k(dataset=pde_dataset_test, net=net, nx=nx, k=0, seeplot=False):
+    # show images
+    data_k, target_k = dataset[k]
+    out_k = net(data_k.reshape(1,-1,nx))
+    loss_k = loss_fn(out_k, target_k)
+    out_k = out_k.detach().numpy()
+    print("Loss of testset[%d] = %.8f" % (k, loss_k))
+    target_k = target_k.detach().numpy()
+    #
+    out_k = out_k.reshape(nx, nx)
+    target_k = target_k.reshape(nx, nx)
+    #
+    if seeplot:
+       plt.figure()
+       c = plt.imshow(target_k)
+       plt.colorbar(c)
+       plt.figure()
+       c = plt.imshow(out_k)
+       plt.colorbar(c)
+
+    return data_k, target_k, out_k, loss_k
+
+# create a loss function
+class L2Loss(nn.Module):
+    def __init__(self):
+        super(L2Loss, self).__init__()
+
+    def forward(self, output, target):
+        loss = torch.sqrt(torch.sum((output-target)**2)) / torch.sqrt(torch.sum(target**2))
+        return loss
 
 #=====================================
 # Multigrid Hierarchy Components
@@ -139,50 +150,48 @@ class SGDparams:
         self.lr = lr
         self.momentum = momentum
         self.l2_decay = l2_decay
-
-if params["tau_corrector"] == "null":
-    tau = taucorrector.NullTau
-elif params["tau_corrector"] == "wholeset":
-    tau = taucorrector.WholeSetTau
-elif params["tau_corrector"] == "minibatch":
-    tau = taucorrector.MinibatchTau
+#SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
+converter = SOC.MultiLinearConverter()
+parameter_extractor = PE.ParamMomentumExtractor(converter)
+gradient_extractor = PE.GradientExtractor(converter)
+matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
+                                                 coarsen_on_layer=None)#[False, False, True, True])
+transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(weighted_projection=params["weighted_projection"])
+restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
+prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
+tau = taucorrector.WholeSetTau
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = params["num_levels"]
 FAS_levels = []
-# Control number of pochs and learning rate per level
+# Control number of epochs and learning rate per level
 lr = params["learning_rate"] #0.01
 momentum = params["momentum"] #float(sys.argv[3])
-l2_decay = params["weight_decay"] #1.0e-4 #316
-l2_scaling = [1.0, 1.0, 0.0]
-smooth_pattern = [1, 1, 1, 8]
+l2_decay = params["weight_decay"]*10 #1.0e-4 #316
+l2_scaling = [0.0]*10
+l2_scaling[0] = 1.0
+l2_scaling[1] = 1.0
+smooth_pattern = [1, 2, 4, 8]
+
+loss_fn = L2Loss()
+
 for level_idx in range(0, num_levels):
     if level_idx == 0:
         optim_params = SGDparams(lr=lr, momentum=momentum, l2_decay=l2_decay)
-        loss_fn = nn.MSELoss()
     else:
         optim_params = SGDparams(lr=lr, momentum=momentum, l2_decay=l2_scaling[level_idx]*l2_decay)
-        loss_fn = nn.MSELoss()
     sgd_smoother = smoother.SGDSmoother(model = net, loss_fn = loss_fn,
                                         optim_params = optim_params,
-                                        log_interval = 1)
+                                        log_interval = 1) #10 * BATCH_SIZE
 
-    converter = SOC.ConvolutionalConverter(net.num_conv_layers)
-    parameter_extractor = PE.ParamMomentumExtractor(converter)
-    gradient_extractor = PE.GradientExtractor(converter)
-    matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
-                                                     coarsen_on_layer=None)#[False, False, True, True])
-    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(restriction_weighting_power=0.0, weighted_projection=params["weighted_projection"])
-    restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
-    prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
     aLevel = mg.Level(id=level_idx,
                       presmoother = sgd_smoother,
                       postsmoother = sgd_smoother,
-                      prolongation = prolongation, #prolongation_op(),
-                      restriction = restriction, #restriction_op(interpolator.PairwiseAggCoarsener),
+                      prolongation = prolongation,
+                      restriction = restriction,
                       coarsegrid_solver = sgd_smoother,
                       num_epochs = smooth_pattern[level_idx],
-                      corrector = tau(loss_fn, gradient_extractor))
+                      corrector = tau(loss_fn, gradient_extractor)) # None
 
     FAS_levels.append(aLevel)
 
@@ -224,65 +233,64 @@ class ValidationCallback:
         for level in levels:
             level.net.train()
 
+##
 num_cycles = params["num_cycles"] #int(sys.argv[2])
 depth_selector = None #lambda x : 3 if x < 55 else len(FAS_levels)
-mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles,
-                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
-                      depth_selector = depth_selector, 
-                      validation_callback=ValidationCallback(((pde_dataset_test.u, pde_dataset_test.Q),), 1))
+mg_scheme = mg.VCycle(FAS_levels, cycles = num_cycles, #1
+                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]), # subsetloader.WholeSetLoader()
+                      depth_selector = depth_selector,
+                      validation_callback=ValidationCallback(test_loader, 1))
 training_alg = trainer.MultigridTrainer(scheme=mg_scheme,
                                         verbose=True,
                                         log=True,
                                         save=False,
                                         load=False)
 
-
 #=====================================
 # Train
 #=====================================
-print('Starting Training')
-start = time.perf_counter()
+#print('Starting Training')
+#start = time.perf_counter()
 mg_scheme.stop_loss = 0.00
 trained_model = training_alg.train(model=net, dataloader=train_loader)
-stop = time.perf_counter()
-print('Finished Training (%.3fs)' % (stop - start))
-
+# print("Dropping learning rate")
+# for level in FAS_levels:
+#     level.presmoother.optim_params.lr = lr / 10.0
+#     level.postsmoother.optim_params.lr = lr / 10.0
+#     level.coarsegrid_solver.optim_params.lr = lr / 10.0
+# #mg_scheme.depth_selector = lambda x : 4
+# trained_model = training_alg.train(model=trained_model, dataloader=train_loader)
+#stop = time.perf_counter()
+#print('Finished Training (%.3fs)' % (stop - start))
 
 #=====================================
 # Test
 #=====================================
-print('Starting Testing')
-start = time.perf_counter()
-loss_fn = nn.MSELoss()
+#print('Starting Testing')
+#start = time.perf_counter()
+total_loss = 0.0
+Ntest = len(test_loader)
+test_loss = np.zeros(Ntest)
+i = 0
+num_samples = 0
 with torch.no_grad():
-    for level in range(len(FAS_levels)):
-        total_loss = 0.0
-        num_samples = 0
-        for batch_idx, mini_batch_data in enumerate(test_loader):
-            input_data, target_data = deviceloader.load_data(mini_batch_data, net.device)
-            outputs = FAS_levels[level].net(input_data)
-            total_loss += loss_fn(target_data, outputs)
-            num_samples += test_batch_size
-        print('Level {}: Total and average loss on the test set are {}, {}'.format(level, total_loss, total_loss / num_samples))
-stop = time.perf_counter()
-print('Finished Testing (%.3fs)' % (stop-start))
+    for batch_idx, mini_batch_data in enumerate(test_loader):
+        input_data, target_data = deviceloader.load_data(mini_batch_data, net.device)
+        outputs = net(input_data)
+        loss = loss_fn(outputs, target_data).data.item()
+        total_loss += loss
+        test_loss[i] = loss
+        num_samples += test_batch_size
+        i += 1
+#stop = time.perf_counter()
+#print('Finished Testing (%.3fs)' % (stop-start))
+print(" Test error (size %d): Average loss %e" % (num_samples, total_loss / num_samples))
 
 
-
-# 3 3936: Total and average error on the test set: 385.48570251464844, 0.038548570251464846
-
-# 2 5117: Total and average error on the test set: 388.1219253540039, 0.03881219253540039
-
-# 1 12792: Total and average error on the test set: 404.01805114746094, 0.040401805114746094
-
-
-# stop at 0.45 training loss:
-# 3 levels, After 2100 cycles, training loss is 0.43540745973587036
-# 2100 * 3.25 WU = 6825.0 WU
-
-# 2 levels, After 3500 cycles, training loss is 0.4409220516681671
-# 3500 * 2.5 WU = 8750.0 WU
-
-# 1 level, After 10500 cycles, training loss is 0.44982290267944336
-# 105000 WU
+#=====================================
+# done
+#=====================================
+sort_i = np.argsort(test_loss)
+sort_loss = test_loss[sort_i]
+pdb.set_trace()
 

@@ -25,7 +25,6 @@ class MultigridTrainer:
         self.save_path = save_path
         self.load = load
         self.load_path = load_path
-        self.callbacks = None #TODO:  design pattern from Keras Callback API https://keras.io/api/callbacks/
 
     def train(self, model, dataloader):
         """
