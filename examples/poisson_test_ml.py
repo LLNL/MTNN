@@ -14,8 +14,8 @@ sys.path.append("../")
 # local
 from MTNN.core.components import models, subsetloader
 from MTNN.core.multigrid.operators import taucorrector, smoother
-import core.multigrid.operators.second_order_transfer as SOR
-import core.multigrid.operators.data_converter as SOC
+import MTNN.core.multigrid.operators.second_order_transfer as SOR
+import MTNN.core.multigrid.operators.data_converter as SOC
 import MTNN.core.multigrid.operators.paramextractor as PE
 import MTNN.core.multigrid.operators.similarity_matcher as SimilarityMatcher
 import MTNN.core.multigrid.operators.transfer_ops_builder as TransferOpsBuilder
@@ -156,7 +156,7 @@ parameter_extractor = PE.ParamMomentumExtractor(converter)
 gradient_extractor = PE.GradientExtractor(converter)
 matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
                                                  coarsen_on_layer=None)#[False, False, True, True])
-transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder(weighted_projection=params["weighted_projection"])
+transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"])
 restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
 prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
 tau = taucorrector.WholeSetTau
