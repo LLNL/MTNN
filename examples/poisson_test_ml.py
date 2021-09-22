@@ -47,7 +47,7 @@ def read_args(args):
                    "tau_corrector": string_reader,
                    "weighted_projection": bool_reader}
 
-    params_dict = dict(width=[400,500], num_levels=2, smooth_iters=4, learning_rate=0.01, momentum=0.9, weight_decay=0.0, num_cycles=1, weighted_projection=True)
+    params_dict = dict(width=[400,500], num_levels=2, smooth_iters=4, learning_rate=0.01, momentum=0.9, weight_decay=0.0, num_cycles=1, tau_corrector="wholeset", weighted_projection=True)
     try:
         for a in args[1:]:
             tokens = a.split('=')
@@ -114,11 +114,13 @@ print(net)
 def test_k(dataset=pde_dataset_test, net=net, nx=nx, k=0, seeplot=False):
     # show images
     data_k, target_k = dataset[k]
+    data_k = data_k.to(net.device)
+    target_k = target_k.to(net.device)
     out_k = net(data_k.reshape(1,-1,nx))
     loss_k = loss_fn(out_k, target_k)
-    out_k = out_k.detach().numpy()
+    out_k = out_k.detach().cpu().numpy()
     print("Loss of testset[%d] = %.8f" % (k, loss_k))
-    target_k = target_k.detach().numpy()
+    target_k = target_k.detach().cpu().numpy()
     #
     out_k = out_k.reshape(nx, nx)
     target_k = target_k.reshape(nx, nx)
@@ -150,16 +152,13 @@ class SGDparams:
         self.lr = lr
         self.momentum = momentum
         self.l2_decay = l2_decay
-#SGDparams = namedtuple("SGDparams", ["lr", "momentum", "l2_decay"])
-converter = SOC.MultiLinearConverter()
-parameter_extractor = PE.ParamMomentumExtractor(converter)
-gradient_extractor = PE.GradientExtractor(converter)
-matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
-                                                 coarsen_on_layer=None)#[False, False, True, True])
-transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"])
-restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
-prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
-tau = taucorrector.WholeSetTau
+
+if params["tau_corrector"] == "null":
+    tau = taucorrector.NullTau
+elif params["tau_corrector"] == "wholeset":
+    tau = taucorrector.WholeSetTau
+elif params["tau_corrector"] == "minibatch":
+    tau = taucorrector.MinibatchTau
 
 # Build Multigrid Hierarchy Levels/Grids
 num_levels = params["num_levels"]
@@ -171,7 +170,8 @@ l2_decay = params["weight_decay"]*10 #1.0e-4 #316
 l2_scaling = [0.0]*10
 l2_scaling[0] = 1.0
 l2_scaling[1] = 1.0
-smooth_pattern = [1, 2, 4, 8]
+#smooth_pattern = [1, 2, 4, 8]
+smooth_pattern = [1, 0, 4, 8]
 
 loss_fn = L2Loss()
 
@@ -183,6 +183,15 @@ for level_idx in range(0, num_levels):
     sgd_smoother = smoother.SGDSmoother(model = net, loss_fn = loss_fn,
                                         optim_params = optim_params,
                                         log_interval = 1) #10 * BATCH_SIZE
+
+    converter = SOC.MultiLinearConverter()
+    parameter_extractor = PE.ParamMomentumExtractor(converter)
+    gradient_extractor = PE.GradientExtractor(converter)
+    matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
+                                                     coarsen_on_layer=None)#[False, False, True, True])
+    transfer_operator_builder = TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"])
+    restriction = SOR.SecondOrderRestriction(parameter_extractor, matching_method, transfer_operator_builder)
+    prolongation = SOR.SecondOrderProlongation(parameter_extractor, restriction)
 
     aLevel = mg.Level(id=level_idx,
                       presmoother = sgd_smoother,
@@ -228,7 +237,8 @@ class ValidationCallback:
                         self.best_seen[level_ind] = total_test_loss[level_ind]
                     if test_linf_loss[level_ind] < self.best_seen_linf[level_ind]:
                         self.best_seen_linf[level_ind] = test_linf_loss[level_ind]
-                    print("Level {}: After {} cycles, validation loss is {}, best seen is {}, linf loss is {}, best seen linf is {}".format(level_ind, cycle, total_test_loss[level_ind], self.best_seen[level_ind], test_linf_loss[level_ind], self.best_seen_linf[level_ind]), flush=True)
+                    #print("Level {}: After {} cycles, validation loss is {}, best seen is {}, linf loss is {}, best seen linf is {}".format(level_ind, cycle, total_test_loss[level_ind], self.best_seen[level_ind], test_linf_loss[level_ind], self.best_seen_linf[level_ind]), flush=True)
+            print("Level {} Ntest {}: After {} cycles, validation loss is {}, best seen is {}, linf loss is {}, best seen linf is {}".format(0, len(self.val_dataloader), cycle, total_test_loss[0], self.best_seen[0], test_linf_loss[0], self.best_seen_linf[0]), flush=True)
 
         for level in levels:
             level.net.train()
@@ -292,5 +302,6 @@ print(" Test error (size %d): Average loss %e" % (num_samples, total_loss / num_
 #=====================================
 sort_i = np.argsort(test_loss)
 sort_loss = test_loss[sort_i]
+test_k(k=sort_i[0],seeplot=True)
 pdb.set_trace()
 
