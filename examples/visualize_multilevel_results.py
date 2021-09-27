@@ -24,7 +24,8 @@ def read_args(args):
                    "hier_levels" : array_reader(int_reader),    # Which hierarchy levels to display
                    "smoothing_window" : int_reader,             # Size of moving average window. Not specifying or set to 1 implies no smoothing.
                    "l2_stop_threshold": float_reader,           # If L2 loss goes over this threshold, stop reading data from that file and consider it ended there.
-                   "linf_stop_threshold": float_reader}         # If Linf loss goes over this threshold, stop reading data from that file and consider it ended there.
+                   "linf_stop_threshold": float_reader,         # If Linf loss goes over this threshold, stop reading data from that file and consider it ended there.
+                   "start_reading_at" : int_reader}             # Cycle num to begin reading at. Avoids large values at startup.
     
     params_dict = dict()
     try:
@@ -43,6 +44,8 @@ if "l2_stop_threshold" not in params:
     params["l2_stop_threshold"] = 1e100
 if "linf_stop_threshold" not in params:
     params["linf_stop_threshold"] = 1e100
+if "start_reading_at" not in params:
+    params["start_reading_at"] = 0
 
 # Read data
 cycle_arrays = []
@@ -59,17 +62,18 @@ for i,fname in enumerate(params["file_names"]):
     cycles = dict()
     l2_losses = dict()
     linf_losses = dict()
-    should_stop_reading = False
     for line in f:
         if "After" in line:
             tokens = line.split()
             cycle_num = int(tokens[3])
+            if cycle_num < params["start_reading_at"]:
+                continue
             hier_level = int(tokens[1].rstrip(':'))
             l2_loss = float(tokens[8].rstrip(','))
             linf_loss = float(tokens[16].rstrip(','))
             if l2_loss > params["l2_stop_threshold"] or linf_loss > params["linf_stop_threshold"]:
-                should_stop_reading = True
-                continue
+                print("hit threshold of {} at cycle {}".format((l2_loss, linf_loss), cycle_num))
+                break
             if hier_level not in l2_losses:
                 l2_losses[hier_level] = []
                 linf_losses[hier_level] = []
@@ -77,8 +81,6 @@ for i,fname in enumerate(params["file_names"]):
             l2_losses[hier_level].append(l2_loss)
             linf_losses[hier_level].append(linf_loss)
             cycles[hier_level].append(cycle_num)
-        if should_stop_reading:
-            continue
     print("Final cycle read is {}".format(cycles[0][-1]))
     f.close()
     cycle_arrays.append(cycles)
@@ -86,6 +88,18 @@ for i,fname in enumerate(params["file_names"]):
     linf_loss_arrays.append(linf_losses)
     WU_multipliers.append(WU_multiplier)
     labelnames.append(labelname)
+
+# Print best losses
+for i, cycles in enumerate(cycle_arrays):
+    for hier_level in l2_loss_arrays[i]:
+        if hier_level not in params["hier_levels"]:
+            continue
+        best_loss = np.nanmin(l2_loss_arrays[i][hier_level])
+        print("For {}, level {}, best L2 loss is {}".format(labelnames[i], hier_level, best_loss))
+
+        best_loss = np.nanmin(linf_loss_arrays[i][hier_level])
+        print("For {}, level {}, best Linf loss is {}".format(labelnames[i], hier_level, best_loss))
+
 
 # Smooth data for nicer display
 if params["smoothing_window"] > 1:
@@ -104,8 +118,6 @@ for i, cycles in enumerate(cycle_arrays):
             continue
         lvl_cycles = WU_multipliers[i] * np.array(cycles[hier_level])
         plt.semilogy(lvl_cycles, l2_loss_arrays[i][hier_level], label="{}".format(labelnames[i]))
-        best_loss = np.nanmin(l2_loss_arrays[i][hier_level])
-        print("For {}, level {}, best loss is {}".format(labelnames[i], hier_level, best_loss))
 
 print(labelnames)
 plt.legend()
@@ -126,8 +138,6 @@ for i, cycles in enumerate(cycle_arrays):
             continue
         lvl_cycles = WU_multipliers[i] * np.array(cycles[hier_level])
         plt.semilogy(lvl_cycles, linf_loss_arrays[i][hier_level], label="{}".format(labelnames[i]))
-        best_loss = np.nanmin(linf_loss_arrays[i][hier_level])
-        print("For {}, level {}, best loss is {}".format(labelnames[i], hier_level, best_loss))
 
 print(labelnames)
 plt.legend()
