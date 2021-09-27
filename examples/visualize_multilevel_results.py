@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import sys
 
 # Example usage:
-# python visualize_multilevel_results.py 1level_results.txt "1Level" 1.0 2level_results.txt "2Level" 2.5
+# python visualize_multilevel_results.py file_names=file1.txt,file2.txt label_names=1Level,2Level work_units=10.0,4.5 save_prefix=result_image hier_levels=0 smoothing_window=33
 
 def read_args(args):
     int_reader = lambda x : int(x)
