@@ -19,103 +19,12 @@ from MTNN.utils import deviceloader
 log = log.get_logger(__name__, write_to_file =True)
 
 # Public
-__all__ = ['Level',
-           'Cascadic',
+__all__ = ['Cascadic',
            'WCycle',
            'VCycle',
            'FMG']
 
 
-class Level:
-    """A level or grid  in an Multigrid hierarchy"""
-    def __init__(self, id: int, presmoother, postsmoother, prolongation, restriction,
-                 coarsegrid_solver, num_epochs, corrector=None):
-        """
-        Args:
-            id: <int> level id (assumed to be unique)
-            model:  <core.components.model> Model
-            presmoother:  <core.alg.multigrid.operators.smoother> Smoother
-            postsmoother: <core.alg.multigrid.operators.smoother> Smoother
-            prolongation: <core.alg.multigrid.operators.prolongation> Prolongation
-            restriction: <core.alg.multigrid.operators.restriction> Restriction
-            coarsegrid_solver:  <core.alg.multigrid.operators.smoother> Smoother
-            corrector: <core.multigrid.operators.tau_corrector> TauCorrector
-        """
-        self.net = None
-        self.id = id
-        self.presmoother = presmoother
-        self.postsmoother = postsmoother
-        self.coarsegrid_solver = coarsegrid_solver
-        self.prolongation = prolongation
-        self.restriction = restriction
-        self.corrector = corrector
-        self.num_epochs =  num_epochs
-        self.l2_info = None
-
-        # Data attributes
-        # TODO: tokenize?
-        self.interpolation_data = None
-        # Lhs
-        self.Winit = None
-        self.Binit = None
-
-    def presmooth(self, model, dataloader, verbose=False):
-        try:
-            if verbose:
-                log.info(printer.format_header(f'PRESMOOTHING {self.presmoother.__class__.__name__}',))
-            self.presmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector,
-                                   l2_info = self.l2_info, verbose=verbose)
-        except Exception:
-            raise
-
-    def postsmooth(self, model, dataloader , verbose=False):
-        try:
-            if verbose:
-                log.info(printer.format_header(f'POSTSMOOTHING {self.postsmoother.__class__.__name__}'))
-            self.postsmoother.apply(model, dataloader, self.num_epochs, tau=self.corrector,
-                                    l2_info = self.l2_info, verbose=verbose)
-        except Exception:
-           raise
-
-    def coarse_solve(self, model, dataloader, verbose=False):
-        try:
-            if verbose:
-                log.info(printer.format_header(f'COARSE SOLVING {self.coarsegrid_solver.__class__.__name__}', border="*"))
-            self.coarsegrid_solver.apply(model, dataloader, self.num_epochs, tau=self.corrector,
-                                         l2_info = self.l2_info,verbose=verbose)
-        except Exception:
-            raise
-
-    def prolong(self, fine_level, coarse_level, dataloader, verbose=False):
-        try:
-            if verbose:
-                log.info(printer.format_header(f'PROLONGATING {self.prolongation.__class__.__name__}'))
-
-            self.prolongation.apply(fine_level, coarse_level, dataloader, verbose)
-        except Exception:
-            raise
-
-    def restrict(self, fine_level, coarse_level, dataloader, verbose=False):
-        try:
-            if verbose:
-                log.info(printer.format_header(f'RESTRICTING {self.restriction.__class__.__name__}'))
-            self.restriction.apply(fine_level, coarse_level,  dataloader,  verbose)
-        except Exception:
-            raise
-
-    def view(self):
-        """Logs level attributes"""
-        for atr in self.__dict__:
-            atrval = self.__dict__[atr]
-            if type(atrval) in (int, float, str, list, bool):
-                log.info(f"\t{atr}: \t{atrval} ")
-            elif isinstance(atrval, mgdata.operators):
-                log.info(f"\t{atr}: \n\t\tRestriction: {atrval.R_op} "
-                         f"\n\t\tProlongation: {atrval.P_op}")
-            elif isinstance(atrval, mgdata.rhs):
-                log.info(f"\t{atr}: {atrval}")
-            else:
-                log.info(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__}")
 
 
 ############################################################################

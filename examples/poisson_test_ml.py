@@ -40,14 +40,20 @@ def read_args(args):
     reader_fns = { "num_cycles" : int_reader,
                    "num_levels": int_reader,
                    "smooth_iters": int_reader,
-                   "width" : array_reader(int_reader),
+                   "conv_ch" : array_reader(int_reader),
+                   "conv_kernel_width" : array_reader(int_reader),
+                   "conv_stride" : array_reader(int_reader),
+                   "fc_width" : array_reader(int_reader),
+                   "loader_sizes" : array_reader(int_reader),
                    "momentum": float_reader,
                    "learning_rate": float_reader,
                    "weight_decay": float_reader,
                    "tau_corrector": string_reader,
-                   "weighted_projection": bool_reader}
+                   "weighted_projection": bool_reader,
+                   "data_filename" : string_reader,
+                   "rand_seed" : bool_reader}
 
-    params_dict = dict(width=[400,500], num_levels=2, smooth_iters=4, learning_rate=0.01, momentum=0.9, weight_decay=0.0, num_cycles=1, tau_corrector="wholeset", weighted_projection=True)
+    params_dict = dict(fc_width=[400,500], num_levels=2, smooth_iters=4, learning_rate=0.01, momentum=0.9, weight_decay=0.0, num_cycles=1, tau_corrector="wholeset", weighted_projection=True, data_filename='/usr/workspace/mtnn/poisson_data/Poisson4.npz', rand_seed=0)
     try:
         for a in args[1:]:
             tokens = a.split('=')
@@ -57,19 +63,21 @@ def read_args(args):
              "num_agents=[int] data_directory=[dir] config_directory=[dir]")
     return params_dict
 
+params = read_args(sys.argv)
+print(params)
 
 # For reproducibility
-torch.manual_seed(0)
+torch.manual_seed(params["rand_seed"])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-np.random.seed(0)
+np.random.seed(params["rand_seed"])
 torch.set_printoptions(precision=5)
 
 #=======================================
 # Set up data
 #=====================================
 
-filename = '/usr/workspace/mtnn/poisson_data/Poisson4.npz'
+filename = params["data_filename"]#'/usr/workspace/mtnn/poisson_data/Poisson4.npz'
 data = np.load(filename)
 Ndata = len(data['Kappa'])
 Ntest = int(Ndata/10)
@@ -80,10 +88,8 @@ perm = np.random.permutation(Ndata)
 
 #define pytorch datset
 print("Loading training and testing files.")
-pde_dataset_train = PDEDataset(data, perm[0:Ntrain], transform=None, reshape=True, job=2)
-pde_dataset_test = PDEDataset(data, perm[Ntrain:Ndata], transform=None, reshape=True, job=2)
-
-#u0, Q0 = pde_dataset_train.__getitem__(index =0)
+pde_dataset_train = PDEDataset(data, perm[0:Ntrain], transform=None, reshape=True, job=1)
+pde_dataset_test = PDEDataset(data, perm[Ntrain:Ndata], transform=None, reshape=True, job=1)
 
 #next: https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html, part II
 
@@ -92,48 +98,28 @@ pde_dataset_test = PDEDataset(data, perm[Ntrain:Ndata], transform=None, reshape=
 #print('u unsqueeze shape at the first row : {}'.format(u0.unsqueeze(0).size()))
 
 BATCH_SIZE = 200
-test_batch_size = 1
+test_batch_size = Ntest
 train_loader = DataLoader(pde_dataset_train, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(pde_dataset_test, batch_size=test_batch_size, shuffle=False)
 
-#print(len(train_loader))
-
-params = read_args(sys.argv)
-print(params)
 
 #=====================================
 # Set up network architecture
 #=====================================
 
-net = models.MultiLinearNet([3*nx*nx, params["width"][0], params["width"][1], nx*nx], F.relu, lambda x : x)
+nn_is_cnn = "conv_ch" in params
+if nn_is_cnn:
+    print("Using a CNN")
+    conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
+    print("conv_info: ", conv_info)
+    net = models.ConvolutionalNet(conv_info, params["fc_width"] + [nx*nx], F.relu, lambda x : x)
+else:
+    print("Using a FC network")
+    net = models.MultiLinearNet([3*nx*nx] + params["fc_width"] + [nx*nx], F.relu, lambda x : x)
+#net = models.MultiLinearNet([3*nx*nx, params["width"][0], params["width"][1], nx*nx], F.relu, lambda x : x)
 #net = models.MultiLinearNet([3*nx*nx, params["width"][0], params["width"][1], 1], F.relu, lambda x : x)
 
 print(net)
-
-# plot
-def test_k(dataset=pde_dataset_test, net=net, nx=nx, k=0, seeplot=False):
-    # show images
-    data_k, target_k = dataset[k]
-    data_k = data_k.to(net.device)
-    target_k = target_k.to(net.device)
-    out_k = net(data_k.reshape(1,-1,nx))
-    loss_k = loss_fn(out_k, target_k)
-    out_k = out_k.detach().cpu().numpy()
-    print("Loss of testset[%d] = %.8f" % (k, loss_k))
-    target_k = target_k.detach().cpu().numpy()
-    #
-    out_k = out_k.reshape(nx, nx)
-    target_k = target_k.reshape(nx, nx)
-    #
-    if seeplot:
-       plt.figure()
-       c = plt.imshow(target_k)
-       plt.colorbar(c)
-       plt.figure()
-       c = plt.imshow(out_k)
-       plt.colorbar(c)
-
-    return data_k, target_k, out_k, loss_k
 
 # create a loss function
 class L2Loss(nn.Module):
@@ -171,7 +157,7 @@ l2_scaling = [0.0]*10
 l2_scaling[0] = 1.0
 l2_scaling[1] = 1.0
 #smooth_pattern = [1, 2, 4, 8]
-smooth_pattern = [1, 0, 4, 8]
+smooth_pattern = [1, 1, 1, 1]
 
 loss_fn = L2Loss()
 
@@ -184,7 +170,11 @@ for level_idx in range(0, num_levels):
                                         optim_params = optim_params,
                                         log_interval = 1) #10 * BATCH_SIZE
 
-    converter = SOC.MultiLinearConverter()
+    converter = SOC.ConvolutionalConverter(net.num_conv_layers)
+    if nn_is_cnn:
+        converter = SOC.ConvolutionalConverter(net.num_conv_layers)
+    else:
+        converter = SOC.MultiLinearConverter()
     parameter_extractor = PE.ParamMomentumExtractor(converter)
     gradient_extractor = PE.GradientExtractor(converter)
     matching_method = SimilarityMatcher.HEMCoarsener(similarity_calculator=SimilarityMatcher.StandardSimilarity(),
@@ -231,7 +221,7 @@ class ValidationCallback:
                     outputs = level.net(inputs)
                     total_test_loss[level_ind] += level.presmoother.loss_fn(outputs, true_outputs)
                     linf_temp = torch.max (torch.max(torch.abs(true_outputs - outputs), dim=1).values)
-                    test_linf_loss[level_ind] = max(linf_temp, test_linf_loss[level_ind])
+                    test_linf_loss[level_ind] += max(linf_temp, test_linf_loss[level_ind])
                 for level_ind in range(len(levels)):
                     if total_test_loss[level_ind] < self.best_seen[level_ind]:
                         self.best_seen[level_ind] = total_test_loss[level_ind]
@@ -300,6 +290,33 @@ print(" Test error (size %d): Average loss %e" % (num_samples, total_loss / num_
 #=====================================
 # done
 #=====================================
+
+# plot
+def test_k(dataset=pde_dataset_test, net=net, nx=nx, k=0, seeplot=False):
+    # show images
+    data_k, target_k = dataset[k]
+    data_k = data_k.to(net.device)
+    target_k = target_k.to(net.device)
+    out_k = net(data_k.reshape(1,-1,nx))
+    loss_k = loss_fn(out_k, target_k)
+    out_k = out_k.detach().cpu().numpy()
+    print("Loss of testset[%d] = %.8f" % (k, loss_k))
+    target_k = target_k.detach().cpu().numpy()
+    #
+    out_k = out_k.reshape(nx, nx)
+    target_k = target_k.reshape(nx, nx)
+    #
+    if seeplot:
+       plt.figure()
+       c = plt.imshow(target_k)
+       plt.colorbar(c)
+       plt.figure()
+       c = plt.imshow(out_k)
+       plt.colorbar(c)
+
+    return data_k, target_k, out_k, loss_k
+
+
 sort_i = np.argsort(test_loss)
 sort_loss = test_loss[sort_i]
 test_k(k=sort_i[0],seeplot=True)

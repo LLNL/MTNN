@@ -4,5 +4,7 @@ __all__ = ['builder',
            'deviceloader',
            'logger',
            'file',
-           'printer']
+           'printer',
+           'ArgReader',
+           'validation_callbacks']
 
