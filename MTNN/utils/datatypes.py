@@ -15,30 +15,46 @@ operators = namedtuple("operators", "R_op P_op R_for_grad_op P_for_grad_op, l2re
 class CoarseMapping:
     """CoarseMapping - specifies a mapping from fine channels to coarse channels.
     
-    fine2coarse_map <List(List)> - A list of length equal to the number of
-    network layers. Each element is itself a list, of length equal to the
-    number of channels in the fine-level network. Each element specifies
-    the index of the coarse channel to which this fine channel is mapped.
-    
-    num_coarse_channels <List> - A list of length equal to the number of
-    network layers. Each element contains the number of coarse channels at
-    that layer.
+    num_coarse_channels <List> - A list of length equal to the number
+    of network layers. Each element contains the number of coarse
+    neurons (num channels in CNNs) in that layer.
+
+    match_per_layer <List(List)> - A list of lenght equal to the
+    number of layers. Each element is itself a list, containing the
+    neuron to which it is matched for coarsening.
+
     """
-    def __init__(self, fine2coarse_map, num_coarse_channels, match_per_layer):
-        self.fine2coarse_map = fine2coarse_map
+    def __init__(self, num_coarse_channels, match_per_layer):
         self.num_coarse_channels = num_coarse_channels
         self.match_per_layer = match_per_layer
-#CoarseMapping = namedtuple("CoarseMapping", "fine2coarse_map, num_coarse_channels")
+
+    def get_num_coarse(self, layer_ind):
+        return self.num_coarse_channels[layer_ind]
+
+    def get_match(self, layer_ind):
+        return self.match_per_layer[layer_ind]
+
+    def get_F2C_layer(self, layer_ind):
+        match = self.match_per_layer[layer_ind]
+        F2C_layer = torch.zeros(match.shape[0], dtype=int)
+        curr_coarse_ind = 0
+        for i, m_ind in enumerate(match):
+            if m_ind < i:
+                F2C_layer[i] = F2C_layer[m_ind]
+            else:
+                F2C_layer[i] = curr_coarse_ind
+                curr_coarse_ind += 1
+        return F2C_layer
 
 
 class TransferOps:
     """TransferOps - The matrix operators used in restriction and prolongation.
     
     R_ops <List> - A list, of length equal to the number of layers minus
-    1, containing the R matrices used in restriction.
+    1, containing the R operators used in restriction.
     
     P_ops <List> - A list, of length equal to the number of layers minus
-    1, containing the P matrices used in restriction.
+    1, containing the P operators used in restriction.
     """
     def __init__(self, R_ops, P_ops):
         self.R_ops = R_ops

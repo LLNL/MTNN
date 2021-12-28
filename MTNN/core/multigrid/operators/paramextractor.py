@@ -29,9 +29,8 @@ class ParameterExtractor:
     def extract_from_network(self, level, *argv):
         """Pull parameters out of a network and convert to MTNN format.
 
-        Input: <Level>.
-
-        Output: <list[ParamVectors]>. 
+        @param level the Level object from which to extract parameters.
+        @argv Other generic arguments used in extraction.
         """
         param_vectors = self.perform_initial_extraction(level, *argv)
         if type(param_vectors) == tuple or type(param_vectors) == list:
@@ -45,22 +44,31 @@ class ParameterExtractor:
 class ParamMomentumExtractor(ParameterExtractor):
     """ParameterExtractor.
 
-    This class extracts parameter tensors from a neural network to a
-    ParamVector for restriction/prolongation processing.
+    This class extracts parameter and momentum tensors from a neural
+    network to a ParamVector for restriction/prolongation processing.
+
     """
     def __init__(self, converter):
         super().__init__(converter)
 
     def perform_initial_extraction(self, level):
-        """Extract network parameters and momentum parameters from a network."""
+        """Extract parameter and momentum tensors from a neural network.
+
+        Note that this function doesn't depend on the type of network
+        aside from it having a sequence of layers each of which
+        contains a weight and bias tensor.
+
+        """
         net = level.net
-        optimizer = level.presmoother.optimizer
+        optimizer = level.smoother.optimizer
 
         # Pull parameters from the network
         W_array = [net.layers[layer_id].weight.detach() for layer_id in range(len(net.layers))]
         B_array = [net.layers[layer_id].bias.detach().reshape(-1, 1) for layer_id in range(len(net.layers))]
 
-        # Pull momentum values from the optimizer.
+        # Pull momentum values from the optimizer. This is a bit ugly,
+        # but PyTorch wasn't expecting us to want this directly so
+        # they didn't make it accessible in a nice way.
         get_p = lambda ind : optimizer.state[optimizer.param_groups[0]['params'][ind]]['momentum_buffer']
         mW_array, mB_array = [list(x) for x in zip(*[(get_p(2*i), get_p(2*i+1).reshape(-1, 1)) for i in
                                                      range(int(len(optimizer.param_groups[0]['params']) / 2))])]
@@ -70,15 +78,16 @@ class ParamMomentumExtractor(ParameterExtractor):
     def insert_into_network(self, level, param_library, momentum_library):
         """Insert ParamVector tensors into a network.
 
-        Inputs:
-        level <Level>. The level into which to insert the parameters.
-        net_param_library <ParamVector>. The tensors of network parameters to insert.
-        momentum_library <ParamVector>. The tensors of momentum values to insert.
+        @param level <Level> The level into which to insert the parameters.
+        @param param_library <ParamVector> The tensors of network parameters to insert.
+        @param momentum_library <ParamVector> The tensors of momentum values to insert.
 
-        Output: None.
         """
         # TODO: This function uses two parameter copies which is
         # unnecessary. Refactor to only use one.
+
+        # Create copy of initial coarse values. Needed during
+        # prolongation to compute differences.
         level.init_params = copy.deepcopy(param_library)
         level.init_momentum = copy.deepcopy(momentum_library)
 
@@ -95,12 +104,13 @@ class ParamMomentumExtractor(ParameterExtractor):
         level.net.zero_grad()
 
         # Insert momemntum values into the optimizer
-        level.presmoother.momentum_data = []
+        momentum_data = []
         with torch.no_grad():
             for i in range(len(mW_array)):
-                level.presmoother.momentum_data.append(mW_array[i].clone())
-                level.presmoother.momentum_data.append(mB_array[i].clone().reshape(-1))
-        level.presmoother.optimizer = None
+                momentum_data.append(mW_array[i].clone())
+                momentum_data.append(mB_array[i].clone().reshape(-1))
+        level.smoother.set_momentum(momentum_data)
+        level.smoother.optimizer = None
 
     def add_to_network(self, level, param_diff_library, momentum_diff_library):
         """Add ParamVector difference value tensors to a network.
@@ -111,11 +121,9 @@ class ParamMomentumExtractor(ParameterExtractor):
         Approximation Scheme coarse-grid correction.
 
         Inputs:
-        level <Level>. The level into which to insert the parameters.
-        net_param_library <ParamVector>. The tensors of network parameters to insert.
-        momentum_library <ParamVector>. The tensors of momentum values to insert.
-
-        Output: None.
+        @param level <Level> The level into which to insert the parameters.
+        @param param_diff_library <ParamVector> The tensors of network parameters to insert.
+        @param momentum_diff_library <ParamVector> The tensors of momentum values to insert.
 
         """
         self.converter.convert_MTNN_format_to_network(param_diff_library)
@@ -123,7 +131,7 @@ class ParamMomentumExtractor(ParameterExtractor):
         dW_array, dB_array = param_diff_library.weights, param_diff_library.biases
         dmW_array, dmB_array = momentum_diff_library.weights, momentum_diff_library.biases
 
-        optimizer = level.presmoother.optimizer
+        optimizer = level.smoother.optimizer
         get_p = lambda ind : optimizer.state[optimizer.param_groups[0]['params'][ind]]['momentum_buffer']
 
         with torch.no_grad():
@@ -137,16 +145,22 @@ class ParamMomentumExtractor(ParameterExtractor):
 
 
 class GradientExtractor(ParameterExtractor):
-    """ParameterExtractor.
+    """GradientExtractor.
 
-    This class extracts parameter tensors from a neural network to a
-    ParamVector for restriction/prolongation processing.
+    Given a dataloder and a loss function, this class extracts
+    gradient values from the neural network associated with the
+    examples in the dataloder. This is used during the computation of
+    the tau correction.
+
     """
     def __init__(self, converter):
         super().__init__(converter)
 
     def perform_initial_extraction(self, level, dataloader, loss_fn):
-        """Extract network parameters and momentum parameters from a network."""
+        """Extract gradient values associated with the training examples in a
+        dataloder. Used in the tau correction.
+
+        """
         # Compute the gradient
         net = level.net
         net.zero_grad()   # zero the parameter gradient
