@@ -4,9 +4,7 @@ from setuptools import setup, find_packages,find_namespace_packages
 
 setup(name="MTNN",
       version="0.1",
-      description="Package to develop and test multigrid algorithms on neural networks",
-      author="Christina Mao",
-      author_email="mao6@llnl.gov",
+      description="Multilevel methods for training neural networks",
       packages=find_packages(),
       namespace_packages=['MTNN'],
       package_dir={' ': 'MTNN'},
@@ -15,5 +13,5 @@ setup(name="MTNN",
                         'pytest',
                         'onnx',
                         'numpy'],
-      python_requires='>=3.8'
+      python_requires='>=3.6'
       )

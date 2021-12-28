@@ -1,8 +1,10 @@
-About
-==============================================
-# Purpose 
-MTNN is a PyTorch framework to develop and test the application of multigrid algorithms 
-for various neural network architectures.
+MTNN (MulTilevel Neural Networks) is a PyTorch-based tool for the
+application of multilevel algorithms to the training of neural
+networks. Multilevel methods are algorithmic *frameworks* in which one
+must make individual algorithmic choices for various components; we
+have provided a number of choices here, and designed the code in a
+modular way so that you can easily write and insert your own
+algorithmic components.
 
 Currently supports:
 - [ ] Cascadic
