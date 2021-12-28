@@ -2,18 +2,13 @@ from collections import namedtuple
 
 import torch.nn as nn
 
-import MTNN.utils.logger as log
-import MTNN.utils.printer as printer
-import MTNN.utils.datatypes as mgdata
+from MTNN.utils import logger
 from MTNN.core.multigrid.operators import taucorrector, smoother
 import MTNN.core.multigrid.operators.second_order_transfer as SOR
 import MTNN.core.multigrid.operators.data_converter as SOC
 import MTNN.core.multigrid.operators.paramextractor as PE
 import MTNN.core.multigrid.operators.similarity_matcher as SimilarityMatcher
 import MTNN.core.multigrid.operators.transfer_ops_builder as TransferOpsBuilder
-
-
-log = log.get_logger(__name__, write_to_file =True)
 
 class Level:
     """A Level in a multilevel hierarchy contains a neural network as well
@@ -37,11 +32,10 @@ class Level:
         self.prolongation = prolongation
         self.restriction = restriction
         self.corrector = corrector
-        self.num_smoothing_passes =  num_smoothing_passes
+        self.num_smoothing_passes = num_smoothing_passes
         self.l2_info = None
+        self.log = logger.get_MTNN_logger()
 
-        # Data attributes
-        # TODO: tokenize?
         self.interpolation_data = None
         # Lhs
         self.Winit = None
@@ -49,8 +43,7 @@ class Level:
 
     def presmooth(self, model, dataloader, verbose=False):
         try:
-            if verbose:
-                log.info(printer.format_header(f'PRESMOOTHING {self.smoother.__class__.__name__}',))
+            self.log.info("PRESMOOTHING {}".format(self.smoother.__class__.__name__).center(80, '-'))
             self.smoother.apply(model, dataloader, self.num_smoothing_passes, tau=self.corrector,
                                    l2_info = self.l2_info, verbose=verbose)
         except Exception:
@@ -58,8 +51,7 @@ class Level:
 
     def postsmooth(self, model, dataloader , verbose=False):
         try:
-            if verbose:
-                log.info(printer.format_header(f'POSTSMOOTHING {self.smoother.__class__.__name__}'))
+            self.log.info("POSTSMOOTHING {}".format(self.smoother.__class__.__name__).center(80, '-'))
             self.smoother.apply(model, dataloader, self.num_smoothing_passes, tau=self.corrector,
                                     l2_info = self.l2_info, verbose=verbose)
         except Exception:
@@ -67,8 +59,7 @@ class Level:
 
     def coarse_solve(self, model, dataloader, verbose=False):
         try:
-            if verbose:
-                log.info(printer.format_header(f'COARSEST SMOOTHING {self.smoother.__class__.__name__}', border="*"))
+            self.log.info("COARSEST SMOOTHING {}".format(self.smoother.__class__.__name__).center(80, '-'))
             self.smoother.apply(model, dataloader, self.num_smoothing_passes, tau=self.corrector,
                                 l2_info = self.l2_info,verbose=verbose)
         except Exception:
@@ -76,17 +67,14 @@ class Level:
 
     def prolong(self, fine_level, coarse_level, dataloader, verbose=False):
         try:
-            if verbose:
-                log.info(printer.format_header(f'PROLONGATING {self.prolongation.__class__.__name__}'))
-
+            self.log.info("PROLONGATION {}".format(self.prolongation.__class__.__name__).center(80, '-'))
             self.prolongation.apply(fine_level, coarse_level, dataloader, verbose)
         except Exception:
             raise
 
     def restrict(self, fine_level, coarse_level, dataloader, verbose=False):
         try:
-            if verbose:
-                log.info(printer.format_header(f'RESTRICTING {self.restriction.__class__.__name__}'))
+            self.log.info("RESTRICTION {}".format(self.restriction.__class__.__name__).center(80, '-'))
             self.restriction.apply(fine_level, coarse_level,  dataloader,  verbose)
         except Exception:
             raise
@@ -96,14 +84,9 @@ class Level:
         for atr in self.__dict__:
             atrval = self.__dict__[atr]
             if type(atrval) in (int, float, str, list, bool):
-                log.info(f"\t{atr}: \t{atrval} ")
-            elif isinstance(atrval, mgdata.operators):
-                log.info(f"\t{atr}: \n\t\tRestriction: {atrval.R_op} "
-                         f"\n\t\tProlongation: {atrval.P_op}")
-            elif isinstance(atrval, mgdata.rhs):
-                log.info(f"\t{atr}: {atrval}")
+                self.log.warning(f"\t{atr}: \t{atrval} ")
             else:
-                log.info(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__}")
+                self.log.warning(f"\t{atr}: \t{self.__dict__[atr].__class__.__name__}")
 
 
 
@@ -283,7 +266,7 @@ class HierarchyBuilder:
         for level_ind in range(self.num_levels):
             loss_fn = self.loss_t()
             sgd_smoother = self.smoother_t(loss_fn, self.learning_rate, self.momentum,
-                                           self.weight_decay, log_interval = 1)
+                                           self.weight_decay)
             converter = self.converter_t()
             parameter_extractor = self.parameter_extractor_t(converter)
             gradient_extractor = self.gradient_extractor_t(converter)

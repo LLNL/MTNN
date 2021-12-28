@@ -16,48 +16,36 @@ __all__ = ['progressbar',
 console_formatter = logging.Formatter('%(message)s')
 file_formatter = logging.Formatter('%(message)s')
 
-# File Handler
-filepath = file.make_default_path("/logs/", ".txt")
-fh = logging.FileHandler(filepath, mode = 'a')
-fh.setLevel(level = logging.INFO)
-fh.setFormatter(file_formatter)
+MTNN_logger_name = ""
 
-# Console Handler
-ch = logging.StreamHandler()  # writes to stderr
-ch.setLevel(level=logging.DEBUG)
-ch.setFormatter(console_formatter)
+def create_file_handler(path, logging_level):
+    filepath = file.make_default_path(path, ".txt.")
+    fh = logging.FileHandler(filepath, mode='a')
+    fh.setLevel(level = logging_level)
+    fh.setFormatter(file_formatter)
+    return fh
 
-
-def progressbar(count, total, status=''):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
-
-    percents = round(100.0 * count / float(total), 1)
-    bar = '=' * filled_len + '-' * (bar_len - filled_len)
-
-    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
-    sys.stdout.flush()
-
-
-def get_logger(logger_name, write_to_file=False):
-    """
-    Set up logger for each module.
-    Args:
-        logger_name: Pass the module's __name__
-        write_to_file : <bool>
-
-    Returns:
-        logger
-    """
+def create_console_handler(logging_level):
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging_level)
+    ch.setFormatter(console_formatter)
+    return ch
+    
+def create_MTNN_logger(logger_name, logging_level=logging.DEBUG, write_to_file=False):
     logger = logging.getLogger(logger_name)
-    logger.setLevel(level=logging.DEBUG)  # Default
+    logger.setLevel(logging_level)
 
     if write_to_file:
-        logger.addHandler(fh)
+        logger.addHandler(create_file_handler("/logs", logging_level))
 
-    logger.addHandler(ch)
-    logger.propagate = False  # disable propagation to root logger
+    logger.addHandler(create_console_handler(logging_level))
 
+    global MTNN_logger_name
+    MTNN_logger_name = logger_name
     return logger
 
+def get_MTNN_logger():
+    return logging.getLogger(MTNN_logger_name)
 
+def get_logger(a1, write_to_file):
+    return get_MTNN_logger()

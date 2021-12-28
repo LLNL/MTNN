@@ -165,6 +165,7 @@ class HEMMatcher():
         self.Fine2CoarsePerLayer = None
         self.coarsen_on_layer = coarsen_on_layer
         self.num_retries = num_retries
+        self.log = logger.get_MTNN_logger()
 
     def get_heavyedgematching(self, similarityMatrix):
         """Compute matching for a single layer.
@@ -250,8 +251,7 @@ class HEMMatcher():
                 match_per_layer.append(match)
             else:
                 num_coarse_array.append(nf)
-            print("Layer {} has {} coarse neurons".format(layer_id, num_coarse_array[-1]))
-            print()
+            self.log.info("Layer {} coarsened to {} coarse neurons".format(layer_id, num_coarse_array[-1]))
 
         return CoarseMapping(num_coarse_array, match_per_layer)
 

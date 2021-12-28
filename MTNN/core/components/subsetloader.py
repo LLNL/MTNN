@@ -9,7 +9,7 @@ cycle. Used e.g. at the beginning of each V Cycle.
 from abc import ABC, abstractmethod
 
 # local
-from MTNN.utils import logger, printer, deviceloader
+from MTNN.utils import logger, deviceloader
 
 import torch
 

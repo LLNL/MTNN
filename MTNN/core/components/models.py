@@ -10,10 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # local
-from MTNN.utils import logger, printer, deviceloader
-
-
-log = logger.get_logger(__name__, write_to_file = True)
+from MTNN.utils import logger, deviceloader
 
 __all__ = ["MultiLinearNet",
            "BasicMnistModel",
@@ -23,7 +20,7 @@ __all__ = ["MultiLinearNet",
 ####################################################################
 # Interface
 ###################################################################
-class _BaseModel(nn.Module):
+class BaseModel(nn.Module):
     """
     Base Model class
     """
@@ -31,6 +28,7 @@ class _BaseModel(nn.Module):
         super().__init__()
         self.layers = nn.ModuleList()
         self.device = deviceloader.get_device(verbose=False)
+        self.log = logger.get_MTNN_logger()
 
     def __len__(self):
         return len(self.layers)
@@ -59,12 +57,18 @@ class _BaseModel(nn.Module):
     def set_device(self, device): 
         self.layers.to(device)
 
+    def log_model(self):
+        self.log.warning("Initial (Level 0) Model".center(100, '='))
+        self.log.warning("Model type: {}".format(self.__class__.__name__))
+        for layer_ind, layer in enumerate(self.layers):
+            self.log.warning("Layer {} \t Layer type {} \t Weight {} \t Bias {}".format(
+                layer_ind, layer.__class__.__name__, layer.weight.size(), layer.bias.size()))
 
 
 ############################################################################
 # Implementations
 ############################################################################
-class MultiLinearNet(_BaseModel):
+class MultiLinearNet(BaseModel):
     def __init__(self, dim: list, activation, output_activation, weight_fill=None, bias_fill=None): # Check activationtype
         """
         Builds a fully connected network given a list of dimensions
@@ -93,7 +97,7 @@ class MultiLinearNet(_BaseModel):
         self.layers = modules
         self.layers.to(self.device) 
 
-    def forward(self, x, verbose=False):
+    def forward(self, x):
         # Flatten Input
         x = x.view(x.size(0), -1)
 
@@ -105,9 +109,6 @@ class MultiLinearNet(_BaseModel):
             elif layer == self.layers[-1]:
                 x = self.layers[idx](x)
                 x = self.output(x)
-
-        if verbose:
-            printer.print_model(self, val=True)
 
         return x
 
@@ -128,7 +129,7 @@ class MultiLinearNet(_BaseModel):
 
         return outputs
 
-class ConvolutionalNet(_BaseModel):
+class ConvolutionalNet(BaseModel):
     def __init__(self, conv_channels: list, fc_dims: list, activation, output_activation):
         """
         Builds a network of several convolutional layers followed by several fully-connected layers.
@@ -165,7 +166,7 @@ class ConvolutionalNet(_BaseModel):
         self.layers = modules
         self.layers.to(self.device)
 
-    def forward(self, x, verbose=False):
+    def forward(self, x):
         for i in range(self.num_conv_layers):
             x = self.layers[i](x)
             x = self.activation(x)
@@ -178,8 +179,5 @@ class ConvolutionalNet(_BaseModel):
 
         x = self.layers[-1](x)
         x = self.output_activation(x)
-
-        if verbose:
-            printer.print_model(self, val=True)
 
         return x

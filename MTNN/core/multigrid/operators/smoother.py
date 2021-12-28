@@ -2,9 +2,7 @@
 import torch.optim as optim
 
 # local
-from MTNN.utils import logger, printer, deviceloader
-
-log = logger.get_logger(__name__, write_to_file =True)
+from MTNN.utils import logger, deviceloader
 
 # Public
 __all__ = ['SGDSmoother']
@@ -19,14 +17,14 @@ class SGDSmoother:
     prolongation.
 
     """
-    def __init__(self, loss_fn, learning_rate, momentum, weight_decay, log_interval=0):
+    def __init__(self, loss_fn, learning_rate, momentum, weight_decay):
         self.loss_fn = loss_fn
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.weight_decay = weight_decay
-        self.log_interval = log_interval
         self.optimizer = None
         self.momentum_data = None
+        self.log = logger.get_MTNN_logger()
 
     def set_momentum(self, momentum_data):
         self.momentum_data = momentum_data
@@ -47,6 +45,11 @@ class SGDSmoother:
                 self.optimizer.state[self.optimizer.param_groups[0]['params'][i]]['momentum_buffer'] = self.momentum_data[i]
                 self.optimizer.state[self.optimizer.param_groups[0]['params'][i+1]]['momentum_buffer'] = self.momentum_data[i+1]
             self.momentum_data = None
+
+    def log_iteration(self, loss, batch_ind, dataloader):
+        self.log.info("\t{} / {} \t\tLoss: {}".format((batch_ind+1) * dataloader.batch_size,
+                                                      len(dataloader) * dataloader.batch_size,
+                                                      loss.item()))
         
 
     def apply(self, model, dataloader, num_smoothing_passes, tau=None, l2_info = None, verbose=False) -> None:
@@ -96,8 +99,9 @@ class SGDSmoother:
                 loss.backward()
                 
                 self.optimizer.step()
-                if verbose:
-                    printer.print_smoother(loss, batch_idx, dataloader, self.log_interval, tau)
+                self.log_iteration(loss, batch_idx, dataloader)
+                # if verbose:
+                #     printer.print_smoother(loss, batch_idx, dataloader, tau)
 
 
 

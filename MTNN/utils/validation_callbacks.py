@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from MTNN.utils import deviceloader
+from MTNN.utils import deviceloader, logger
 
 #=====================================
 # Loss and loss accumulator functions
@@ -57,9 +57,10 @@ class ValidationCallback:
         self.num_losses = len(self.loss_fns)
         self.num_levels = num_levels
         self.best_seen = float('inf') * torch.ones((self.num_levels, self.num_losses))
+        self.log = logger.get_MTNN_logger()
 
-    def __call__(self, levels, cycle):
-        if type(cycle) != str and (cycle + 1) % self.test_frequency != 0:
+    def __call__(self, levels, cycle = None):
+        if cycle is not None and (cycle + 1) % self.test_frequency != 0:
             return
 
         for level in levels:
@@ -83,7 +84,8 @@ class ValidationCallback:
                 loss_str = ", ".join(["{} loss {:.5f} (best seen {:.5f})".
                                       format(self.loss_names[i], total_losses[level_ind, i],
                                              self.best_seen[level_ind, i]) for i in range(self.num_losses)])
-                print("Level {}, Cycle {}: {}".format(level_ind, cycle, loss_str), flush=True)
+                cycle_str = "Cycle {}".format(cycle) if cycle is not None else "Finished"
+                self.log.warning("Level {}, {}: {}".format(level_ind, cycle_str, loss_str))
 
         for level in levels:
             level.net.train()
