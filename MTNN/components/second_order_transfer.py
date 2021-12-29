@@ -2,10 +2,8 @@
 Restriction Operators
 """
 # local
-import MTNN.utils.logger as log
+from MTNN.utils import logger
 import MTNN.utils.deviceloader as deviceloader
-
-log = log.get_logger(__name__, write_to_file =True)
 
 __all__ = ['SecondOrderRestriction',
            'SecondOrderProlongation']

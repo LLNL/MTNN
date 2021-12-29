@@ -13,9 +13,10 @@ from MTNN.utils import logger
 # At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
 log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=False)
 
-from MTNN.core.components import models, subsetloader
-from MTNN.core.multigrid.level import HierarchyBuilder
-import MTNN.core.multigrid.scheme as mg
+from MTNN import models
+from MTNN.components import subsetloader
+from MTNN.HierarchyBuilder import HierarchyBuilder
+import MTNN.MultilevelCycle as mc
 from MTNN.utils.ArgReader import ArgReader
 from MTNN.utils.validation_callbacks import RealValidationCallback
 
@@ -66,10 +67,10 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params)
 #=====================================
 
 validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
-mg_scheme = mg.VCycle(neural_net_levels, cycles = params["num_cycles"],
+mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
                       validation_callback=validation_callback)
-mg_scheme.run(dataloader=train_loader)
+mc.run(dataloader=train_loader)
 
 
 #=====================================

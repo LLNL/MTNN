@@ -3,11 +3,8 @@ import collections as col
 # torch 
 import torch
 # local
-import MTNN.core.multigrid.scheme as mg
-import MTNN.utils.logger as log
+from MTNN.utils import logger
 from MTNN.utils.datatypes import ParamVector, CoarseMapping, TransferOps
-
-log = log.get_logger(__name__, write_to_file = True)
 
 class PairwiseOpsBuilder:
     """PairwiseOpsBuilder is an object which is used to construct the actual 

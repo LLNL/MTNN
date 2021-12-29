@@ -8,12 +8,7 @@ cycle. Used e.g. at the beginning of each V Cycle.
 # standard
 from abc import ABC, abstractmethod
 
-# local
-from MTNN.utils import logger, deviceloader
-
 import torch
-
-log = logger.get_logger(__name__, write_to_file =True)
 
 # Public
 __all__ = ['WholeSetLoader',

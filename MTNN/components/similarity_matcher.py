@@ -9,8 +9,6 @@ from MTNN.utils import logger
 from MTNN.utils import deviceloader
 from MTNN.utils.datatypes import CoarseMapping
 
-log = logger.get_logger(__name__, write_to_file =True)
-
 # Public
 __all__ = ['StandardSimilarity',
            'HSimilarity',

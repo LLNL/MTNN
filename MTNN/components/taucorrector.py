@@ -1,17 +1,10 @@
 """
 Holds Tau correction definitions
 """
-# standard
 from abc import ABC, abstractmethod
 import copy
-
-# PyTorch
 import torch
-
-# local
-import MTNN.utils.logger as log
-
-log = log.get_logger(__name__, write_to_file =True)
+from MTNN.utils import logger
 
 # Public
 __all__ = ['NullTau',
