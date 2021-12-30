@@ -148,7 +148,7 @@ To install MTNN, from the MTNN root, run the command
 Documentation can be generated via Doxygen with the commands
 `doxygen gocs/Doxyfile`
 
-# Running examples
+# Examples
 
 There are a number of examples in the `examples` folder which
 illustrate how to set up and train hierarchies of neural networks.
@@ -162,3 +162,11 @@ illustrate how to set up and train hierarchies of neural networks.
 -`mnist_example.py` shows using MTNN for a classifcation task. MTNN
  seems to work best here when the network of interest is squeezed
  between a bigger and a smaller network in the multilevel hierarchy.
+
+# Authors
+
+-Ruipeng Li (li50@llnl.gov)
+
+-Christina Mao (mao6@llnl.gov)
+
+-Colin Ponce (ponce11@llnl.gov)
