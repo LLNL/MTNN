@@ -79,6 +79,15 @@ class ValidationCallback:
     losses over the validation set for each level of the multilevel
     hierarchy.
 
+    Each loss must produce a 1st-order tensor of lenght equal to the
+    number of examples given as input. This tensor is then fed to an
+    associated Accumulator, which collects all the reported losses and
+    then summarizes them.
+
+    This class assumes that lower is better, so if you want to report
+    on something in which higher is better (e.g. classifier accuracy),
+    report on its inverse (e.g. classifier inaccuracy).
+
     """
     
     def __init__(self, val_dataloader,

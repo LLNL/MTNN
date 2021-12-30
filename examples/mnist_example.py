@@ -29,7 +29,7 @@ from MTNN.utils.validation_callbacks import ClassifierValidationCallback
 # At logging level INFO, anything logged as log.warning() or log.info() will print
 # At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
 from MTNN.utils import logger
-log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=False)
+log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=True)
 
 class MnistData:
     """
@@ -101,7 +101,7 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params, los
 # Run Multigrid Trainer
 #=====================================
 
-validation_callback = ClassifierValidationCallback(test_loader, params["num_levels"], val_frequency=1)
+validation_callback = ClassifierValidationCallback(test_loader, params["num_levels"], val_frequency=2)
 
 log.info("\nTesting performance prior to training...")
 validation_callback(neural_net_levels)

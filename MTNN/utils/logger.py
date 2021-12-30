@@ -1,8 +1,7 @@
-"""
-Logging set-up and formatting
-"""
-# standard
 import sys
+import re
+import datetime
+from pathlib import Path, PurePath
 import logging
 
 __all__ = ['create_file_handler',
@@ -15,6 +14,27 @@ console_formatter = logging.Formatter('%(message)s')
 file_formatter = logging.Formatter('%(message)s')
 
 MTNN_logger_name = ""
+
+def make_path(filepath):
+    """
+    Recursively makes a file path.
+    Args:
+        filepath: <string>
+
+    Returns:
+        ret_path: <Path> Posix or Windows file path object
+    """
+    basedir = PurePath(filepath).parent
+    filename = PurePath(filepath).name
+
+    # Create base directory
+    if not Path(basedir).exists():
+        Path(basedir).mkdir(parents=True)
+
+    # Create file
+    ret_path = Path(basedir, filename)
+
+    return ret_path
 
 def make_default_path(dir: str, ext: str):
     """
@@ -30,7 +50,7 @@ def make_default_path(dir: str, ext: str):
     """
     dirname = re.sub('[\\\/]', '', dir)
     default_dir = PurePath.joinpath(Path.cwd(), Path("./" + dirname))
-    default_file = get_caller_filename() + "_" \
+    default_file = sys.argv[0].strip(".py") + "_" \
                     + datetime.datetime.today().strftime("%m%d%Y") + "_" \
                     + datetime.datetime.now().strftime("%H:%M:%S") + "_" \
                     + datetime.datetime.today().strftime("%A") + ext
