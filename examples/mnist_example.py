@@ -22,14 +22,11 @@ from MTNN import models
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
-from MTNN.utils.ArgReader import ArgReader
+from MTNN.utils.ArgReader import MTNNArgReader
 from MTNN.utils.validation_callbacks import ClassifierValidationCallback
 
-# At logging level WARNING, anything logged as log.warning() will print
-# At logging level INFO, anything logged as log.warning() or log.info() will print
-# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
-from MTNN.utils import logger
-log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=True)
+arg_reader = MTNNArgReader()
+params = arg_reader.read_args(sys.argv)
 
 class MnistData:
     """
@@ -67,8 +64,11 @@ dataset = MnistData(trainbatch_size=200, testbatch_size=1000)
 train_loader = dataset.trainloader
 test_loader = dataset.testloader
 
-arg_reader = ArgReader()
-params = arg_reader.read_args(sys.argv)
+# At logging level WARNING, anything logged as log.warning() will print
+# At logging level INFO, anything logged as log.warning() or log.info() will print
+# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
+from MTNN.utils import logger
+log = logger.create_MTNN_logger("MTNN", logging_level="INFO", log_filename=params["log_filename"])
 log.warning("Input parameters:\n{}\n".format(params))
 
 # For reproducibility. Comment out for possibly-improved efficiency
@@ -104,7 +104,7 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params, los
 validation_callback = ClassifierValidationCallback(test_loader, params["num_levels"], val_frequency=2)
 
 log.info("\nTesting performance prior to training...")
-validation_callback(neural_net_levels)
+validation_callback(neural_net_levels, -1)
 log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
@@ -121,4 +121,4 @@ mc.run(dataloader=train_loader)
 
 log.warning('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels)
+validation_callback(neural_net_levels, "finished")

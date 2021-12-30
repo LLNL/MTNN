@@ -10,26 +10,24 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-
 import sys
 from os import path
 sys.path.append("../")
-
-from MTNN.utils import logger
-# At logging level WARNING, anything logged as log.warning() will print
-# At logging level INFO, anything logged as log.warning() or log.info() will print
-# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
-log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=False)
-
 from MTNN import models
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
-from MTNN.utils.ArgReader import ArgReader
+from MTNN.utils.ArgReader import MTNNArgReader
 from MTNN.utils.validation_callbacks import RealValidationCallback
 
-arg_reader = ArgReader()
+arg_reader = MTNNArgReader()
 params = arg_reader.read_args(sys.argv)
+
+# At logging level WARNING, anything logged as log.warning() will print
+# At logging level INFO, anything logged as log.warning() or log.info() will print
+# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
+from MTNN.utils import logger
+log = logger.create_MTNN_logger("MTNN", logging_level="INFO", log_filename=params["log_filename"])
 log.warning("Input parameters:\n{}\n".format(params))
 
 # For reproducibility. Comment out for possibly-improved efficiency
@@ -74,7 +72,7 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params)
 
 validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
 log.info("\nTesting performance prior to training...")
-validation_callback(neural_net_levels)
+validation_callback(neural_net_levels, -1)
 log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
@@ -88,4 +86,4 @@ mc.run(dataloader=train_loader)
 
 log.info('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels)
+validation_callback(neural_net_levels, "finished")

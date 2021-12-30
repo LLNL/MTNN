@@ -114,7 +114,7 @@ class ValidationCallback:
         self.log = logger.get_MTNN_logger()
 
     def __call__(self, levels, cycle = None):
-        if cycle is not None and (cycle + 1) % self.val_frequency != 0:
+        if type(cycle) is not str and (cycle + 1) % self.val_frequency != 0:
             return
 
         for level in levels:
@@ -136,7 +136,7 @@ class ValidationCallback:
                 loss_str = ", ".join(["{} {:.5e} (best seen {:.5e})".
                                       format(self.loss_names[i], total_losses[level_ind, i],
                                              self.best_seen[level_ind, i]) for i in range(self.num_losses)])
-                cycle_str = "Cycle {}".format(cycle+1) if cycle is not None else "Finished"
+                cycle_str = "Cycle {}".format(cycle+1) if type(cycle) is not str else cycle
                 self.log.warning("Level {}, {}: {}".format(level_ind, cycle_str, loss_str))
 
         for level in levels:
@@ -151,7 +151,7 @@ class RealValidationCallback(ValidationCallback):
         super().__init__(val_dataloader,
                          [mse_loss, linf_loss],
                          [MeanAccumulator(num_levels), MaxAccumulator(num_levels)],
-                         ["L2 loss", "Linf loss"],
+                         ["L2 loss", "Linf loss"], # Note: vis script reslies in these names being 2 tokens
                          num_levels, test_frequency)
 
 
@@ -162,5 +162,5 @@ class ClassifierValidationCallback(ValidationCallback):
         super().__init__(val_dataloader,
                          [nn.CrossEntropyLoss(), inaccuracy],
                          [SumAccumulator(num_levels), MeanAccumulator(num_levels)],
-                         ["cross entropy loss", "fraction incorrect"],
+                         ["cross_entropy loss", "fraction incorrect"],
                          num_levels, val_frequency)

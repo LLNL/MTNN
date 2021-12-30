@@ -21,29 +21,25 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import numpy as np
-
 import sys
 sys.path.append("../")
+from MTNN import models
+from MTNN.components import subsetloader
+from MTNN.HierarchyBuilder import HierarchyBuilder
+import MTNN.MultilevelCycle as mc
+from MTNN.utils.ArgReader import MTNNArgReader
+from MTNN.utils.validation_callbacks import RealValidationCallback
+from utils_for_circle_example import CircleHelper
+
+
+arg_reader = MTNNArgReader()
+params = arg_reader.read_args(sys.argv)
 
 from MTNN.utils import logger
 # At logging level WARNING, anything logged as log.warning() will print
 # At logging level INFO, anything logged as log.warning() or log.info() will print
 # At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
-log = logger.create_MTNN_logger("MTNN", logging_level="WARNING", write_to_file=False)
-
-from MTNN import models
-from MTNN.components import subsetloader
-from MTNN.HierarchyBuilder import HierarchyBuilder
-import MTNN.MultilevelCycle as mc
-from MTNN.utils.ArgReader import ArgReader
-from MTNN.utils.validation_callbacks import RealValidationCallback
-
-from utils_for_circle_example import CircleHelper
-
-
-
-arg_reader = ArgReader()
-params = arg_reader.read_args(sys.argv)
+log = logger.create_MTNN_logger("MTNN", logging_level="WARNING", log_filename=params["log_filename"])
 log.warning("Input parameters:\n{}\n".format(params))
 
 # For reproducibility. Comment out for possibly-improved efficiency
@@ -81,7 +77,7 @@ train_loader, test_loader = circle_helper.get_dataloaders()
 circle_helper.plot_outputs(neural_net_levels[0].net, 1)
 
 validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
-validation_callback(neural_net_levels)
+validation_callback(neural_net_levels, -1)
 log.info("\n")
 
 #=====================================
@@ -100,7 +96,7 @@ mc.run(dataloader=train_loader)
 
 log.info('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels)
+validation_callback(neural_net_levels, "finished")
 
 coarse_net = neural_net_levels[1].net if params["num_levels"] > 1 else None
 for i, level in enumerate(neural_net_levels):

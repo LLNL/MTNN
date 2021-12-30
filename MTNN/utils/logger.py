@@ -15,28 +15,7 @@ file_formatter = logging.Formatter('%(message)s')
 
 MTNN_logger_name = ""
 
-def make_path(filepath):
-    """
-    Recursively makes a file path.
-    Args:
-        filepath: <string>
-
-    Returns:
-        ret_path: <Path> Posix or Windows file path object
-    """
-    basedir = PurePath(filepath).parent
-    filename = PurePath(filepath).name
-
-    # Create base directory
-    if not Path(basedir).exists():
-        Path(basedir).mkdir(parents=True)
-
-    # Create file
-    ret_path = Path(basedir, filename)
-
-    return ret_path
-
-def make_default_path(dir: str, ext: str):
+def make_path(dir: str, filename: str):
     """
     Creates a sub directory if it doesn't exist and default filename based on caller filename.
         <filename>_MMDDYYY_HH:MM:SS_DayofWeek_<ext>
@@ -54,16 +33,25 @@ def make_default_path(dir: str, ext: str):
                     + datetime.datetime.today().strftime("%m%d%Y") + "_" \
                     + datetime.datetime.now().strftime("%H:%M:%S") + "_" \
                     + datetime.datetime.today().strftime("%A") + ext
-    default_path = default_dir.joinpath(Path(default_file))
+    default_path = default_dir.joinpath(Path(filename))
 
-    default_path = make_path(default_path)
+    basedir = PurePath(filepath).parent
+    filename = PurePath(filepath).name
+
+    # Create base directory
+    if not Path(basedir).exists():
+        Path(basedir).mkdir(parents=True)
+
+    # Create file
+    default_path = Path(basedir, filename)
 
     return default_path
 
 
-def create_file_handler(path, logging_level):
-    filepath = make_default_path(path, ".txt.")
-    fh = logging.FileHandler(filepath, mode='a')
+def create_file_handler(filename, logging_level):
+    # filepath = make_path(path, ".txt")
+    # print("FILEPATH IS {}".format(filepath))
+    fh = logging.FileHandler(filename, mode='a')
     fh.setLevel(level = logging_level)
     fh.setFormatter(file_formatter)
     return fh
@@ -74,12 +62,12 @@ def create_console_handler(logging_level):
     ch.setFormatter(console_formatter)
     return ch
     
-def create_MTNN_logger(logger_name, logging_level=logging.DEBUG, write_to_file=False):
+def create_MTNN_logger(logger_name, logging_level=logging.DEBUG, log_filename=None):
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging_level)
 
-    if write_to_file:
-        logger.addHandler(create_file_handler("/logs", logging_level))
+    if log_filename is not None:
+        logger.addHandler(create_file_handler(log_filename, logging_level))
 
     logger.addHandler(create_console_handler(logging_level))
 

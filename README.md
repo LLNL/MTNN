@@ -49,11 +49,14 @@ learned at the coarse levels, with the details refined at the fine
 levels. We have found that, in the case of neural networks, the value
 of multilevel methods is not necessarily computational speed, but
 regularization: Training an entire hierarchy of neural networks
-together forces a neural network to be "similar" to those above and
+together forces a neural network to be "similar" to those above and/or
 below it in the hierarchy. Therefore, it learns to be a refined
 version of a smaller network that may capture the big ideas but not
-the details, and also to be a better-regularized version of a bigger
-network that may have overfit.
+the details, and/or to be a better-regularized version of a bigger
+network that may be prone to overfitting. MTNN does not replace
+existing regularization methods, which remain crucial, but can
+regularize in ways that existing methods do not, and so is a useful
+addition to our toolbox of regularization methods.
 
 Multilevel methods are not algorithms, must **algorithmic frameworks**
 in which one must make individual algorithmic choices for various
@@ -125,6 +128,27 @@ We provide a few different tau correction options:
  and coarse networks have positive-definite Hessians, but only
  requires that the fine network have a small gradient.
 
+Note that `wholeset` and `minibatch` are only to be used when the
+neural network to be used is the finest in the hierarchy; the loss
+modifications at the coarser levels tend to shift those networks into
+modes that are suboptimal if one were to use them on their own. Using
+no tau correction (`none`) produces an entire hierarchy of
+potentially-useful neural networks of varying sizes.
+
+## Supported neural network architectures
+
+The algorithms behind MTNN mathematically work whenever the neural
+network can be decomposed into a set of operational subsets such that
+each subset consists of a set of neurons, channels, or other similar
+operational units. In this case, pairs of neurons (or channels or
+other operational units) can be matched up and restricted into a
+coarse network.
+
+MTNN currently has software support for feedforward neural neural networks with
+
+-Fully-connected layers
+
+-One or more convolutional layers followed by 0 or more fully-connected layers.
 
 # Installation Instructions
 
@@ -150,6 +174,8 @@ Documentation can be generated via Doxygen with the commands
 
 # Examples
 
+## Running examples
+
 There are a number of examples in the `examples` folder which
 illustrate how to set up and train hierarchies of neural networks.
 
@@ -162,6 +188,12 @@ illustrate how to set up and train hierarchies of neural networks.
 -`mnist_example.py` shows using MTNN for a classifcation task. MTNN
  seems to work best here when the network of interest is squeezed
  between a bigger and a smaller network in the multilevel hierarchy.
+
+## Visualizing results
+
+MTNN includes a visualization script that parses its log files and
+plots results using matplotlib. This can be found in
+`MTNN/visualize_results.py`.
 
 # Authors
 
