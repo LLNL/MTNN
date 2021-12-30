@@ -25,7 +25,7 @@ next-coarser problem, and so on, until reaching the coarsest problem
 in the hierarchy. The method then reverses the process: perform a bit
 of work (smoothing) on the coarsest problem, then pass learned
 information to the next-finer problem (passing information to a finer
-level is called **prolongation**) where a bit of work is performed,
+level is called *prolongation*) where a bit of work is performed,
 and so on, until reaching the original problem again. This entire
 sequence is called a *V-Cycle*.
 
@@ -55,11 +55,11 @@ version of a smaller network that may capture the big ideas but not
 the details, and also to be a better-regularized version of a bigger
 network that may have overfit.
 
-Multilevel methods are algorithmic *frameworks* in which one must make
-individual algorithmic choices for various components; we have
-provided a number of choices here, and designed the code in a modular
-way so that you can (hopefully) easily write and insert your own
-algorithmic components.
+Multilevel methods are not algorithms, must **algorithmic frameworks**
+in which one must make individual algorithmic choices for various
+components; we have provided a number of choices here, and designed
+the code in a modular way so that you can (hopefully) easily write and
+insert your own algorithmic components.
 
 ## Some algorithmic component choices
 
@@ -82,11 +82,11 @@ weighted average of the parameters of the two neurons to produce a
 single "coarse neuron."
 
 The weighted averaging is linear in the parameters of the
-network. Thus, the operation can be represented as a matrix *R$, and
-restriction computes a set of coarse network parameters $N_c$ from an
-original network $N$ as
+network. Thus, the operation can be represented as a matrix $$R$$, and
+restriction computes a set of coarse network parameters $$N_c$$ from an
+original network $$N$$ as
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=1%2Bsin%28mc%5E2%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)
+![equation](http://www.sciweavers.org/tex2img.php?eq=N_c%20%5Cleftarrow%20N&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
 
 $$
 N_c \leftarrow N
