@@ -71,7 +71,28 @@ could certainly use other optimizers.
 
 ### Restriction
 
+We have provided one implementation of a restriction method here. In
+our restriction, a coarse neural network has the same architecture as
+the original, but with fewer neurons per layer. In the case of CNNs,
+the coarse network has fewer channels per layer.
+
+We use a Heavy Edge Matching procedure to identify pairs of similar
+neurons (or channels) in a layer. Upon restriction, we calculate a
+weighted average of the parameters of the two neurons to produce a
+single "coarse neuron."
+
+The weighted averaging is linear in the parameters of the
+network. Thus, the operation can be represented as a matrix $R$, and
+restriction computes a set of coarse network parameters $N_c$ from an
+original network $N$ as
+
+$$
+N_c \leftarrow N
+$$
+
 ### Prolongation
+
+Prolongation is simply the reverse operation of restriction. 
 
 
 # Installation Instructions
