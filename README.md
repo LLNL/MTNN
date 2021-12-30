@@ -82,15 +82,48 @@ weighted average of the parameters of the two neurons to produce a
 single "coarse neuron."
 
 The weighted averaging is linear in the parameters of the
-network. Thus, the operation can be represented as a matrix **R**, and
-restriction computes a set of coarse network parameters **N_c** from an
-original network **N** as
+network. Thus, the operation can be represented as a matrix $R$, and
+restriction computes a set of coarse network parameters $N_c$ from an
+original network $N$ as
 
 ![equation](http://www.sciweavers.org/tex2img.php?eq=N_c%20%5Cleftarrow%20R%20N&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
 
 ### Prolongation
 
-Prolongation is simply the reverse operation of restriction. 
+Prolongation is simply the reverse operation of restriction, and a
+linear operator $P$ converts from coarse to fine networks. However,
+the image of $P$ only lies on a subspace of the original parameter
+space, and we want to maintain the selection on the orthogonal
+subspace prior to restriction. Therefore, we update as follows:
+
+![equation](http://www.sciweavers.org/tex2img.php?eq=N%20%5Cleftarrow%20N%20%2B%20P%28N_c%20-%20RN%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+
+### Tau correction
+
+We leverage here a variant of the multilevel framework known as the
+*Full Approximation Scheme*, originally developed for solving
+nonlinear system of equations. The *tau correction* is a linear
+modification to the coarse loss:
+
+![equation](http://www.sciweavers.org/tex2img.php?eq=%5Ctilde%20L_c%28NN_c%29%20%3D%20L_c%28NN_c%29%20%2B%20%5Ctau%5ET%20NN_c&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+
+As we show in our ppaper, the linear modifier $\tau$ is chosen to
+replace the coarse gradient with a restricted version of the fine
+gradient. This has the effect of coarse-level training proceeding more
+like fine-level training, at least at first before the higher-order
+derivatives at the coarse level take over.
+
+We provide a few different tau correction options:
+
+-`none` Does not use a tau correction. This forces the training
+ procedure to seek out a point in which both the fine and coarse
+ networks have small gradients and a positive-definite Hessian.
+
+-`wholeset` or `minibatch` are two provided variants of using a tau
+ correction. Because it replaces the coarse gradient, this is weaker
+ regularization than `none`. It seeks out a point in which both fine
+ and coarse networks have positive-definite Hessians, but only
+ requires that the fine network have a small gradient.
 
 
 # Installation Instructions
