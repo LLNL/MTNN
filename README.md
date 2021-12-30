@@ -119,14 +119,14 @@ derivatives at the coarse level take over.
 We provide a few different tau correction options:
 
 -`none` Does not use a tau correction. This forces the training
- procedure to seek out a point in which both the fine and coarse
- networks have small gradients and a positive-definite Hessian.
+ procedure to seek out a point in which all neural networks in the
+ hierarchy have small gradients and a positive-definite Hessian.
 
 -`wholeset` or `minibatch` are two provided variants of using a tau
  correction. Because it replaces the coarse gradient, this is weaker
- regularization than `none`. It seeks out a point in which both fine
- and coarse networks have positive-definite Hessians, but only
- requires that the fine network have a small gradient.
+ regularization than `none`. It seeks out a point in which all neural
+ networks in the hierarchy have positive-definite Hessians, but only
+ requires that the finest network have a small gradient.
 
 Note that `wholeset` and `minibatch` are only to be used when the
 neural network to be used is the finest in the hierarchy; the loss

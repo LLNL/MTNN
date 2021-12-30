@@ -15,11 +15,11 @@ operators = namedtuple("operators", "R_op P_op R_for_grad_op P_for_grad_op, l2re
 class CoarseMapping:
     """CoarseMapping - specifies a mapping from fine channels to coarse channels.
     
-    num_coarse_channels <List> - A list of length equal to the number
-    of network layers. Each element contains the number of coarse
-    neurons (num channels in CNNs) in that layer.
+    @param num_coarse_channels <List> A list of length equal to the
+    number of network layers. Each element contains the number of
+    coarse neurons (num channels in CNNs) in that layer.
 
-    match_per_layer <List(List)> - A list of lenght equal to the
+    @param match_per_layer <List(List)> A list of lenght equal to the
     number of layers. Each element is itself a list, containing the
     neuron to which it is matched for coarsening.
 
@@ -50,10 +50,10 @@ class CoarseMapping:
 class TransferOps:
     """TransferOps - The matrix operators used in restriction and prolongation.
     
-    R_ops <List> - A list, of length equal to the number of layers minus
+    @param R_ops <List> A list, of length equal to the number of layers minus
     1, containing the R operators used in restriction.
     
-    P_ops <List> - A list, of length equal to the number of layers minus
+    @param P_ops <List> A list, of length equal to the number of layers minus
     1, containing the P operators used in restriction.
     """
     def __init__(self, R_ops, P_ops):

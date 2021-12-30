@@ -1,7 +1,9 @@
 # Public
 __all__ = ['smoother',
-           'second_order_transfer.py',
-           'data_converter.py',
-           'similarity_matcher.py',
-           'transfer_ops_builder.py',
-           'taucorrector.py']
+           'second_order_transfer',
+           'converter',
+           'paramextractor',
+           'similarity_matcher',
+           'transfer_ops_builder',
+           'taucorrector',
+           'subsetloader']
