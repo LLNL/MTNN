@@ -100,8 +100,10 @@ illustrate how to set up and train hierarchies of neural networks.
 
 -`circle_example.py` is the best starting point, and shows visually
  the regularization benefits of MTNN.
+ 
 -`darcy_example.py` and `poisson_example.py` show using MTNN to
  effective learn function estimation based on PDEs.
+
 -`mnist_example.py` shows using MTNN for a classifcation task. MTNN
  seems to work best here when the network of interest is squeezed
  between a bigger and a smaller network in the multilevel hierarchy.
