@@ -14,12 +14,12 @@ solving linear systems of equations, work by constructing a sequence
 of increasingly-"coarse" analogues to your problem of interest, each
 coarse analogue a smaller (fewer variables) version of the
 immediately-previous one. This sequence is typically called the
-multilevel **hierarchy*.
+multilevel *hierarchy*.
 
 Multilevel methods proceed by performing a bit of work on the original
-problem (called **smoothing**), then passing learned information to
+problem (called *smoothing*), then passing learned information to
 the next-coarser problem in the hierarchy (passing information to a
-coarser level is called **restriction**), performing a bit of work on
+coarser level is called *restriction*), performing a bit of work on
 that one (smoothing again), then passing information to the
 next-coarser problem, and so on, until reaching the coarsest problem
 in the hierarchy. The method then reverses the process: perform a bit
@@ -27,7 +27,7 @@ of work (smoothing) on the coarsest problem, then pass learned
 information to the next-finer problem (passing information to a finer
 level is called **prolongation**) where a bit of work is performed,
 and so on, until reaching the original problem again. This entire
-sequence is called a **V-Cycle**.
+sequence is called a *V-Cycle*.
 
 Simple code for an iterative V-Cycle solver might look like the
 following:
@@ -82,9 +82,11 @@ weighted average of the parameters of the two neurons to produce a
 single "coarse neuron."
 
 The weighted averaging is linear in the parameters of the
-network. Thus, the operation can be represented as a matrix $R$, and
+network. Thus, the operation can be represented as a matrix *R$, and
 restriction computes a set of coarse network parameters $N_c$ from an
 original network $N$ as
+
+![equation](http://www.sciweavers.org/tex2img.php?eq=1%2Bsin%28mc%5E2%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)
 
 $$
 N_c \leftarrow N
