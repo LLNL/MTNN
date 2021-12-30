@@ -82,15 +82,11 @@ weighted average of the parameters of the two neurons to produce a
 single "coarse neuron."
 
 The weighted averaging is linear in the parameters of the
-network. Thus, the operation can be represented as a matrix $$R$$, and
-restriction computes a set of coarse network parameters $$N_c$$ from an
-original network $$N$$ as
+network. Thus, the operation can be represented as a matrix **R**, and
+restriction computes a set of coarse network parameters **N_c** from an
+original network **N** as
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=N_c%20%5Cleftarrow%20N&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
-
-$$
-N_c \leftarrow N
-$$
+![equation](http://www.sciweavers.org/tex2img.php?eq=N_c%20%5Cleftarrow%20R%20N&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
 
 ### Prolongation
 
