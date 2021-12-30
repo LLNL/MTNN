@@ -1,18 +1,23 @@
+# The Darcy flow equations model fluid flow through a porous medium,
+# such as subsurface water flow. In this example, we train a neural
+# network to take as input the permeability field of the 2D, square
+# space and to estimate as output the fluid flux through the
+# right-hand boundary of the space.
+
+
+# Typical exeuction:
+# (Convolutional)
+# python darcy_example.py num_levels=2 num_cycles=100 smooth_iters=4 conv_ch=1,100,200,400 conv_kernel_width=1,11,7,3 conv_stride=1,2,1,1 fc_width=3600,1024,1024 momentum=0.9 learning_rate=0.01 weight_decay=1e-6 tau_corrector=wholeset weighted_projection=True rand_seed=0
+#
+# (Fully-connected)
+# python darcy_example.py num_levels=2 num_cycles=100 smooth_iters=4 fc_width=1024,1024,1024 momentum=0.9 learning_rate=0.01 weight_decay=1e-6 tau_corrector=wholeset weighted_projection=True rand_seed=0
+
 import torch
 import numpy as np
-import torch.nn as nn
 import torch.nn.functional as F
-
 import sys
 from os import path
 sys.path.append("../")
-
-from MTNN.utils import logger
-# At logging level WARNING, anything logged as log.warning() will print
-# At logging level INFO, anything logged as log.warning() or log.info() will print
-# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
-log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=False)
-
 from MTNN import models
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
@@ -20,13 +25,15 @@ import MTNN.MultilevelCycle as mc
 from MTNN.utils.ArgReader import ArgReader
 from MTNN.utils.validation_callbacks import RealValidationCallback
 
-# Typical exeuction:
-# python darcy_test.py num_levels=2 num_cycles=100 smooth_iters=4 conv_ch=1,100,200,400 conv_kernel_width=1,11,7,3 conv_stride=1,2,1,1 fc_width=3600,1024,1024 momentum=0.9 learning_rate=0.01 weight_decay=1e-6 tau_corrector=wholeset weighted_projection=True rand_seed=0
+from MTNN.utils import logger
+# At logging level WARNING, anything logged as log.warning() will print
+# At logging level INFO, anything logged as log.warning() or log.info() will print
+# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
+log = logger.create_MTNN_logger("MTNN", logging_level="INFO", write_to_file=False)
 
 arg_reader = ArgReader()
 params = arg_reader.read_args(sys.argv)
-print("Input parameters:")
-print("{}\n".format(params))
+log.warning("Input parameters:\n{}\n".format(params))
 
 # For reproducibility. Comment out for possibly-improved efficiency
 # but without reproducibility.
@@ -67,6 +74,9 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params)
 #=====================================
 
 validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
+log.info("\nTesting performance prior to training...")
+validation_callback(neural_net_levels)
+log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
                       validation_callback=validation_callback)
@@ -77,6 +87,6 @@ mc.run(dataloader=train_loader)
 # Test
 #=====================================
 
-print('\nTraining Complete. Testing...')
+log.info('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
 validation_callback(neural_net_levels)

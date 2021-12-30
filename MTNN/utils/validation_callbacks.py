@@ -1,26 +1,72 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from MTNN.utils import deviceloader, logger
+from abc import ABC, abstractmethod
 
 #=====================================
-# Loss and loss accumulator functions
+# Loss functions
 #=====================================
 
-linf_loss = lambda outputs, true_outputs : torch.max (torch.max(torch.abs(true_outputs - outputs), dim=1).values)
+mse_loss = lambda outputs, true_outputs : torch.sum(F.mse_loss(outputs, true_outputs, reduction="none"), dim=1)
+linf_loss = lambda outputs, true_outputs : torch.max(torch.abs(true_outputs - outputs), dim=1).values
+def inaccuracy(outputs, labels):
+    num_labels= labels.size(0)
+    _, predicted = torch.max(outputs.data, 1)
+    return predicted != labels
 
-class classifier_inaccuracy:
-    def __init__(self, num_batches):
-        self.num_batches = num_batches
+#=====================================
+# Loss accumulators
+#=====================================
+
+class Accumulator:
+    def __init__(self, num_levels):
+        self.num_levels = num_levels
+        self.reset()
+
+    @abstractmethod
+    def accumulate(self, level_ind, loss):
+        """
+        @param level_ind The level of the hierarchy
+        @param loss A list or first-order tensor containing the loss for each example in this batch
+        """
+        raise NotImplementedError
+
+    def reset(self):
+        self.accumulated_losses = [0.0] * self.num_levels
         
-    def __call__(self, outputs, labels):
-        total = labels.size(0)
-        _, predicted = torch.max(outputs.data, 1)
-        num_incorrect = (predicted != labels).sum().item()
-        return float(num_incorrect) / (self.num_batches * total)
+    def get_accumulated_losses(self):
+        return self.accumulated_losses
 
-sum_accumulator = lambda x, y : x + y
-max_accumulator = lambda x, y : torch.max(x, y)
+class SumAccumulator(Accumulator):
+    def __init__(self, num_levels):
+        super().__init__(num_levels)
 
+    def accumulate(self, level_ind, loss):
+        self.accumulated_losses[level_ind] += torch.sum(loss).item()
+
+class MeanAccumulator(Accumulator):
+    def __init__(self, num_levels):
+        super().__init__(num_levels)
+        self.reset()
+
+    def reset(self):
+        super().reset()
+        self.examples_seen = [0] * self.num_levels
+
+    def accumulate(self, level_ind, loss):
+        self.accumulated_losses[level_ind] += torch.sum(loss).item()
+        self.examples_seen[level_ind] += len(loss)
+
+    def get_accumulated_losses(self):
+        return [self.accumulated_losses[i] / self.examples_seen[i] for i in range(self.num_levels)]
+    
+class MaxAccumulator(Accumulator):
+    def __init__(self, num_levels):
+        super().__init__(num_levels)
+
+    def accumulate(self, level_ind, loss):
+        self.accumulated_losses[level_ind] = max(self.accumulated_losses[level_ind], torch.max(loss).item())
 
 #============================================
 # Validation callback functions for reporting
@@ -36,23 +82,22 @@ class ValidationCallback:
     """
     
     def __init__(self, val_dataloader,
-                 loss_fns, accumulator_fns, loss_names,
-                 num_levels,
-                 test_frequency = 1):
+                 loss_fns, accumulators, loss_names,
+                 num_levels, val_frequency = 1):
         """ ValidationCallback constructor.
 
         @param val_dataloader Validation dataloader
         @param loss_fns List of loss functions
-        @param accumulator_fns List of functions used to accumulate loss over minibatches
+        @param accumulators List of accumulators used to accumulate loss over minibatches
         @param loss_names List of names used for loss functions
         @param num_levels Number of levels in the hierarchy
         @param test_frequency Only report every test_frequency iterations
         """
         self.val_dataloader = val_dataloader
         self.loss_fns = loss_fns
-        self.accumulator_fns = accumulator_fns
+        self.accumulators = accumulators
         self.loss_names = loss_names
-        self.test_frequency = test_frequency
+        self.val_frequency = val_frequency
 
         self.num_losses = len(self.loss_fns)
         self.num_levels = num_levels
@@ -60,31 +105,29 @@ class ValidationCallback:
         self.log = logger.get_MTNN_logger()
 
     def __call__(self, levels, cycle = None):
-        if cycle is not None and (cycle + 1) % self.test_frequency != 0:
+        if cycle is not None and (cycle + 1) % self.val_frequency != 0:
             return
 
         for level in levels:
             level.net.eval()
 
         with torch.no_grad():
-            total_losses = torch.zeros((self.num_levels, self.num_losses))
-            curr_losses = torch.zeros((self.num_levels, self.num_losses))
+            [acc.reset() for acc in self.accumulators]
             for mini_batch_data in self.val_dataloader:
                 inputs, true_outputs  = deviceloader.load_data(mini_batch_data, levels[0].net.device)
                 for level_ind, level in enumerate(levels):
                     outputs = level.net(inputs)
-                    curr_losses[level_ind,:] = \
-                        torch.tensor([self.loss_fns[i](outputs, true_outputs) for i in range(self.num_losses)])
-                for i in range(self.num_losses):
-                    total_losses[:,i] = self.accumulator_fns[i](total_losses[:,i], curr_losses[:,i])
+                    [self.accumulators[i].accumulate(level_ind, loss(outputs, true_outputs))
+                     for i, loss in enumerate(self.loss_fns)]
 
-            self.best_seen = torch.min(total_losses, self.best_seen)
-
+            total_losses = torch.Tensor([acc.get_accumulated_losses() for acc in self.accumulators]).T
+            self.best_seen = torch.min(self.best_seen, total_losses)
+                                       
             for level_ind in range(self.num_levels):
-                loss_str = ", ".join(["{} loss {:.5f} (best seen {:.5f})".
+                loss_str = ", ".join(["{} {:.5e} (best seen {:.5e})".
                                       format(self.loss_names[i], total_losses[level_ind, i],
                                              self.best_seen[level_ind, i]) for i in range(self.num_losses)])
-                cycle_str = "Cycle {}".format(cycle) if cycle is not None else "Finished"
+                cycle_str = "Cycle {}".format(cycle+1) if cycle is not None else "Finished"
                 self.log.warning("Level {}, {}: {}".format(level_ind, cycle_str, loss_str))
 
         for level in levels:
@@ -97,18 +140,18 @@ class RealValidationCallback(ValidationCallback):
     """
     def __init__(self, val_dataloader, num_levels, test_frequency = 1):
         super().__init__(val_dataloader,
-                         [nn.MSELoss(reduction="sum"), linf_loss],
-                         [sum_accumulator, max_accumulator],
-                         ["L2", "Linf"],
+                         [mse_loss, linf_loss],
+                         [MeanAccumulator(num_levels), MaxAccumulator(num_levels)],
+                         ["L2 loss", "Linf loss"],
                          num_levels, test_frequency)
 
 
 class ClassifierValidationCallback(ValidationCallback):
     """ Validation callback class useful for classification data.
     """
-    def __init__(self, val_dataloader, num_levels, test_frequency = 1):
+    def __init__(self, val_dataloader, num_levels, val_frequency = 1):
         super().__init__(val_dataloader,
-                         [nn.CrossEntropyLoss(), classifier_inaccuracy],
-                         [sum_accumulator, sum_accumulator],
-                         ["cross entropy", "accuracy"],
-                         num_levels, test_frequency)
+                         [nn.CrossEntropyLoss(), inaccuracy],
+                         [SumAccumulator(num_levels), MeanAccumulator(num_levels)],
+                         ["cross entropy loss", "fraction incorrect"],
+                         num_levels, val_frequency)

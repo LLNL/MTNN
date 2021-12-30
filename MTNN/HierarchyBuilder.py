@@ -37,7 +37,10 @@ class HierarchyBuilder:
         self.num_smoothing_passes = 1
 
     def set_loss(self, loss_t):
-        """Loss function to use for training."""
+        """Loss function to use for training.
+        
+        @param loss_t <Callable> Function which constructs a converter.
+        """
         self.loss_t = loss_t
         return self
     
@@ -205,7 +208,7 @@ class HierarchyBuilder:
         return hierarchy_levels
 
     @classmethod
-    def build_standard_from_params(cls, net, params):
+    def build_standard_from_params(cls, net, params, loss = nn.MSELoss):
         """Build a hierarchy from a set of input parameters using "typical"
         choices for function approximation.
 
@@ -214,7 +217,7 @@ class HierarchyBuilder:
 
         """
         levelbuilder = cls(params["num_levels"])
-        levelbuilder.set_loss(nn.MSELoss)
+        levelbuilder.set_loss(loss)
         levelbuilder.set_stepper_params(params["learning_rate"], params["momentum"], params["weight_decay"])
         levelbuilder.set_smoother(smoother.SGDSmoother)
 
@@ -233,7 +236,7 @@ class HierarchyBuilder:
 
         levelbuilder.set_restriction_prolongation(SOR.SecondOrderRestriction, SOR.SecondOrderProlongation)
 
-        if params["tau_corrector"] == "null":
+        if params["tau_corrector"] == "none":
             levelbuilder.set_tau_corrector(taucorrector.NullTau)
         elif params["tau_corrector"] == "wholeset":
             levelbuilder.set_tau_corrector(taucorrector.WholeSetTau)

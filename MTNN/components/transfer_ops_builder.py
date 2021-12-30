@@ -35,7 +35,7 @@ class PairwiseOpsBuilder:
             restriction/prolongation as a projection weighted by
             vector norms. This choice ensures the projection exactly
             reconstructing two fine neurons if they point in exactly
-            the same direction.
+            the same direction. Setting this to False makes $B = I$.
 
         """
         self.weighted_projection = weighted_projection
@@ -294,7 +294,7 @@ class PairwiseOpsBuilder_MatrixFree:
         @param weighted_projection <bool> If true, compute restriction/prolongation 
             as a projection weighted by vector norms. This choice ensures the 
             projection exactly reconstructing two fine neurons if they point in 
-            exactly the same direction.
+            exactly the same direction. Setting this to False makes $B=I$.
 
         """
         self.weighted_projection = weighted_projection
