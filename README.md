@@ -115,10 +115,11 @@ derivatives at the coarse level take over.
 
 We provide a few different tau correction options:
 
-*`none` Does not use a tau correction. This forces the training
+-`none` Does not use a tau correction. This forces the training
  procedure to seek out a point in which both the fine and coarse
  networks have small gradients and a positive-definite Hessian.
-*`wholeset` or `minibatch` are two provided variants of using a tau
+
+-`wholeset` or `minibatch` are two provided variants of using a tau
  correction. Because it replaces the coarse gradient, this is weaker
  regularization than `none`. It seeks out a point in which both fine
  and coarse networks have positive-definite Hessians, but only
@@ -129,9 +130,11 @@ We provide a few different tau correction options:
 
 MTNN Dependencies:
 
-*PyTorch
-*Numpy
-*Matplotlib (for plotting results)
+-PyTorch
+
+-Numpy
+
+-Matplotlib (for plotting results)
 
 The [Anaconda Python
 distribution](https://www.anaconda.com/products/individual), free for
@@ -150,12 +153,12 @@ Documentation can be generated via Doxygen with the commands
 There are a number of examples in the `examples` folder which
 illustrate how to set up and train hierarchies of neural networks.
 
-*`circle_example.py` is the best starting point, and shows visually
+-`circle_example.py` is the best starting point, and shows visually
  the regularization benefits of MTNN.
  
-*`darcy_example.py` and `poisson_example.py` show using MTNN to
+-`darcy_example.py` and `poisson_example.py` show using MTNN to
  effective learn function estimation based on PDEs.
 
-*`mnist_example.py` shows using MTNN for a classifcation task. MTNN
+-`mnist_example.py` shows using MTNN for a classifcation task. MTNN
  seems to work best here when the network of interest is squeezed
  between a bigger and a smaller network in the multilevel hierarchy.
