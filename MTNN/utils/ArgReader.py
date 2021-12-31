@@ -77,13 +77,13 @@ class MTNNArgReader(ArgReader):
             "weighted_projection": (bool_reader,
             "In the PariwiseOpsBuilder, weight restriction by vector norms. See PairwiseOpsBuilder for more information. (Default=True)"),
             "rand_seed"    : (int_reader, "Set the pseudorandom number generator seed. (Default=0)"),
-            "log_filename" : (string_reader, "Filename to print log to (Default=./logs/mtnn.txt)")
+            "log_filename" : (string_reader, "Filename to print log to (Default=None)")
             })
         
         self.params_dict = {"smooth_iters" : 4,
                             "weighted_projection": True,
                             "rand_seed": 0,
-                            "log_filename" : "./logs/mtnn.txt"}
+                            "log_filename" : None}
 
 
 class VisualizationArgReader(ArgReader):

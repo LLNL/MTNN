@@ -17,7 +17,6 @@ import numpy as np
 import torch.nn.functional as F
 import sys
 from os import path
-sys.path.append("../")
 from MTNN import models
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
