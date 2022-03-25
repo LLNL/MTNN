@@ -1,6 +1,5 @@
-import torch.nn as nn
-
 from MTNN.utils import logger
+
 
 class Level:
     """A Level in a multilevel hierarchy contains a neural network as well
@@ -41,7 +40,7 @@ class Level:
         except Exception:
             raise
 
-    def postsmooth(self, model, dataloader , verbose=False):
+    def postsmooth(self, model, dataloader, verbose=False):
         try:
             self.log.info("POSTSMOOTHING {}".format(self.smoother.__class__.__name__).center(80, '-'))
             self.smoother.apply(model, dataloader, self.num_smoothing_passes, tau=self.corrector,

@@ -5,7 +5,6 @@ from pathlib import Path, PurePath
 import logging
 
 __all__ = ['create_file_handler',
-           'create_consoler_handler',
            'create_MTNN_logger',
            'get_MTNN_logger']
 
@@ -14,6 +13,7 @@ console_formatter = logging.Formatter('%(message)s')
 file_formatter = logging.Formatter('%(message)s')
 
 MTNN_logger_name = ""
+
 
 def make_path(dir: str, filename: str):
     """
@@ -32,36 +32,39 @@ def make_path(dir: str, filename: str):
     default_file = sys.argv[0].strip(".py") + "_" \
                     + datetime.datetime.today().strftime("%m%d%Y") + "_" \
                     + datetime.datetime.now().strftime("%H:%M:%S") + "_" \
-                    + datetime.datetime.today().strftime("%A") + ext
+                    + datetime.datetime.today().strftime("%A") + filename
     default_path = default_dir.joinpath(Path(filename))
 
-    basedir = PurePath(filepath).parent
-    filename = PurePath(filepath).name
+    basedir = PurePath(filename).parent
+    filename = PurePath(filename).name
 
     # Create base directory
     if not Path(basedir).exists():
         Path(basedir).mkdir(parents=True)
 
     # Create file
-    default_path = Path(basedir, filename)
+    if not filename:
+        file_path = default_path
+    else:
+        file_path = Path(basedir, filename)
 
-    return default_path
+    return file_path
 
 
 def create_file_handler(filename, logging_level):
-    # filepath = make_path(path, ".txt")
-    # print("FILEPATH IS {}".format(filepath))
     fh = logging.FileHandler(filename, mode='a')
     fh.setLevel(level = logging_level)
     fh.setFormatter(file_formatter)
     return fh
+
 
 def create_console_handler(logging_level):
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging_level)
     ch.setFormatter(console_formatter)
     return ch
-    
+
+
 def create_MTNN_logger(logger_name, logging_level=logging.DEBUG, log_filename=None):
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging_level)
@@ -74,6 +77,7 @@ def create_MTNN_logger(logger_name, logging_level=logging.DEBUG, log_filename=No
     global MTNN_logger_name
     MTNN_logger_name = logger_name
     return logger
+
 
 def get_MTNN_logger():
     return logging.getLogger(MTNN_logger_name)

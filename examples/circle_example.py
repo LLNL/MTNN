@@ -11,11 +11,11 @@
 # or lesser multilevel-induced regularization.
 
 # Example execution:
-# python circle_test.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=none
+# python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=none
 #
-# python circle_test.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=wholeset
+# python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=wholeset
 #
-# python circle_test.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=8000 num_levels=1 tau_corrector=none
+# python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=8000 num_levels=1 tau_corrector=none
 
 import torch.nn as nn
 import torch.nn.functional as F

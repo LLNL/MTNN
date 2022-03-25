@@ -27,6 +27,21 @@ from MTNN.utils.validation_callbacks import ClassifierValidationCallback
 arg_reader = MTNNArgReader()
 params = arg_reader.read_args(sys.argv)
 
+# At logging level WARNING, anything logged as log.warning() will print
+# At logging level INFO, anything logged as log.warning() or log.info() will print
+# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
+from MTNN.utils import logger
+log = logger.create_MTNN_logger("MTNN", logging_level="INFO", log_filename=params["log_filename"])
+log.warning("Input parameters:\n{}\n".format(params))
+
+# For reproducibility. Comment out for possibly-improved efficiency
+# but without reproducibility.
+torch.manual_seed(params["rand_seed"])
+np.random.seed(params["rand_seed"])
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
+
+
 class MnistData:
     """
     Loads Pytorch Mnist Dataset into Dataloaders
@@ -63,20 +78,6 @@ dataset = MnistData(trainbatch_size=200, testbatch_size=1000)
 train_loader = dataset.trainloader
 test_loader = dataset.testloader
 
-# At logging level WARNING, anything logged as log.warning() will print
-# At logging level INFO, anything logged as log.warning() or log.info() will print
-# At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
-from MTNN.utils import logger
-log = logger.create_MTNN_logger("MTNN", logging_level="INFO", log_filename=params["log_filename"])
-log.warning("Input parameters:\n{}\n".format(params))
-
-# For reproducibility. Comment out for possibly-improved efficiency
-# but without reproducibility.
-torch.manual_seed(params["rand_seed"])
-np.random.seed(params["rand_seed"])
-torch.backends.cudnn.benchmark = False
-torch.backends.cudnn.deterministic = True
-
 #============================
 # Set up network architecture
 #============================
@@ -109,10 +110,6 @@ mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
                       validation_callback=validation_callback)
 mc.run(dataloader=train_loader)
-
-#=====================================
-# Test
-#=====================================
 
 #=====================================
 # Test

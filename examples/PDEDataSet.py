@@ -1,10 +1,7 @@
-"""
-"""
-
 import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-import pdb
+
 
 class PDEDataset(Dataset):
    def __init__(self, data, select=None, transform=None, flatten=False, job=1):
@@ -36,7 +33,7 @@ class PDEDataset(Dataset):
       self.flatten = flatten
       if job == 2:
          #self.fluxnorm = np.sum(np.sqrt(self.FluxX * self.FluxX + self.FluxY * self.FluxY), axis=(1,2));
-         self.fluxnorm = np.sum(self.FluxX * self.FluxX, axis=(1,2));
+         self.fluxnorm = np.sum(self.FluxX * self.FluxX, axis=(1, 2))
 
    def __len__(self):
       return len(self.Kappa)
@@ -69,7 +66,7 @@ class PDEDataset(Dataset):
       return sample
 
 
-def get_loaders(percent_train, train_batch_size, flatten, filename = "./datasets/poisson/Poisson4.npz"):
+def get_loaders(percent_train, train_batch_size, flatten, filename="./datasets/poisson_data/Poisson4.npz"):
    data = np.load(filename)
    Ndata = len(data['Kappa'])
    Ntest = int(percent_train * Ndata)

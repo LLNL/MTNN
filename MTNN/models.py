@@ -13,8 +13,7 @@ import torch.nn.functional as F
 from MTNN.utils import logger, deviceloader
 
 __all__ = ["MultiLinearNet",
-           "BasicMnistModel",
-           "BasicCifarModel"]
+           "ConvolutionalNet"]
 
 
 ####################################################################
@@ -43,18 +42,18 @@ class BaseModel(nn.Module):
         assert mode in ('light', 'med', 'high')
         if mode == 'light':
             for param_tensor in self.state_dict():
-                log.info(f"\t{param_tensor}  {self.state_dict()[param_tensor].size()}")
+                self.log.info(f"\t{param_tensor}  {self.state_dict()[param_tensor].size()}")
         if mode == 'med':
             for layer_idx, layer in enumerate(self.layers):
-                log.info(f"LAYER: {layer_idx}")
-                log.info(f"\tWEIGHTS {layer.weight}\n\t BIAS{layer.bias}")
+                self.log.info(f"LAYER: {layer_idx}")
+                self.log.info(f"\tWEIGHTS {layer.weight}\n\t BIAS{layer.bias}")
         if mode == 'high':
             for layer_idx, layer in enumerate(self.layers):
-                log.info(f"LAYER: {layer_idx}")
-                log.info(f" \tWEIGHTS {layer.weight}\n\tBIAS {layer.bias}")
-                log.info(f" \tWEIGHT GRADIENTS {layer.weight.grad}\n\tBIAS GRADIENTS {layer.bias.grad}")
+                self.log.info(f"LAYER: {layer_idx}")
+                self.log.info(f" \tWEIGHTS {layer.weight}\n\tBIAS {layer.bias}")
+                self.log.info(f" \tWEIGHT GRADIENTS {layer.weight.grad}\n\tBIAS GRADIENTS {layer.bias.grad}")
 
-    def set_device(self, device): 
+    def set_device(self, device):
         self.layers.to(device)
 
     def log_model(self):
@@ -95,7 +94,7 @@ class MultiLinearNet(BaseModel):
                 modules.append(layer)
 
         self.layers = modules
-        self.layers.to(self.device) 
+        self.layers.to(self.device)
 
     def forward(self, x):
         # Flatten Input
@@ -128,6 +127,7 @@ class MultiLinearNet(BaseModel):
                 outputs.append(x.detach().clone())
 
         return outputs
+
 
 class ConvolutionalNet(BaseModel):
     def __init__(self, conv_channels: list, fc_dims: list, activation, output_activation):

@@ -1,5 +1,3 @@
-
-
 # Typical execution:
 # (Convolutional)
 # python poisson_example.py num_levels=2 num_cycles=100 smooth_iters=4 conv_ch=1,100,200,400 conv_kernel_width=1,11,7,3 conv_stride=1,2,1,1 fc_width=3600,1024,1024 momentum=0.9 learning_rate=0.01 weight_decay=1e-6 tau_corrector=wholeset weighted_projection=True rand_seed=0
@@ -11,7 +9,6 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import sys
-from os import path
 from MTNN import models
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
@@ -44,7 +41,7 @@ import PDEDataSet
 percent_train = 0.9
 train_batch_size = 200
 train_loader, test_loader = PDEDataSet.get_loaders(
-   percent_train, train_batch_size, flatten = True, filename = "./datasets/poisson/Poisson4.npz")
+   percent_train, train_batch_size, flatten = True, filename = "./datasets/poisson_data/Poisson4.npz")
 
 #=====================================
 # Set up network architecture

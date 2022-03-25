@@ -8,6 +8,7 @@ import MTNN.components.paramextractor as PE
 import MTNN.components.similarity_matcher as SimilarityMatcher
 import MTNN.components.transfer_ops_builder as TransferOpsBuilder
 
+
 class HierarchyBuilder:
     """Builds a multilevel hierarchy of neural networks.
 

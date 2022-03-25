@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+
 class DarcyDataset(Dataset):
 
     def __init__(self, file_path, transform=None, reshape = True):
@@ -24,9 +25,10 @@ class DarcyDataset(Dataset):
         if self.transform is not None:
             X = self.transform(X)
 
-        return X,y
+        return X, y
 
-def get_loaders(percent_train, train_batch_size, darcy_path = "./datasets/darcy"):
+
+def get_loaders(percent_train, train_batch_size, darcy_path = "./datasets/darcy_data"):
     train_filename = darcy_path + '/train_data_32.npz'
     test_filename = darcy_path + '/test_data_32.npz'
     orig_filename = darcy_path + '/match_pde_data_u_Q_32_50000.npz'
