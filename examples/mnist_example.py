@@ -1,5 +1,5 @@
 # MNIST is a standard image classification dataset. This example shows
-# how to perform multilevel training with classificaiton data.
+# how to perform multilevel training with classification data.
 
 # Typical execution
 # (Fully-connected, 2 levels)
@@ -7,17 +7,17 @@
 #
 # (Fully-connected, 1 level)
 # python mnist_example.py num_levels=1 num_cycles=200 smooth_iters=4 fc_width=1024,1024,1024 momentum=0.9 learning_rate=0.01 weight_decay=1e-6 tau_corrector=wholeset weighted_projection=True rand_seed=0
+import sys
 
+# pytorch
 import torch
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-import torch.utils.data as td
-import sys
-from os import path
-from MTNN import models
+
+#local
+import MTNN.data as data
+import MTNN.models as models
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
@@ -42,48 +42,16 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 
-class MnistData:
-    """
-    Loads Pytorch Mnist Dataset into Dataloaders
-    Image size is 28 x 28
-        - 60,000 training images
-        -10,000 testing images
-    """
-    preprocess = transforms.Compose(
-        [transforms.ToTensor(), # Convert to 3 Channels
-         transforms.Normalize((0.1307,), (0.3081,))])  # mean, standard deviation
-
-    def __init__(self, trainbatch_size, testbatch_size, root="./datasets"):
-        self.trainset = datasets.MNIST(root=root,
-                                       train=True,
-                                       download=True,
-                                       transform=MnistData.preprocess)
-        self.testset = datasets.MNIST(root=root,
-                                      train=False,
-                                      download=True,
-                                      transform=MnistData.preprocess)
-        self.trainloader = td.DataLoader(self.trainset,
-                                        batch_size=trainbatch_size,
-                                        shuffle=True,
-                                        num_workers=0,
-                                        pin_memory=True)
-        self.testloader = td.DataLoader(self.testset,
-                                        batch_size=testbatch_size,
-                                        shuffle=False,
-                                        num_workers=0,
-                                        pin_memory=True)
-
 # Load Data and Model
-dataset = MnistData(trainbatch_size=200, testbatch_size=1000)
+dataset = data.MnistData(trainbatch_size=200, testbatch_size=1000)
 train_loader = dataset.trainloader
 test_loader = dataset.testloader
 
 #============================
 # Set up network architecture
 #============================
-
 nn_is_cnn = "conv_ch" in params
-#output_activation = lambda x : F.log_softmax(x, dim=0)
+
 if nn_is_cnn:
     conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
     net = models.ConvolutionalNet(conv_info, params["fc_width"] + [10], F.relu, F.log_softmax)
