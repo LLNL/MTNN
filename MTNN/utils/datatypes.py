@@ -139,6 +139,16 @@ class ParamVector:
             new_weights.append(other.weights[layer_id] - self.weights[layer_id])
             new_biases.append(other.weights[layer_id] - self.biases[layer_id])
         return ParamVector(new_weights, new_biases)
+
+    def __rmul__(self, coef):
+        if coef == 1.0:
+            return self
+        new_weights = []
+        new_biases = []
+        for layer_id in range(self.num_layers):
+            new_weights.append(coef * self.weights[layer_id])
+            new_biases.append(coef * self.biases[layer_id])
+        return ParamVector(new_weights, new_biases)
         
     def __rmatmul__(self, R):
         """ Compute the matrix-vector multiplication R @ v.

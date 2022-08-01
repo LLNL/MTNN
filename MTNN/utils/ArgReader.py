@@ -74,6 +74,9 @@ class MTNNArgReader(ArgReader):
             "weight_decay" : (float_reader, "Weight decay in SGD optimizer."),
             "tau_corrector": (string_reader,
                               "Type of tau corrector to use. Options are 'none', 'wholeset', and 'minibatch'"),
+            "tau_scaling"  : (float_reader, "Scale tau correction by this amount. Typically in [0.0, 1.0]. (Default=1.0)"),
+            "param_diff_scale": (float_reader, "Scale coarse-grid correction parameters by this amount on prolongation. (Default=1.0)"),
+            "mom_diff_scale": (float_reader, "Scale coarse-grid correction momentum by this amount on prolongation. (Default=1.0)"),
             "weighted_projection": (bool_reader,
             "In the PariwiseOpsBuilder, weight restriction by vector norms. See PairwiseOpsBuilder for more information. (Default=True)"),
             "rand_seed"    : (int_reader, "Set the pseudorandom number generator seed. (Default=0)"),
@@ -83,6 +86,9 @@ class MTNNArgReader(ArgReader):
         self.params_dict = {"smooth_iters" : 4,
                             "weighted_projection": True,
                             "rand_seed": 0,
+                            "tau_scaling": 1.0,
+                            "param_diff_scale": 1.0,
+                            "mom_diff_scale": 1.0,
                             "log_filename" : None}
 
 

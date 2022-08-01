@@ -136,9 +136,10 @@ class WholeSetTau(BaseTauCorrector):
     true whole-dataset tau.
 
     """
-    def __init__(self, loss_fn, gradient_extractor):
+    def __init__(self, loss_fn, gradient_extractor, scaling = 1.0):
         super().__init__(loss_fn, gradient_extractor)
         self.tau = None
+        self.scaling = scaling
 
     def get_fine_tau(self, batch_idx = None, mini_dataloader = None):
         if self.tau is None:
@@ -164,9 +165,9 @@ class WholeSetTau(BaseTauCorrector):
         # Normalize over number of minibatches in the dataloader
         if self.tau is not None:
             for layer_id in range(len(model.layers)):
-                loss -= (1.0 / num_batches) * \
+                loss -= (self.scaling / num_batches) * \
                     torch.sum(torch.mul(model.layers[layer_id].weight, self.tau_network_format.weights[layer_id]))
-                loss -= (1.0 / num_batches) * \
+                loss -= (self.scaling / num_batches) * \
                     torch.sum(torch.mul(model.layers[layer_id].bias,
                                         self.tau_network_format.biases[layer_id].reshape(-1)))
 
@@ -176,10 +177,11 @@ class MinibatchTau(BaseTauCorrector):
     and cycles through the corrections one at a time.
     """
 
-    def __init__(self, loss_fn, gradient_extractor):
+    def __init__(self, loss_fn, gradient_extractor, scaling = 1.0):
         super().__init__(loss_fn, gradient_extractor)
         self.tau_array = None
         self.finer_level_corrector = None
+        self.scaling = scaling
 
     def get_fine_tau(self, batch_idx, mini_dataloader):
         """In general we won't have already computed the tau for this minibatch,
@@ -217,8 +219,8 @@ class MinibatchTau(BaseTauCorrector):
         # TODO: Correctness here relies on the minibatch ordering not being shuffled. Fix.
         if self.tau_array is not None:
             for layer_id in range(len(model.layers)):
-                loss -= torch.sum(torch.mul(model.layers[layer_id].weight, self.tau_array[batch_idx].weights[layer_id]))
-                loss -= torch.sum(torch.mul(model.layers[layer_id].bias, self.tau_array[batch_idx].biases[layer_id]))
+                loss -= self.scaling * torch.sum(torch.mul(model.layers[layer_id].weight, self.tau_array[batch_idx].weights[layer_id]))
+                loss -= self.scaling * torch.sum(torch.mul(model.layers[layer_id].bias, self.tau_array[batch_idx].biases[layer_id]))
             
 
 

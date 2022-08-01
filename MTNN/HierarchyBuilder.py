@@ -36,6 +36,9 @@ class HierarchyBuilder:
         """
         self.num_levels = num_levels
         self.num_smoothing_passes = 1
+        self.tau_scaling = 1.0
+        self.param_diff_scale = 1.0
+        self.mom_diff_scale = 1.0
 
     def set_loss(self, loss_t):
         """Loss function to use for training.
@@ -179,6 +182,18 @@ class HierarchyBuilder:
         self.num_smoothing_passes = num_smoothing_passes
         return self
 
+    def set_tau_scaling(self, tau_scaling):
+        self.tau_scaling = tau_scaling
+        return self
+
+    def set_param_diff_scale(self, param_diff_scale):
+        self.param_diff_scale = param_diff_scale
+        return self
+
+    def set_mom_diff_scale(self, mom_diff_scale):
+        self.mom_diff_scale = mom_diff_scale
+        return self
+
     #=====================================
     # Construction functionality
     #=====================================
@@ -195,7 +210,8 @@ class HierarchyBuilder:
             matching_method = self.matching_method_t()
             transfer_operator_builder = self.transfer_ops_builder_t()
             restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder)
-            prolongation = self.prolongation_t(parameter_extractor, restriction)
+            prolongation = self.prolongation_t(parameter_extractor, restriction,
+                                               self.param_diff_scale, self.mom_diff_scale)
 
             curr_level = Level(id = level_ind,
                                net = self.net,
@@ -203,7 +219,7 @@ class HierarchyBuilder:
                                prolongation = prolongation,
                                restriction = restriction,
                                num_smoothing_passes = self.num_smoothing_passes,
-                               corrector = self.tau_t(loss_fn, gradient_extractor))
+                               corrector = self.tau_t(loss_fn, gradient_extractor, self.tau_scaling))
                                
             hierarchy_levels.append(curr_level)
         return hierarchy_levels
@@ -236,6 +252,8 @@ class HierarchyBuilder:
             lambda : TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"]))
 
         levelbuilder.set_restriction_prolongation(SOR.SecondOrderRestriction, SOR.SecondOrderProlongation)
+        levelbuilder.set_param_diff_scale(params["param_diff_scale"])
+        levelbuilder.set_mom_diff_scale(params["mom_diff_scale"])
 
         if params["tau_corrector"] == "none":
             levelbuilder.set_tau_corrector(taucorrector.NullTau)
@@ -245,6 +263,7 @@ class HierarchyBuilder:
             levelbuilder.set_tau_corrector(taucorrector.MinibatchTau)
         else:
             raise RuntimeError("Tau corrector '{}' does not exist.".format(params["tau_corrector"]))
+        levelbuilder.set_tau_scaling(params["tau_scaling"])
 
         levelbuilder.set_neural_network(net)
 

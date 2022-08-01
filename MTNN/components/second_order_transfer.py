@@ -121,7 +121,7 @@ class SecondOrderProlongation:
     This class implement the inverse operation of SecondOrderRestriction.
     """
     
-    def __init__(self, parameter_extractor, restriction):
+    def __init__(self, parameter_extractor, restriction, param_diff_scale = 1.0, mom_diff_scale = 1.0):
         """Construct a SecondOrderProlongation.
 
         @param parameter_extractor <ParameterExtractor>.
@@ -129,10 +129,20 @@ class SecondOrderProlongation:
         @param restriction <SecondOrderRestriction>. The restriction
         object to which this SecondOrderProlongation is paired.
 
+        @param param_diff_scale Upon prolongation, scale the parameter
+        correction by this amount before adding it to the fine
+        parameters.
+
+        @param mom_diff_scale Upon prolongation, scale the momentum
+        correction by this amount before adding it to the fine
+        momentum.
+
         """
         self.parameter_extractor = parameter_extractor
         self.restriction = restriction
         self.adjust_bias = self.restriction.adjust_bias
+        self.param_diff_scale = param_diff_scale
+        self.mom_diff_scale = mom_diff_scale
 
     def apply(self, fine_level, coarse_level, dataloader, verbose):
         assert(fine_level.id < coarse_level.id)
@@ -150,8 +160,8 @@ class SecondOrderProlongation:
         coarse_param_diff_library = coarse_param_library - coarse_level.init_params
         coarse_momentum_diff_library = coarse_momentum_library - coarse_level.init_momentum
 
-        fine_param_diff_library = prolongation_ops @ coarse_param_diff_library
-        fine_momentum_diff_library = prolongation_ops @ coarse_momentum_diff_library
+        fine_param_diff_library = self.param_diff_scale * (prolongation_ops @ coarse_param_diff_library)
+        fine_momentum_diff_library = self.mom_diff_scale * (prolongation_ops @ coarse_momentum_diff_library)
 
         self.parameter_extractor.add_to_network(fine_level, fine_param_diff_library,
                                                 fine_momentum_diff_library)

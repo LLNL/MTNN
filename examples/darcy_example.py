@@ -77,8 +77,8 @@ log.info("\nTesting performance prior to training...")
 validation_callback(neural_net_levels, -1)
 log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
-                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
-                      validation_callback=validation_callback)
+               subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
+               validation_callback=validation_callback)
 mc.run(dataloader=train_loader)
 
 

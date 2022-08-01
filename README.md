@@ -44,7 +44,9 @@ Documentation can be generated via Doxygen with the commands
 
 # Examples
 ## Datasets 
-Datasets needed to run the Darcy and Poisson examples can be downloaded here: **[link to dataset]**
+Datasets needed to run the Darcy and Poisson examples can be downloaded from [UC San Diego Library's Digital Collections](https://search.datacite.org/works/10.6075/J0HM58MK), or with the command
+`wget https://library.ucsd.edu/dc/object/bb1852369g/_2_1.tar`
+
 Place the data folders in `/examples/datasets`
 
 ## Running examples
