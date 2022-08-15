@@ -24,7 +24,7 @@ class MultilevelCycle(ABC):
     """
     Base Multigrid Hierarchy
     """
-    def __init__(self, levels, cycles, subsetloader, validation_callback):
+    def __init__(self, levels, cycles, subsetloader, validation_callbacks):
         """@param levels <List[Level]>
 
         @param cycles <int> Number of cycle iterations
@@ -33,7 +33,7 @@ class MultilevelCycle(ABC):
         <core.alg.multigrid.operators.subsetloader> Create a new
         dataloader focused on a subset of data for each cycle.
 
-        @param validation_callback <ValidationCallback> A function to
+        @param validation_callback <List(ValidationCallback)> A list of functions to
         call after every training cycle to measure performance.
 
         """
@@ -43,7 +43,7 @@ class MultilevelCycle(ABC):
         self.num_levels = len(self.levels)
         self.cycles = cycles
         self.subsetloader = subsetloader
-        self.validation_callback = validation_callback
+        self.validation_callbacks = validation_callbacks
         self.log = logger.get_MTNN_logger()
 
     def setup(self, model):
@@ -127,8 +127,9 @@ class VCycle(MultilevelCycle):
                 fine_level.postsmooth(fine_level.net, cycle_dataloader)
 
 
-            if self.validation_callback is not None:
-                self.validation_callback(self.levels, cycle)
+            if self.validation_callbacks is not None:
+                for vc in self.validation_callbacks:
+                    vc(self.levels, cycle)
 
 class WCycle(MultilevelCycle):
     def iterate_on_level(self, dataloader, level_ind):
@@ -175,8 +176,9 @@ class WCycle(MultilevelCycle):
                 
             self.iterate_on_level(dataloader, 0)
             
-            if self.validation_callback is not None:
-                self.validation_callback(self.levels, cycle)
+            if self.validation_callbacks is not None:
+                for vc in self.validation_callbacks:
+                    vc(self.levels, cycle)
 
 
 def FMG(MultilevelCycle):

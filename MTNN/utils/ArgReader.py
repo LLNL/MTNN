@@ -70,7 +70,7 @@ class MTNNArgReader(ArgReader):
             "fc_width"     : (array_reader(int_reader),
                           "Width of each fully-connected layer. In a CNN, FC layers are assumed to come after convolutional layers, and first FC layer must have correct width to match against last convolutional output."),
             "momentum"     : (float_reader, "Momentum in SGD optimizer."),
-            "learning_rate": (float_reader, "Learning rate in SGD optimizer."),
+            "learning_rate": (array_reader(float_reader), "Learning rate per hierarchy level in SGD optimizer. Can be comma-separated array or single value."),
             "weight_decay" : (float_reader, "Weight decay in SGD optimizer."),
             "tau_corrector": (string_reader,
                               "Type of tau corrector to use. Options are 'none', 'wholeset', and 'minibatch'"),
@@ -96,6 +96,7 @@ class VisualizationArgReader(ArgReader):
     def __init__(self):
         super().__init__({
             "file_names" : (array_reader(string_reader), "Array of data files"),
+            "data_name"  : (string_reader, "The name of the data whose loss to display. Typically either 'Validation_Data' or 'Training_Data'"),
             "label_names" : (array_reader(string_reader), "Array of key names for the legend"),
             "work_units" : (array_reader(float_reader),
                             "Array of work unit multipliers associated with each data file. WUs are a ballpark relative measure of computational efforts associated with each Vcycle"),

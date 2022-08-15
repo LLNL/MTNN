@@ -90,11 +90,12 @@ class ValidationCallback:
 
     """
     
-    def __init__(self, val_dataloader,
+    def __init__(self, name, val_dataloader,
                  loss_fns, accumulators, loss_names,
                  num_levels, val_frequency = 1):
         """ ValidationCallback constructor.
 
+        @param name Identifying string name for this callback.
         @param val_dataloader Validation dataloader
         @param loss_fns List of loss functions
         @param accumulators List of accumulators used to accumulate loss over minibatches
@@ -102,6 +103,7 @@ class ValidationCallback:
         @param num_levels Number of levels in the hierarchy
         @param test_frequency Only report every test_frequency iterations
         """
+        self.name = name
         self.val_dataloader = val_dataloader
         self.loss_fns = loss_fns
         self.accumulators = accumulators
@@ -137,7 +139,7 @@ class ValidationCallback:
                                       format(self.loss_names[i], total_losses[level_ind, i],
                                              self.best_seen[level_ind, i]) for i in range(self.num_losses)])
                 cycle_str = "Cycle {}".format(cycle+1) if type(cycle) is not str else cycle
-                self.log.warning("Level {}, {}: {}".format(level_ind, cycle_str, loss_str))
+                self.log.warning("({}) Level {}, {}: {}".format(self.name, level_ind, cycle_str, loss_str))
 
         for level in levels:
             level.net.train()
@@ -147,8 +149,8 @@ class ValidationCallback:
 class RealValidationCallback(ValidationCallback):
     """ Validation callback class useful for real-valued output data.
     """
-    def __init__(self, val_dataloader, num_levels, test_frequency = 1):
-        super().__init__(val_dataloader,
+    def __init__(self, name, val_dataloader, num_levels, test_frequency = 1):
+        super().__init__(name, val_dataloader,
                          [mse_loss, linf_loss],
                          [MeanAccumulator(num_levels), MaxAccumulator(num_levels)],
                          ["L2 loss", "Linf loss"], # Note: vis script reslies in these names being 2 tokens

@@ -50,7 +50,10 @@ class HierarchyBuilder:
     
     def set_stepper_params(self, learning_rate, momentum, weight_decay):
         """Standard SGD optimizer parameters used during smoothing."""
-        self.learning_rate = learning_rate
+        if not isinstance(learning_rate, list):
+            self.learning_rate = [learning_rate] * self.num_levels
+        else:
+            self.learning_rate = learning_rate
         self.momentum = momentum
         self.weight_decay = weight_decay
         return self
@@ -202,8 +205,8 @@ class HierarchyBuilder:
         hierarchy_levels = []
         for level_ind in range(self.num_levels):
             loss_fn = self.loss_t()
-            sgd_smoother = self.smoother_t(loss_fn, self.learning_rate, self.momentum,
-                                           self.weight_decay)
+            sgd_smoother = self.smoother_t(loss_fn, self.learning_rate[level_ind], 
+                                           self.momentum, self.weight_decay)
             converter = self.converter_t()
             parameter_extractor = self.parameter_extractor_t(converter)
             gradient_extractor = self.gradient_extractor_t(converter)

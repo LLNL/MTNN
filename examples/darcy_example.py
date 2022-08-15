@@ -72,13 +72,17 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params)
 # Run Multigrid Trainer
 #=====================================
 
-validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
+train_loader2, test_loader2 = DarcyDataset.get_loaders(percent_train, train_batch_size)
+callbacks = [RealValidationCallback("Validation_Data", test_loader2, params["num_levels"], 10),
+             RealValidationCallback("Training_Data", train_loader2, params["num_levels"], 10)]
 log.info("\nTesting performance prior to training...")
-validation_callback(neural_net_levels, -1)
+for c in callbacks:
+    c(neural_net_levels, -1)
+
 log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
-               validation_callback=validation_callback)
+               validation_callbacks=callbacks)
 mc.run(dataloader=train_loader)
 
 
@@ -88,4 +92,5 @@ mc.run(dataloader=train_loader)
 
 log.info('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels, "finished")
+for c in callbacks:
+    c(neural_net_levels, "finished")
