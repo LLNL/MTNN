@@ -69,14 +69,14 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params, los
 # Run Multigrid Trainer
 #=====================================
 
-validation_callback = ClassifierValidationCallback(test_loader, params["num_levels"], val_frequency=2)
+validation_callbacks = [ClassifierValidationCallback("MNIST Validation", test_loader, params["num_levels"], val_frequency=2)]
 
 log.info("\nTesting performance prior to training...")
-validation_callback(neural_net_levels, -1)
+validation_callbacks[0](neural_net_levels, -1)
 log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
-                      validation_callback=validation_callback)
+                      validation_callbacks=validation_callbacks)
 mc.run(dataloader=train_loader)
 
 #=====================================
@@ -85,4 +85,4 @@ mc.run(dataloader=train_loader)
 
 log.warning('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels, "finished")
+validation_callbacks[0](neural_net_levels, "finished")

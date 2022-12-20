@@ -160,8 +160,8 @@ class RealValidationCallback(ValidationCallback):
 class ClassifierValidationCallback(ValidationCallback):
     """ Validation callback class useful for classification data.
     """
-    def __init__(self, val_dataloader, num_levels, val_frequency = 1):
-        super().__init__(val_dataloader,
+    def __init__(self, name, val_dataloader, num_levels, val_frequency = 1):
+        super().__init__(name, val_dataloader,
                          [nn.CrossEntropyLoss(), inaccuracy],
                          [SumAccumulator(num_levels), MeanAccumulator(num_levels)],
                          ["cross_entropy loss", "fraction incorrect"],

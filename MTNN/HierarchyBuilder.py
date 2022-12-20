@@ -52,6 +52,8 @@ class HierarchyBuilder:
         """Standard SGD optimizer parameters used during smoothing."""
         if not isinstance(learning_rate, list):
             self.learning_rate = [learning_rate] * self.num_levels
+        elif len(learning_rate) == 1:
+            self.learning_rate = learning_rate * self.num_levels
         else:
             self.learning_rate = learning_rate
         self.momentum = momentum

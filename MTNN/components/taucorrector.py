@@ -109,7 +109,7 @@ class NullTau(BaseTauCorrector):
     positive-definite too.
 
     """
-    def __init__(self, loss_fn, gradient_extractor):
+    def __init__(self, loss_fn, gradient_extractor, scaling = None):
         super().__init__(loss_fn, gradient_extractor)
 
     def get_fine_tau(self, batch_idx = None, mini_dataloader = None):
