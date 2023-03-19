@@ -28,6 +28,7 @@ from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
 from MTNN.utils.ArgReader import MTNNArgReader
 from MTNN.utils.validation_callbacks import RealValidationCallback
+from MTNN.utils import deviceloader
 from utils_for_circle_example import CircleHelper
 
 
@@ -57,7 +58,7 @@ net = models.MultiLinearNet([2] + params["fc_width"] + [1], F.relu, lambda x : x
 # Set bias to have reasonable inflection points
 w = net.layers[0].weight.data
 b = net.layers[0].bias.data
-zp = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32))
+zp = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
 b[:] = torch.norm(w, dim=1) * zp
 
 #=====================================

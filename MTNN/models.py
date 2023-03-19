@@ -96,6 +96,12 @@ class MultiLinearNet(BaseModel):
         self.layers = modules
         self.layers.to(self.device)
 
+    def save_params(self, path):
+        torch.save(self.layers, path)
+
+    def load_params(self, path):
+        self.layers = torch.load(path)
+
     def forward(self, x):
         # Flatten Input
         x = x.view(x.size(0), -1)
@@ -165,6 +171,12 @@ class ConvolutionalNet(BaseModel):
 
         self.layers = modules
         self.layers.to(self.device)
+
+    def save_params(self, path):
+        torch.save(self.layers, path)
+
+    def load_params(self, path):
+        self.layers = torch.load(path)
 
     def forward(self, x):
         for i in range(self.num_conv_layers):

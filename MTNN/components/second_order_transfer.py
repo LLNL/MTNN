@@ -30,7 +30,8 @@ class SecondOrderRestriction:
 
     """
 
-    def __init__(self, parameter_extractor, matching_method, transfer_operator_builder, adjust_bias = False):
+    def __init__(self, parameter_extractor, matching_method, transfer_operator_builder, 
+                 redo_matching_frequency = 10, adjust_bias = False):
         """Construct the SecondOrderRestrcition.
 
         @param parameter_extractor <ParameterExtractor>
@@ -44,6 +45,9 @@ class SecondOrderRestriction:
         a TransferOps object which can perform restriction and
         prolongation.
 
+        @param redo_matching_frequency <int>. Redo the fine-to-coarse
+        mapping every redo_matching_frequency cycles.
+
         @param adjust_bias <bool>. Whether or not to adjust the coarse
         biases by cos(theta/2), where theta is the weight vector angle
         between the two matched neurons.
@@ -55,7 +59,7 @@ class SecondOrderRestriction:
         self.adjust_bias = adjust_bias
 
         self.coarse_mapping = None
-        self.redo_matching_frequency = 10
+        self.redo_matching_frequency = redo_matching_frequency
         self.cycles_since_last_matching = self.redo_matching_frequency
 
     def apply(self, fine_level, coarse_level, dataloader, verbose=False):

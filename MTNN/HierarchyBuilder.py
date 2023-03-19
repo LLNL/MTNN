@@ -131,7 +131,7 @@ class HierarchyBuilder:
         self.transfer_ops_builder_t = transfer_ops_builder_t
         return self
     
-    def set_restriction_prolongation(self, restriction_t, prolongation_t):
+    def set_restriction_prolongation(self, restriction_t, prolongation_t, redo_matching_frequency=10):
         """Set the restriction and prolongation methods.
 
         Currently supports SecondOrderRestriction and
@@ -139,10 +139,12 @@ class HierarchyBuilder:
 
         @param restriction_t <Class> The restriction operator data type.
         @param prolongation_t <class> The prolongation operator data type.
-
+        @param redo_matching_frequency <int>. Redo the fine-to-coarse
+           mapping every redo_matching_frequency cycles.
         """
         self.restriction_t = restriction_t
         self.prolongation_t = prolongation_t
+        self.redo_matching_frequency = redo_matching_frequency
         return self
     
     def set_tau_corrector(self, tau_t):
@@ -214,7 +216,7 @@ class HierarchyBuilder:
             gradient_extractor = self.gradient_extractor_t(converter)
             matching_method = self.matching_method_t()
             transfer_operator_builder = self.transfer_ops_builder_t()
-            restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder)
+            restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder, self.redo_matching_frequency)
             prolongation = self.prolongation_t(parameter_extractor, restriction,
                                                self.param_diff_scale, self.mom_diff_scale)
 
@@ -256,7 +258,7 @@ class HierarchyBuilder:
         levelbuilder.set_transfer_ops_builder(
             lambda : TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"]))
 
-        levelbuilder.set_restriction_prolongation(SOR.SecondOrderRestriction, SOR.SecondOrderProlongation)
+        levelbuilder.set_restriction_prolongation(SOR.SecondOrderRestriction, SOR.SecondOrderProlongation, params["redo_matching_frequency"])
         levelbuilder.set_param_diff_scale(params["param_diff_scale"])
         levelbuilder.set_mom_diff_scale(params["mom_diff_scale"])
 

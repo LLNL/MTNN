@@ -69,9 +69,9 @@ class MultilevelCycle(ABC):
 ############################################################################
 class VCycle(MultilevelCycle):
     def log_cycle_status(self, cycle, num_cycles):
-        self.log.warning("\n" + f"CYCLE {cycle+1} / {num_cycles}".center(100, "="))
+        self.log.info("\n" + f"CYCLE {cycle+1} / {num_cycles}".center(100, "="))
     def log_level_status(self, cycle, max_cycles, level_ind, num_levels, msg):
-        self.log.warning(f"{msg} Cycle {cycle+1}/{max_cycles} Level {level_ind+1}/{num_levels}")
+        self.log.info(f"{msg} Cycle {cycle+1}/{max_cycles} Level {level_ind+1}/{num_levels}")
 
     
     def run(self, dataloader):

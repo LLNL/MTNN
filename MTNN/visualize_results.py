@@ -51,6 +51,7 @@ best_seen_by_file = {}
 loss_names = set()
 for i,fname in enumerate(params["file_names"]):
     file_cycle_arrays, file_loss_arrays, file_best_seen_dict = read_single_file(fname, params["data_name"])
+    print("{} cycles in {}".format(file_cycle_arrays[0][-1], fname))
     loss_arrays_by_file[fname] = file_loss_arrays
     cycle_arrays_by_file[fname] = file_cycle_arrays
     best_seen_by_file[fname] = file_best_seen_dict
@@ -76,10 +77,10 @@ if params["smoothing_window"] > 1:
     for fname, loss_arrays_for_fname in loss_arrays_by_file.items():
         for loss_name, losses_dict in loss_arrays_for_fname.items():
             for hier_level in losses_dict.keys():
-                losses_dict[hier_level] = np.convolve(losses_dict[hier_level], conv_arr, mode="same")[int(conv_length/2) : -int(conv_length/2)]
-
+                losses_dict[hier_level] = np.convolve(losses_dict[hier_level], conv_arr, mode="same")
 
 # For each kind of loss, plot them
+print(loss_names)
 for loss_name in loss_names:
     for fname, label in labelnames_by_file.items():
         WU_mult = WU_multipliers_by_file[fname]
@@ -87,7 +88,7 @@ for loss_name in loss_names:
             if hier_level not in params["hier_levels"]:
                 continue
             WU_arr = WU_mult * np.array(cycle_arrays_by_file[fname][hier_level])
-            plt.semilogy(WU_arr, losses, label="{}, L{}".format(labelnames_by_file[fname], hier_level+1))
+            plt.semilogy(WU_arr[:-1], losses[:-1], label="{}, L{}".format(labelnames_by_file[fname], hier_level))
                        
     print("printing loss {}".format(loss_name))
     plt.legend()
@@ -95,7 +96,9 @@ for loss_name in loss_names:
     plt.xlabel("Work Units")
     plt.ylabel("Loss")
     if "save_prefix" in params:
-        plt.savefig(params["save_prefix"] + "_l2.pdf", bbox_inches="tight")
+        loss_type = loss_name.split()[0]
+        fname = "{}_{}.pdf".format(params["save_prefix"], loss_type)
+        plt.savefig(fname, bbox_inches="tight")
         plt.cla()
     else:
         plt.show()

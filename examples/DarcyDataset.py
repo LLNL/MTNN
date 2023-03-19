@@ -29,7 +29,7 @@ class DarcyDataset(Dataset):
 
 
 def get_loaders(percent_train, train_batch_size, 
-                darcy_path = "./PDE_DarcyFlow_Poisson_ConvectionDiffusion_Data/data/darcy_data"):
+                darcy_path = "./datasets/PDE_DarcyFlow_Poisson_ConvectionDiffusion_Data/data/darcy_data"):
     train_filename = darcy_path + '/train_data_32.npz'
     test_filename = darcy_path + '/test_data_32.npz'
     orig_filename = darcy_path + '/match_pde_data_u_Q_32_50000.npz'

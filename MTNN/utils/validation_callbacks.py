@@ -166,3 +166,14 @@ class ClassifierValidationCallback(ValidationCallback):
                          [SumAccumulator(num_levels), MeanAccumulator(num_levels)],
                          ["cross_entropy loss", "fraction incorrect"],
                          num_levels, val_frequency)
+
+
+class SaveParamsCallback:
+    def __init__(self, save_location, save_frequency = 10):
+        self.save_location = save_location
+        self.save_frequency = 10
+
+    def __call__(self, levels, cycle):
+        if type(cycle) is not str and (cycle + 1) % self.save_frequency != 0:
+            return
+        levels[0].net.save_params(self.save_location)
