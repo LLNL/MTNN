@@ -17,7 +17,9 @@ import numpy as np
 import torch.nn.functional as F
 import sys
 from os import path
-from MTNN import models
+#from MTNN import models
+from MTNN.architectures.MultilinearModel import MultilinearNet
+from MTNN.architectures.ConvolutionalModel import ConvolutionalNet
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
@@ -57,9 +59,9 @@ train_loader, test_loader = DarcyDataset.get_loaders(percent_train, train_batch_
 nn_is_cnn = "conv_ch" in params
 if nn_is_cnn:
     conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
-    net = models.ConvolutionalNet(conv_info, params["fc_width"] + [1], F.relu, lambda x : x)
+    net = ConvolutionalNet(conv_info, params["fc_width"] + [1], F.relu, lambda x : x)
 else:
-    net = models.MultiLinearNet([1024] + params["fc_width"] + [1], F.relu, lambda x : x)
+    net = MultilinearNet([1024] + params["fc_width"] + [1], F.relu, lambda x : x)
 
 if "load_params_from" in params:
     net.load_params(params["load_params_from"])

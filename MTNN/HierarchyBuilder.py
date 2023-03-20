@@ -3,11 +3,13 @@ import torch.nn as nn
 from MTNN.Level import Level
 from MTNN.components import taucorrector, smoother
 import MTNN.components.second_order_transfer as SOR
-import MTNN.components.converter as SOC
+#import MTNN.components.converter as SOC
 import MTNN.components.paramextractor as PE
 import MTNN.components.similarity_matcher as SimilarityMatcher
 import MTNN.components.transfer_ops_builder as TransferOpsBuilder
-import MTNN.components.CoarseModelFactory as CMF
+#import MTNN.components.CoarseModelFactory as CMF
+from MTNN.architectures.MultilinearModel import *
+from MTNN.architectures.ConvolutionalModel import *
 
 class HierarchyBuilder:
     """Builds a multilevel hierarchy of neural networks.
@@ -261,11 +263,11 @@ class HierarchyBuilder:
 
         nn_is_cnn = "conv_ch" in params
         if nn_is_cnn:
-            levelbuilder.set_converter(lambda : SOC.ConvolutionalConverter(net.num_conv_layers))
-            levelbuilder.set_coarse_model_factory(lambda : CMF.CoarseConvolutionalFactory())
+            levelbuilder.set_converter(lambda : ConvolutionalConverter(net.num_conv_layers))
+            levelbuilder.set_coarse_model_factory(lambda : CoarseConvolutionalFactory())
         else:
-            levelbuilder.set_converter(SOC.MultiLinearConverter)
-            levelbuilder.set_coarse_model_factory(lambda : CMF.CoarseMultilinearFactory())
+            levelbuilder.set_converter(lambda : MultilinearConverter())
+            levelbuilder.set_coarse_model_factory(lambda : CoarseMultilinearFactory())
         
         levelbuilder.set_extractors(PE.ParamMomentumExtractor, PE.GradientExtractor)
         levelbuilder.set_matching_method(
