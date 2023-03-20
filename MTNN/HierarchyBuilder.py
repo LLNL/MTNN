@@ -7,7 +7,7 @@ import MTNN.components.converter as SOC
 import MTNN.components.paramextractor as PE
 import MTNN.components.similarity_matcher as SimilarityMatcher
 import MTNN.components.transfer_ops_builder as TransferOpsBuilder
-
+import MTNN.components.CoarseModelFactory as CMF
 
 class HierarchyBuilder:
     """Builds a multilevel hierarchy of neural networks.
@@ -130,6 +130,18 @@ class HierarchyBuilder:
         """
         self.transfer_ops_builder_t = transfer_ops_builder_t
         return self
+
+    def set_coarse_model_factory(self, coarse_model_factory_t):
+        """Set the coarse model factory type, which is used to build a new
+        coarse model with the appropriate architecture given a coarse
+        mapping.
+
+        @param coarse_model_factory_t Function which constructs a
+        coarse model factory.
+
+        """
+        self.coarse_model_factory_t = coarse_model_factory_t
+        return self
     
     def set_restriction_prolongation(self, restriction_t, prolongation_t, redo_matching_frequency=10):
         """Set the restriction and prolongation methods.
@@ -216,7 +228,9 @@ class HierarchyBuilder:
             gradient_extractor = self.gradient_extractor_t(converter)
             matching_method = self.matching_method_t()
             transfer_operator_builder = self.transfer_ops_builder_t()
-            restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder, self.redo_matching_frequency)
+            coarse_model_factory = self.coarse_model_factory_t()
+            restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder,
+                                             coarse_model_factory, self.redo_matching_frequency)
             prolongation = self.prolongation_t(parameter_extractor, restriction,
                                                self.param_diff_scale, self.mom_diff_scale)
 
@@ -248,8 +262,10 @@ class HierarchyBuilder:
         nn_is_cnn = "conv_ch" in params
         if nn_is_cnn:
             levelbuilder.set_converter(lambda : SOC.ConvolutionalConverter(net.num_conv_layers))
+            levelbuilder.set_coarse_model_factory(lambda : CMF.CoarseConvolutionalFactory())
         else:
             levelbuilder.set_converter(SOC.MultiLinearConverter)
+            levelbuilder.set_coarse_model_factory(lambda : CMF.CoarseMultilinearFactory())
         
         levelbuilder.set_extractors(PE.ParamMomentumExtractor, PE.GradientExtractor)
         levelbuilder.set_matching_method(

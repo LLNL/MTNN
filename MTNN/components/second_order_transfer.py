@@ -31,7 +31,7 @@ class SecondOrderRestriction:
     """
 
     def __init__(self, parameter_extractor, matching_method, transfer_operator_builder, 
-                 redo_matching_frequency = 10, adjust_bias = False):
+                 coarse_model_factory, redo_matching_frequency = 10, adjust_bias = False):
         """Construct the SecondOrderRestrcition.
 
         @param parameter_extractor <ParameterExtractor>
@@ -45,6 +45,11 @@ class SecondOrderRestriction:
         a TransferOps object which can perform restriction and
         prolongation.
 
+        @param coarse_model_factory <CoarseModelFactory>. Takes as
+        input a fine neural network and a CoarseMapping and produces
+        an uninitialized coarse network that has the appropriate
+        architecture.
+
         @param redo_matching_frequency <int>. Redo the fine-to-coarse
         mapping every redo_matching_frequency cycles.
 
@@ -56,7 +61,8 @@ class SecondOrderRestriction:
         self.parameter_extractor = parameter_extractor
         self.matching_method = matching_method
         self.transfer_operator_builder = transfer_operator_builder
-        self.adjust_bias = adjust_bias
+        self.coarse_model_factory = coarse_model_factory
+        self.adjust_bias = adjust_bias #deprecated? this looks not used
 
         self.coarse_mapping = None
         self.redo_matching_frequency = redo_matching_frequency
@@ -87,29 +93,31 @@ class SecondOrderRestriction:
 
         # Construct new NN that has the same architecture as the fine
         # NN but with coarsened parametrs.
-        # TODO: Refactor for architecture extensibility.
-        # TODO: Refactor to reuse existing coarse NN for efficiency.
-        if fine_level.net.__class__.__name__ == "MultiLinearNet":
-            coarse_level_dims = [fine_level.net.layers[0].in_features] + self.coarse_mapping.num_coarse_channels + \
-                [fine_level.net.layers[-1].out_features]
-            coarse_level.net = fine_level.net.__class__(coarse_level_dims,
-                                                        fine_level.net.activation,
-                                                        fine_level.net.output)
-            coarse_level.net.set_device(fine_level.net.device)
-        elif fine_level.net.__class__.__name__ == "ConvolutionalNet":
-            num_conv_layers = fine_level.net.num_conv_layers
-            out_ch, kernel_widths, strides = zip(*fine_level.net.conv_channels)
-            out_ch = [out_ch[0]] + self.coarse_mapping.num_coarse_channels[:num_conv_layers]
-            conv_channels = list(zip(out_ch, kernel_widths, strides))
-            first_fc_width = conv_channels[-1][0] * coarse_param_library.weights[num_conv_layers].shape[0]
-            fc_dims = [first_fc_width] + self.coarse_mapping.num_coarse_channels[num_conv_layers:] + \
-                      [fine_level.net.layers[-1].out_features]
-            coarse_level.net = fine_level.net.__class__(conv_channels,
-                                                        fc_dims,
-                                                        fine_level.net.activation,
-                                                        fine_level.net.output_activation)
-        else:
-            raise RuntimeError("SecondOrderRestriction::apply: {} is not a currently supported network type. You can add support for it in the SecondOrderRestrction class.".format(fine_level.net.__class__.__name__))
+        coarse_level.net = self.coarse_model_factory.build(fine_level.net, self.coarse_mapping)
+
+        # # TODO: Refactor for architecture extensibility.
+        # # TODO: Refactor to reuse existing coarse NN for efficiency.
+        # if fine_level.net.__class__.__name__ == "MultiLinearNet":
+        #     coarse_level_dims = [fine_level.net.layers[0].in_features] + self.coarse_mapping.num_coarse_channels + \
+        #         [fine_level.net.layers[-1].out_features]
+        #     coarse_level.net = fine_level.net.__class__(coarse_level_dims,
+        #                                                 fine_level.net.activation,
+        #                                                 fine_level.net.output)
+        #     coarse_level.net.set_device(fine_level.net.device)
+        # elif fine_level.net.__class__.__name__ == "ConvolutionalNet":
+        #     num_conv_layers = fine_level.net.num_conv_layers
+        #     out_ch, kernel_widths, strides = zip(*fine_level.net.conv_channels)
+        #     out_ch = [out_ch[0]] + self.coarse_mapping.num_coarse_channels[:num_conv_layers]
+        #     conv_channels = list(zip(out_ch, kernel_widths, strides))
+        #     first_fc_width = conv_channels[-1][0] * coarse_param_library.weights[num_conv_layers].shape[0]
+        #     fc_dims = [first_fc_width] + self.coarse_mapping.num_coarse_channels[num_conv_layers:] + \
+        #               [fine_level.net.layers[-1].out_features]
+        #     coarse_level.net = fine_level.net.__class__(conv_channels,
+        #                                                 fc_dims,
+        #                                                 fine_level.net.activation,
+        #                                                 fine_level.net.output_activation)
+        # else:
+        #     raise RuntimeError("SecondOrderRestriction::apply: {} is not a currently supported network type. You can add support for it in the SecondOrderRestrction class.".format(fine_level.net.__class__.__name__))
         
         self.parameter_extractor.insert_into_network(coarse_level, coarse_param_library,
                                                      coarse_momentum_library)
