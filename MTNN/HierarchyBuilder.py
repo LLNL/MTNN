@@ -3,11 +3,9 @@ import torch.nn as nn
 from MTNN.Level import Level
 from MTNN.components import taucorrector, smoother
 import MTNN.components.second_order_transfer as SOR
-#import MTNN.components.converter as SOC
 import MTNN.components.paramextractor as PE
 import MTNN.components.similarity_matcher as SimilarityMatcher
 import MTNN.components.transfer_ops_builder as TransferOpsBuilder
-#import MTNN.components.CoarseModelFactory as CMF
 from MTNN.architectures.MultilinearModel import *
 from MTNN.architectures.ConvolutionalModel import *
 
