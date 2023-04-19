@@ -3,11 +3,11 @@ import torch.nn as nn
 from MTNN.Level import Level
 from MTNN.components import taucorrector, smoother
 import MTNN.components.second_order_transfer as SOR
-import MTNN.components.converter as SOC
 import MTNN.components.paramextractor as PE
 import MTNN.components.similarity_matcher as SimilarityMatcher
 import MTNN.components.transfer_ops_builder as TransferOpsBuilder
-
+from MTNN.architectures.MultilinearModel import *
+from MTNN.architectures.ConvolutionalModel import *
 
 class HierarchyBuilder:
     """Builds a multilevel hierarchy of neural networks.
@@ -36,6 +36,9 @@ class HierarchyBuilder:
         """
         self.num_levels = num_levels
         self.num_smoothing_passes = 1
+        self.tau_scaling = 1.0
+        self.param_diff_scale = 1.0
+        self.mom_diff_scale = 1.0
 
     def set_loss(self, loss_t):
         """Loss function to use for training.
@@ -47,7 +50,12 @@ class HierarchyBuilder:
     
     def set_stepper_params(self, learning_rate, momentum, weight_decay):
         """Standard SGD optimizer parameters used during smoothing."""
-        self.learning_rate = learning_rate
+        if not isinstance(learning_rate, list):
+            self.learning_rate = [learning_rate] * self.num_levels
+        elif len(learning_rate) == 1:
+            self.learning_rate = learning_rate * self.num_levels
+        else:
+            self.learning_rate = learning_rate
         self.momentum = momentum
         self.weight_decay = weight_decay
         return self
@@ -122,8 +130,20 @@ class HierarchyBuilder:
         """
         self.transfer_ops_builder_t = transfer_ops_builder_t
         return self
+
+    def set_coarse_model_factory(self, coarse_model_factory_t):
+        """Set the coarse model factory type, which is used to build a new
+        coarse model with the appropriate architecture given a coarse
+        mapping.
+
+        @param coarse_model_factory_t Function which constructs a
+        coarse model factory.
+
+        """
+        self.coarse_model_factory_t = coarse_model_factory_t
+        return self
     
-    def set_restriction_prolongation(self, restriction_t, prolongation_t):
+    def set_restriction_prolongation(self, restriction_t, prolongation_t, redo_matching_frequency=10):
         """Set the restriction and prolongation methods.
 
         Currently supports SecondOrderRestriction and
@@ -131,10 +151,12 @@ class HierarchyBuilder:
 
         @param restriction_t <Class> The restriction operator data type.
         @param prolongation_t <class> The prolongation operator data type.
-
+        @param redo_matching_frequency <int>. Redo the fine-to-coarse
+           mapping every redo_matching_frequency cycles.
         """
         self.restriction_t = restriction_t
         self.prolongation_t = prolongation_t
+        self.redo_matching_frequency = redo_matching_frequency
         return self
     
     def set_tau_corrector(self, tau_t):
@@ -179,6 +201,18 @@ class HierarchyBuilder:
         self.num_smoothing_passes = num_smoothing_passes
         return self
 
+    def set_tau_scaling(self, tau_scaling):
+        self.tau_scaling = tau_scaling
+        return self
+
+    def set_param_diff_scale(self, param_diff_scale):
+        self.param_diff_scale = param_diff_scale
+        return self
+
+    def set_mom_diff_scale(self, mom_diff_scale):
+        self.mom_diff_scale = mom_diff_scale
+        return self
+
     #=====================================
     # Construction functionality
     #=====================================
@@ -187,15 +221,18 @@ class HierarchyBuilder:
         hierarchy_levels = []
         for level_ind in range(self.num_levels):
             loss_fn = self.loss_t()
-            sgd_smoother = self.smoother_t(loss_fn, self.learning_rate, self.momentum,
-                                           self.weight_decay)
+            sgd_smoother = self.smoother_t(loss_fn, self.learning_rate[level_ind], 
+                                           self.momentum, self.weight_decay)
             converter = self.converter_t()
             parameter_extractor = self.parameter_extractor_t(converter)
             gradient_extractor = self.gradient_extractor_t(converter)
             matching_method = self.matching_method_t()
             transfer_operator_builder = self.transfer_ops_builder_t()
-            restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder)
-            prolongation = self.prolongation_t(parameter_extractor, restriction)
+            coarse_model_factory = self.coarse_model_factory_t()
+            restriction = self.restriction_t(parameter_extractor, matching_method, transfer_operator_builder,
+                                             coarse_model_factory, self.redo_matching_frequency)
+            prolongation = self.prolongation_t(parameter_extractor, restriction,
+                                               self.param_diff_scale, self.mom_diff_scale)
 
             curr_level = Level(id = level_ind,
                                net = self.net,
@@ -203,7 +240,7 @@ class HierarchyBuilder:
                                prolongation = prolongation,
                                restriction = restriction,
                                num_smoothing_passes = self.num_smoothing_passes,
-                               corrector = self.tau_t(loss_fn, gradient_extractor))
+                               corrector = self.tau_t(loss_fn, gradient_extractor, self.tau_scaling))
                                
             hierarchy_levels.append(curr_level)
         return hierarchy_levels
@@ -224,9 +261,11 @@ class HierarchyBuilder:
 
         nn_is_cnn = "conv_ch" in params
         if nn_is_cnn:
-            levelbuilder.set_converter(lambda : SOC.ConvolutionalConverter(net.num_conv_layers))
+            levelbuilder.set_converter(lambda : ConvolutionalConverter(net.num_conv_layers))
+            levelbuilder.set_coarse_model_factory(lambda : CoarseConvolutionalFactory())
         else:
-            levelbuilder.set_converter(SOC.MultiLinearConverter)
+            levelbuilder.set_converter(lambda : MultilinearConverter())
+            levelbuilder.set_coarse_model_factory(lambda : CoarseMultilinearFactory())
         
         levelbuilder.set_extractors(PE.ParamMomentumExtractor, PE.GradientExtractor)
         levelbuilder.set_matching_method(
@@ -235,7 +274,9 @@ class HierarchyBuilder:
         levelbuilder.set_transfer_ops_builder(
             lambda : TransferOpsBuilder.PairwiseOpsBuilder_MatrixFree(weighted_projection=params["weighted_projection"]))
 
-        levelbuilder.set_restriction_prolongation(SOR.SecondOrderRestriction, SOR.SecondOrderProlongation)
+        levelbuilder.set_restriction_prolongation(SOR.SecondOrderRestriction, SOR.SecondOrderProlongation, params["redo_matching_frequency"])
+        levelbuilder.set_param_diff_scale(params["param_diff_scale"])
+        levelbuilder.set_mom_diff_scale(params["mom_diff_scale"])
 
         if params["tau_corrector"] == "none":
             levelbuilder.set_tau_corrector(taucorrector.NullTau)
@@ -245,6 +286,7 @@ class HierarchyBuilder:
             levelbuilder.set_tau_corrector(taucorrector.MinibatchTau)
         else:
             raise RuntimeError("Tau corrector '{}' does not exist.".format(params["tau_corrector"]))
+        levelbuilder.set_tau_scaling(params["tau_scaling"])
 
         levelbuilder.set_neural_network(net)
 

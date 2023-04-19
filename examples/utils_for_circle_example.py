@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset, DataLoader
+from MTNN.utils import deviceloader
 
 def generate_radial_inputs(num_samples, max_radius = 1.0):
     """ Generate 2D data in a radial fashion.
@@ -64,8 +65,8 @@ class CircleHelper:
             
     def plot_outputs(self, net, level):
         with torch.no_grad():
-            w = net.layers[0].weight.data
-            b = net.layers[0].bias.data
+            w = net.layers[0].weight.data.cpu()
+            b = net.layers[0].bias.data.cpu()
 
             fig, axs = plt.subplots(2,2)
             color_levels = int(np.sqrt(self.num_test_samples) / 2)
@@ -81,7 +82,7 @@ class CircleHelper:
             axs[0,1].set_title("Training function")
             
             x, y_true = next(iter(self.test_loader))
-            y_net = net(x)
+            y_net = net(x.to(deviceloader.get_device())).cpu()
             cntr10 = axs[1,0].tricontourf(x[:,0], x[:,1], y_net[:,0], levels=color_levels)
             fig.colorbar(cntr10, ax=axs[1,0])
             axs[1,0].plot(x[:,0], x[:,1], 'ko', ms=1)

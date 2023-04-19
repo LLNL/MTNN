@@ -70,19 +70,29 @@ class MTNNArgReader(ArgReader):
             "fc_width"     : (array_reader(int_reader),
                           "Width of each fully-connected layer. In a CNN, FC layers are assumed to come after convolutional layers, and first FC layer must have correct width to match against last convolutional output."),
             "momentum"     : (float_reader, "Momentum in SGD optimizer."),
-            "learning_rate": (float_reader, "Learning rate in SGD optimizer."),
+            "learning_rate": (array_reader(float_reader), "Learning rate per hierarchy level in SGD optimizer. Can be comma-separated array or single value."),
             "weight_decay" : (float_reader, "Weight decay in SGD optimizer."),
             "tau_corrector": (string_reader,
                               "Type of tau corrector to use. Options are 'none', 'wholeset', and 'minibatch'"),
+            "tau_scaling"  : (float_reader, "Scale tau correction by this amount. Typically in [0.0, 1.0]. (Default=1.0)"),
+            "param_diff_scale": (float_reader, "Scale coarse-grid correction parameters by this amount on prolongation. (Default=1.0)"),
+            "mom_diff_scale": (float_reader, "Scale coarse-grid correction momentum by this amount on prolongation. (Default=1.0)"),
+            "redo_matching_frequency" : (int_reader, "Redo the fine-to-coarse mapping every redo_matching_frequency cycles. (Default=10)"),
             "weighted_projection": (bool_reader,
             "In the PariwiseOpsBuilder, weight restriction by vector norms. See PairwiseOpsBuilder for more information. (Default=True)"),
             "rand_seed"    : (int_reader, "Set the pseudorandom number generator seed. (Default=0)"),
-            "log_filename" : (string_reader, "Filename to print log to (Default=None)")
+            "log_filename" : (string_reader, "Filename to print log to (Default=None)"),
+            "load_params_from" : (string_reader, "If specified, network parameters are loaded from this file at the beginning of training. (Default=None)"),
+            "save_params_at" : (string_reader, "If specified, network parameters are saved at this filename during training. (Default=None)")
             })
         
         self.params_dict = {"smooth_iters" : 4,
                             "weighted_projection": True,
                             "rand_seed": 0,
+                            "tau_scaling": 1.0,
+                            "param_diff_scale": 1.0,
+                            "mom_diff_scale": 1.0,
+                            "redo_matching_frequency": 10,
                             "log_filename" : None}
 
 
@@ -90,6 +100,7 @@ class VisualizationArgReader(ArgReader):
     def __init__(self):
         super().__init__({
             "file_names" : (array_reader(string_reader), "Array of data files"),
+            "data_name"  : (string_reader, "The name of the data whose loss to display. Typically either 'Validation_Data' or 'Training_Data'"),
             "label_names" : (array_reader(string_reader), "Array of key names for the legend"),
             "work_units" : (array_reader(float_reader),
                             "Array of work unit multipliers associated with each data file. WUs are a ballpark relative measure of computational efforts associated with each Vcycle"),

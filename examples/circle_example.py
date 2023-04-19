@@ -28,6 +28,7 @@ from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
 from MTNN.utils.ArgReader import MTNNArgReader
 from MTNN.utils.validation_callbacks import RealValidationCallback
+from MTNN.utils import deviceloader
 from utils_for_circle_example import CircleHelper
 
 
@@ -57,7 +58,7 @@ net = models.MultiLinearNet([2] + params["fc_width"] + [1], F.relu, lambda x : x
 # Set bias to have reasonable inflection points
 w = net.layers[0].weight.data
 b = net.layers[0].bias.data
-zp = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32))
+zp = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
 b[:] = torch.norm(w, dim=1) * zp
 
 #=====================================
@@ -75,8 +76,8 @@ circle_helper = CircleHelper(num_train_samples=400, num_test_samples=900)
 train_loader, test_loader = circle_helper.get_dataloaders()
 circle_helper.plot_outputs(neural_net_levels[0].net, 1)
 
-validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
-validation_callback(neural_net_levels, -1)
+validation_callbacks = [RealValidationCallback("Circle Validation", test_loader, params["num_levels"], 1)]
+validation_callbacks[0](neural_net_levels, -1)
 log.info("\n")
 
 #=====================================
@@ -85,7 +86,7 @@ log.info("\n")
 
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
                       subsetloader = subsetloader.WholeSetLoader(), # Note this subsetloader is different from Darcy and Poisson examples
-                      validation_callback=validation_callback)
+                      validation_callbacks=validation_callbacks)
 mc.run(dataloader=train_loader)
 
 
@@ -95,7 +96,7 @@ mc.run(dataloader=train_loader)
 
 log.info('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels, "finished")
+validation_callbacks[0](neural_net_levels, "finished")
 
 coarse_net = neural_net_levels[1].net if params["num_levels"] > 1 else None
 for i, level in enumerate(neural_net_levels):

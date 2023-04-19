@@ -17,12 +17,14 @@ import numpy as np
 import torch.nn.functional as F
 import sys
 from os import path
-from MTNN import models
+#from MTNN import models
+from MTNN.architectures.MultilinearModel import MultilinearNet
+from MTNN.architectures.ConvolutionalModel import ConvolutionalNet
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
 from MTNN.utils.ArgReader import MTNNArgReader
-from MTNN.utils.validation_callbacks import RealValidationCallback
+from MTNN.utils.validation_callbacks import RealValidationCallback, SaveParamsCallback
 
 arg_reader = MTNNArgReader()
 params = arg_reader.read_args(sys.argv)
@@ -31,7 +33,7 @@ params = arg_reader.read_args(sys.argv)
 # At logging level INFO, anything logged as log.warning() or log.info() will print
 # At logging level DEBUG, anything logged as log.warning(), log.info(), or log.debug() will print
 from MTNN.utils import logger
-log = logger.create_MTNN_logger("MTNN", logging_level="INFO", log_filename=params["log_filename"])
+log = logger.create_MTNN_logger("MTNN", logging_level="WARNING", log_filename=params["log_filename"])
 log.warning("Input parameters:\n{}\n".format(params))
 
 # For reproducibility. Comment out for possibly-improved efficiency
@@ -57,9 +59,13 @@ train_loader, test_loader = DarcyDataset.get_loaders(percent_train, train_batch_
 nn_is_cnn = "conv_ch" in params
 if nn_is_cnn:
     conv_info = [x for x in zip(params["conv_ch"], params["conv_kernel_width"], params["conv_stride"])]
-    net = models.ConvolutionalNet(conv_info, params["fc_width"] + [1], F.relu, lambda x : x)
+    net = ConvolutionalNet(conv_info, params["fc_width"] + [1], F.relu, lambda x : x)
 else:
-    net = models.MultiLinearNet([1024] + params["fc_width"] + [1], F.relu, lambda x : x)
+    net = MultilinearNet([1024] + params["fc_width"] + [1], F.relu, lambda x : x)
+
+if "load_params_from" in params:
+    net.load_params(params["load_params_from"])
+
 net.log_model()
 
 #=====================================
@@ -72,13 +78,20 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params)
 # Run Multigrid Trainer
 #=====================================
 
-validation_callback = RealValidationCallback(test_loader, params["num_levels"], 1)
+train_loader2, test_loader2 = DarcyDataset.get_loaders(percent_train, train_batch_size)
+callbacks = [RealValidationCallback("Validation_Data", test_loader2, params["num_levels"], 10),
+             RealValidationCallback("Training_Data", train_loader2, params["num_levels"], 10)]
+if "save_params_at" in params:
+    callbacks.append(SaveParamsCallback(params["save_params_at"]))
+
 log.info("\nTesting performance prior to training...")
-validation_callback(neural_net_levels, -1)
+for c in callbacks:
+    c(neural_net_levels, -1)
+
 log.info("\n")
 mc = mc.VCycle(neural_net_levels, cycles = params["num_cycles"],
-                      subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
-                      validation_callback=validation_callback)
+               subsetloader = subsetloader.NextKLoader(params["smooth_iters"]),
+               validation_callbacks=callbacks)
 mc.run(dataloader=train_loader)
 
 
@@ -88,4 +101,5 @@ mc.run(dataloader=train_loader)
 
 log.info('\nTraining Complete. Testing...')
 # Could use a different callback with testing instead of validation data
-validation_callback(neural_net_levels, "finished")
+for c in callbacks:
+    c(neural_net_levels, "finished")
