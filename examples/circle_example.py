@@ -22,7 +22,7 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 import sys
-from MTNN import models
+from MTNN.architectures.MultilinearModel import MultilinearNet
 from MTNN.components import subsetloader
 from MTNN.HierarchyBuilder import HierarchyBuilder
 import MTNN.MultilevelCycle as mc
@@ -53,13 +53,14 @@ torch.backends.cudnn.deterministic = True
 # Set up network architecture
 #=======================================
 
-net = models.MultiLinearNet([2] + params["fc_width"] + [1], F.relu, lambda x : x)
+net = MultilinearNet([2] + params["fc_width"] + [1], F.relu, lambda x : x)
 
-# Set bias to have reasonable inflection points
+# ReLU neurons activate at distance ||w||/b from origin;
+# Set bias so that neurons activate at reasonable distances.
 w = net.layers[0].weight.data
 b = net.layers[0].bias.data
-zp = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
-b[:] = torch.norm(w, dim=1) * zp
+activ_dist = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
+b[:] = torch.norm(w, dim=1) * activ_dist
 
 #=====================================
 # Build Multigrid Hierarchy
@@ -100,4 +101,5 @@ validation_callbacks[0](neural_net_levels, "finished")
 
 coarse_net = neural_net_levels[1].net if params["num_levels"] > 1 else None
 for i, level in enumerate(neural_net_levels):
+    print("Plotting results at hierarchy level {}".format(i))
     circle_helper.plot_outputs(level.net, i+1)
