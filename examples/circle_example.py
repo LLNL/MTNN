@@ -73,7 +73,7 @@ circle_helper = CircleHelper(num_train_samples=400, num_test_samples=900)
 train_loader, test_loader = circle_helper.get_dataloaders()
 print("Plotting target function, initial neural network function, and initial residual.")
 print("Red arrows represent ReLU activation points with negative effect on the function value.")
-print("Yellow arrows represent ReLU activation points with positive effect on the function value.")
+print("Blue arrows represent ReLU activation points with positive effect on the function value.")
 circle_helper.plot_outputs(neural_net_levels[0].net, 0)
 
 validation_callbacks = [RealValidationCallback("Circle Validation", test_loader, params["num_levels"], 1)]
