@@ -11,9 +11,12 @@
 # or lesser multilevel-induced regularization.
 
 # Example execution:
-# python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=none
+# python circle_example.py rand_seed=1 fc_width=24 learning_rate=0.1 momentum=0.7 weight_decay=1e-9 weighted_projection=False num_cycles=40000 num_levels=3 tau_corrector=none smooth_iters=200
 #
-# python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=wholeset
+# Some other options include
+# python circle_example.py rand_seed=1 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=4000 num_levels=3 tau_corrector=none smooth_iters=200
+#
+# python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.7 weight_decay=1e-9 weighted_projection=False num_cycles=4000 num_levels=3 tau_corrector=wholeset smooth_iters=10
 #
 # python circle_example.py rand_seed=0 fc_width=24 learning_rate=0.1 momentum=0.9 weight_decay=1e-9 weighted_projection=True num_cycles=8000 num_levels=1 tau_corrector=none
 
@@ -57,10 +60,10 @@ net = MultilinearNet([2] + params["fc_width"] + [1], F.relu, lambda x : x)
 
 # ReLU neurons activate at distance ||w||/b from origin;
 # Set bias so that neurons activate at reasonable distances.
-w = net.layers[0].weight.data
-b = net.layers[0].bias.data
-activ_dist = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
-b[:] = torch.norm(w, dim=1) * activ_dist
+# w = net.layers[0].weight.data
+# b = net.layers[0].bias.data
+# activ_dist = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
+# b[:] = torch.norm(w, dim=1) * activ_dist
 
 #=====================================
 # Build Multigrid Hierarchy
