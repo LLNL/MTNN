@@ -58,13 +58,6 @@ torch.backends.cudnn.deterministic = True
 
 net = MultilinearNet([2] + params["fc_width"] + [1], F.relu, lambda x : x)
 
-# ReLU neurons activate at distance ||w||/b from origin;
-# Set bias so that neurons activate at reasonable distances.
-# w = net.layers[0].weight.data
-# b = net.layers[0].bias.data
-# activ_dist = torch.from_numpy(np.random.uniform(low=0.0, high=1.0, size=len(b)).astype(np.float32)).to(deviceloader.get_device())
-# b[:] = torch.norm(w, dim=1) * activ_dist
-
 #=====================================
 # Build Multigrid Hierarchy
 #=====================================
@@ -78,7 +71,10 @@ neural_net_levels = HierarchyBuilder.build_standard_from_params(net, params)
 log.info("\nTesting performance prior to training...")
 circle_helper = CircleHelper(num_train_samples=400, num_test_samples=900)
 train_loader, test_loader = circle_helper.get_dataloaders()
-circle_helper.plot_outputs(neural_net_levels[0].net, 1)
+print("Plotting target function, initial neural network function, and initial residual.")
+print("Red arrows represent ReLU activation points with negative effect on the function value.")
+print("Yellow arrows represent ReLU activation points with positive effect on the function value.")
+circle_helper.plot_outputs(neural_net_levels[0].net, 0)
 
 validation_callbacks = [RealValidationCallback("Circle Validation", test_loader, params["num_levels"], 1)]
 validation_callbacks[0](neural_net_levels, -1)
@@ -104,5 +100,5 @@ validation_callbacks[0](neural_net_levels, "finished")
 
 coarse_net = neural_net_levels[1].net if params["num_levels"] > 1 else None
 for i, level in enumerate(neural_net_levels):
-    print("Plotting results at hierarchy level {}".format(i))
-    circle_helper.plot_outputs(level.net, i+1)
+    print("Plotting neural network function and residual at hierarchy level {}".format(i))
+    circle_helper.plot_outputs(level.net, i)
